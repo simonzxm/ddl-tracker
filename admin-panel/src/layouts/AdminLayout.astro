@@ -50,6 +50,19 @@ const navItems = [
             </a>
           ))}
         </nav>
+        
+        <!-- Logout button -->
+        <div class="absolute bottom-4 left-0 right-0 px-6">
+          <button 
+            id="logoutBtn"
+            class="flex items-center gap-3 w-full px-4 py-2 text-sm text-slate-300 hover:bg-slate-700 hover:text-white rounded transition-colors"
+          >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
+            退出登录
+          </button>
+        </div>
       </aside>
       
       <!-- Main content -->
@@ -57,5 +70,33 @@ const navItems = [
         <slot />
       </main>
     </div>
+    
+    <script is:inline>
+      // Check auth on page load
+      (function() {
+        const user = localStorage.getItem('admin_user');
+        if (!user) {
+          window.location.href = '/login';
+          return;
+        }
+        const userData = JSON.parse(user);
+        if (userData.role !== 'admin') {
+          localStorage.removeItem('admin_user');
+          window.location.href = '/login';
+        }
+      })();
+      
+      // Logout handler
+      document.getElementById('logoutBtn')?.addEventListener('click', async () => {
+        try {
+          await fetch('http://localhost:8000/api/auth/logout', {
+            method: 'POST',
+            credentials: 'include',
+          });
+        } catch (e) {}
+        localStorage.removeItem('admin_user');
+        window.location.href = '/login';
+      });
+    </script>
   </body>
 </html>

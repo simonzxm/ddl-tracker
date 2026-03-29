@@ -46,6 +46,14 @@ npm run dev
 ```
 访问 http://localhost:4321
 
+### 移动端开发
+```bash
+cd mobile
+npm install
+npx expo start
+```
+扫描二维码在 Expo Go 中运行，或按 `i` / `a` 启动 iOS/Android 模拟器
+
 ### Docker 部署
 
 ```bash
@@ -82,6 +90,16 @@ ddl-tracker/
 │   │   ├── components/      # UI 组件
 │   │   └── pages/           # 页面
 │   └── dist/                # 构建输出
+├── mobile/                  # React Native + Expo 移动端
+│   ├── app/                 # Expo Router 页面
+│   │   ├── (auth)/          # 认证相关页面
+│   │   ├── (tabs)/          # 底部标签页
+│   │   └── task/            # 任务详情/创建
+│   └── src/
+│       ├── components/      # UI 组件
+│       ├── hooks/           # React Hooks
+│       ├── services/        # API 服务
+│       └── types/           # TypeScript 类型
 ├── nginx/                   # Nginx 配置
 ├── docker-compose.yml
 └── .env.example

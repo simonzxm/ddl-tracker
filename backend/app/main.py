@@ -25,10 +25,10 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS middleware
+# CORS middleware - when credentials=True, cannot use wildcard "*"
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"] if settings.debug else [],
+    allow_origins=["http://localhost:8081", "http://localhost:3000", "http://localhost:4321"] if settings.debug else [],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

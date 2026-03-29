@@ -53,11 +53,11 @@ async def send_verification_code(
     # Generate and store code
     code_manager = VerificationCodeManager(redis)
     
-    # Check if code was recently sent
-    if await code_manager.exists(data.email):
+    # Check cooldown (60 seconds)
+    if await code_manager.is_in_cooldown(data.email):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="验证码已发送，请检查邮箱或稍后重试",
+            detail="请等待60秒后再重新发送验证码",
         )
     
     code = await code_manager.create(data.email)
@@ -76,7 +76,7 @@ async def send_verification_code(
 @router.post(
     "/register",
     response_model=AuthResponse,
-    dependencies=[Depends(require_rate_limit("register", 5, 3600))],
+    dependencies=[Depends(require_rate_limit("register", 30, 3600))],
 )
 async def register(
     data: RegisterRequest,

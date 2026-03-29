@@ -65,13 +65,16 @@ DDL Tracker 团队
     message.attach(MIMEText(html_content, "html", "utf-8"))
     
     try:
+        # Try STARTTLS first (port 587), then SSL (port 465)
+        use_tls = settings.smtp_port == 465
         await aiosmtplib.send(
             message,
             hostname=settings.smtp_host,
             port=settings.smtp_port,
             username=settings.smtp_user,
             password=settings.smtp_password,
-            start_tls=True,
+            start_tls=not use_tls,
+            use_tls=use_tls,
         )
         return True
     except Exception as e:

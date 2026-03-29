@@ -71,14 +71,19 @@ class VerificationCodeManager:
     """Email verification code management"""
     
     PREFIX = "verify:"
+    COOLDOWN_PREFIX = "verify_cooldown:"
     CODE_LENGTH = 6
     EXPIRE_SECONDS = 600  # 10 minutes
+    COOLDOWN_SECONDS = 60  # 60 seconds before resend
     
     def __init__(self, redis: Redis):
         self.redis = redis
     
     def _key(self, email: str) -> str:
         return f"{self.PREFIX}{email.lower()}"
+    
+    def _cooldown_key(self, email: str) -> str:
+        return f"{self.COOLDOWN_PREFIX}{email.lower()}"
     
     def _generate_code(self) -> str:
         return "".join([str(secrets.randbelow(10)) for _ in range(self.CODE_LENGTH)])
@@ -91,6 +96,12 @@ class VerificationCodeManager:
             self.EXPIRE_SECONDS,
             code,
         )
+        # Set cooldown
+        await self.redis.setex(
+            self._cooldown_key(email),
+            self.COOLDOWN_SECONDS,
+            "1",
+        )
         return code
     
     async def verify(self, email: str, code: str) -> bool:
@@ -98,8 +109,13 @@ class VerificationCodeManager:
         stored = await self.redis.get(self._key(email))
         if stored and stored == code:
             await self.redis.delete(self._key(email))
+            await self.redis.delete(self._cooldown_key(email))
             return True
         return False
+    
+    async def is_in_cooldown(self, email: str) -> bool:
+        """Check if in cooldown period (can't resend yet)"""
+        return await self.redis.exists(self._cooldown_key(email)) > 0
     
     async def exists(self, email: str) -> bool:
         """Check if a code already exists for this email"""

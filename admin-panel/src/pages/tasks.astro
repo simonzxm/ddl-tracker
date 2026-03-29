@@ -1,0 +1,139 @@
+---
+import AdminLayout from '../layouts/AdminLayout.astro';
+
+const API_BASE = import.meta.env.PUBLIC_API_URL || 'http://localhost:8000';
+---
+
+<AdminLayout title="任务审核" currentPage="/tasks">
+  <div class="mb-8 flex justify-between items-center">
+    <div>
+      <h2 class="text-2xl font-bold text-gray-900">任务审核</h2>
+      <p class="text-gray-500 mt-1">审核被举报和低评分的任务</p>
+    </div>
+    <div class="flex gap-2">
+      <button id="tab-reported" class="px-4 py-2 bg-red-500 text-white rounded-lg">
+        被举报
+      </button>
+      <button id="tab-lowscore" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg">
+        低评分
+      </button>
+    </div>
+  </div>
+  
+  <!-- Task Table -->
+  <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+    <table class="w-full">
+      <thead class="bg-gray-50 border-b border-gray-100">
+        <tr>
+          <th class="text-left py-3 px-4 text-sm font-medium text-gray-500">ID</th>
+          <th class="text-left py-3 px-4 text-sm font-medium text-gray-500">课程</th>
+          <th class="text-left py-3 px-4 text-sm font-medium text-gray-500">标题</th>
+          <th class="text-left py-3 px-4 text-sm font-medium text-gray-500">创建者</th>
+          <th class="text-left py-3 px-4 text-sm font-medium text-gray-500">评分</th>
+          <th class="text-left py-3 px-4 text-sm font-medium text-gray-500">状态</th>
+          <th class="text-left py-3 px-4 text-sm font-medium text-gray-500">操作</th>
+        </tr>
+      </thead>
+      <tbody id="task-list">
+        <tr>
+          <td colspan="7" class="text-center py-8 text-gray-500">加载中...</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</AdminLayout>
+
+<script define:vars={{ API_BASE }}>
+  let currentTab = 'reported';
+  
+  const tabReported = document.getElementById('tab-reported');
+  const tabLowscore = document.getElementById('tab-lowscore');
+  const taskList = document.getElementById('task-list');
+  
+  tabReported?.addEventListener('click', () => {
+    currentTab = 'reported';
+    tabReported.className = 'px-4 py-2 bg-red-500 text-white rounded-lg';
+    tabLowscore.className = 'px-4 py-2 bg-gray-100 text-gray-700 rounded-lg';
+    loadTasks();
+  });
+  
+  tabLowscore?.addEventListener('click', () => {
+    currentTab = 'lowscore';
+    tabLowscore.className = 'px-4 py-2 bg-yellow-500 text-white rounded-lg';
+    tabReported.className = 'px-4 py-2 bg-gray-100 text-gray-700 rounded-lg';
+    loadTasks();
+  });
+  
+  async function loadTasks() {
+    const endpoint = currentTab === 'reported' ? '/api/admin/tasks/reported' : '/api/admin/tasks/low-score';
+    
+    try {
+      const res = await fetch(`${API_BASE}${endpoint}`, {
+        credentials: 'include'
+      });
+      
+      if (!res.ok) {
+        taskList.innerHTML = '<tr><td colspan="7" class="text-center py-8 text-red-500">加载失败，请确认管理员登录</td></tr>';
+        return;
+      }
+      
+      const tasks = await res.json();
+      
+      if (tasks.length === 0) {
+        taskList.innerHTML = '<tr><td colspan="7" class="text-center py-8 text-gray-500">暂无数据</td></tr>';
+        return;
+      }
+      
+      taskList.innerHTML = tasks.map(task => `
+        <tr class="border-b border-gray-50 hover:bg-gray-50">
+          <td class="py-3 px-4 text-sm text-gray-600">${task.id}</td>
+          <td class="py-3 px-4 text-sm text-gray-900">${task.course_name}</td>
+          <td class="py-3 px-4 text-sm text-gray-900">${task.title}</td>
+          <td class="py-3 px-4 text-sm text-gray-600">${task.creator_nickname || '-'}</td>
+          <td class="py-3 px-4 text-sm">
+            <span class="text-green-600">+${task.upvotes}</span> / 
+            <span class="text-red-600">-${task.downvotes}</span>
+          </td>
+          <td class="py-3 px-4 text-sm">
+            <span class="px-2 py-1 rounded text-xs ${
+              task.status === 'verified' ? 'bg-green-100 text-green-700' :
+              task.status === 'hidden' ? 'bg-gray-100 text-gray-700' :
+              'bg-yellow-100 text-yellow-700'
+            }">${task.status}</span>
+            ${task.is_reported ? '<span class="ml-1 px-2 py-1 bg-red-100 text-red-700 rounded text-xs">举报</span>' : ''}
+          </td>
+          <td class="py-3 px-4 text-sm">
+            <div class="flex gap-2">
+              <button onclick="verifyTask(${task.id})" class="text-green-600 hover:text-green-800">验证</button>
+              <button onclick="hideTask(${task.id})" class="text-yellow-600 hover:text-yellow-800">隐藏</button>
+              <button onclick="deleteTask(${task.id})" class="text-red-600 hover:text-red-800">删除</button>
+            </div>
+          </td>
+        </tr>
+      `).join('');
+    } catch (err) {
+      console.error('Load tasks error:', err);
+      taskList.innerHTML = '<tr><td colspan="7" class="text-center py-8 text-red-500">加载失败</td></tr>';
+    }
+  }
+  
+  window.verifyTask = async (id) => {
+    if (!confirm('确认验证此任务？')) return;
+    await fetch(`${API_BASE}/api/admin/tasks/${id}/verify`, { method: 'POST', credentials: 'include' });
+    loadTasks();
+  };
+  
+  window.hideTask = async (id) => {
+    if (!confirm('确认隐藏此任务？')) return;
+    await fetch(`${API_BASE}/api/admin/tasks/${id}/hide`, { method: 'POST', credentials: 'include' });
+    loadTasks();
+  };
+  
+  window.deleteTask = async (id) => {
+    if (!confirm('确认删除此任务？此操作不可恢复！')) return;
+    await fetch(`${API_BASE}/api/admin/tasks/${id}`, { method: 'DELETE', credentials: 'include' });
+    loadTasks();
+  };
+  
+  loadTasks();
+</script>

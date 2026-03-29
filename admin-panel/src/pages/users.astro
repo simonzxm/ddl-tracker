@@ -1,0 +1,160 @@
+---
+import AdminLayout from '../layouts/AdminLayout.astro';
+
+const API_BASE = import.meta.env.PUBLIC_API_URL || 'http://localhost:8000';
+---
+
+<AdminLayout title="用户管理" currentPage="/users">
+  <div class="mb-8 flex justify-between items-center">
+    <div>
+      <h2 class="text-2xl font-bold text-gray-900">用户管理</h2>
+      <p class="text-gray-500 mt-1">查看和管理所有用户</p>
+    </div>
+    <div class="flex gap-2">
+      <input 
+        type="text" 
+        id="search-input"
+        placeholder="搜索邮箱或昵称..." 
+        class="px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+      />
+      <button id="search-btn" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">
+        搜索
+      </button>
+    </div>
+  </div>
+  
+  <!-- User Table -->
+  <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+    <table class="w-full">
+      <thead class="bg-gray-50 border-b border-gray-100">
+        <tr>
+          <th class="text-left py-3 px-4 text-sm font-medium text-gray-500">ID</th>
+          <th class="text-left py-3 px-4 text-sm font-medium text-gray-500">邮箱</th>
+          <th class="text-left py-3 px-4 text-sm font-medium text-gray-500">昵称</th>
+          <th class="text-left py-3 px-4 text-sm font-medium text-gray-500">Karma</th>
+          <th class="text-left py-3 px-4 text-sm font-medium text-gray-500">角色</th>
+          <th class="text-left py-3 px-4 text-sm font-medium text-gray-500">注册时间</th>
+          <th class="text-left py-3 px-4 text-sm font-medium text-gray-500">操作</th>
+        </tr>
+      </thead>
+      <tbody id="user-list">
+        <tr>
+          <td colspan="7" class="text-center py-8 text-gray-500">加载中...</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  
+  <!-- Pagination -->
+  <div class="mt-4 flex justify-between items-center">
+    <button id="prev-page" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg disabled:opacity-50">上一页</button>
+    <span id="page-info" class="text-gray-600">第 1 页</span>
+    <button id="next-page" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg">下一页</button>
+  </div>
+</AdminLayout>
+
+<script define:vars={{ API_BASE }}>
+  let currentPage = 1;
+  let searchQuery = '';
+  
+  const userList = document.getElementById('user-list');
+  const searchInput = document.getElementById('search-input');
+  const searchBtn = document.getElementById('search-btn');
+  const prevPage = document.getElementById('prev-page');
+  const nextPage = document.getElementById('next-page');
+  const pageInfo = document.getElementById('page-info');
+  
+  searchBtn?.addEventListener('click', () => {
+    searchQuery = searchInput?.value || '';
+    currentPage = 1;
+    loadUsers();
+  });
+  
+  searchInput?.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+      searchQuery = searchInput?.value || '';
+      currentPage = 1;
+      loadUsers();
+    }
+  });
+  
+  prevPage?.addEventListener('click', () => {
+    if (currentPage > 1) {
+      currentPage--;
+      loadUsers();
+    }
+  });
+  
+  nextPage?.addEventListener('click', () => {
+    currentPage++;
+    loadUsers();
+  });
+  
+  async function loadUsers() {
+    const params = new URLSearchParams({ page: currentPage.toString(), page_size: '20' });
+    if (searchQuery) params.set('q', searchQuery);
+    
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/users?${params}`, {
+        credentials: 'include'
+      });
+      
+      if (!res.ok) {
+        userList.innerHTML = '<tr><td colspan="7" class="text-center py-8 text-red-500">加载失败，请确认管理员登录</td></tr>';
+        return;
+      }
+      
+      const users = await res.json();
+      
+      if (users.length === 0) {
+        userList.innerHTML = '<tr><td colspan="7" class="text-center py-8 text-gray-500">暂无数据</td></tr>';
+        return;
+      }
+      
+      userList.innerHTML = users.map(user => `
+        <tr class="border-b border-gray-50 hover:bg-gray-50">
+          <td class="py-3 px-4 text-sm text-gray-600">${user.id}</td>
+          <td class="py-3 px-4 text-sm text-gray-900">${user.email}</td>
+          <td class="py-3 px-4 text-sm text-gray-900">${user.nickname}</td>
+          <td class="py-3 px-4 text-sm">
+            <span class="${user.karma >= 50 ? 'text-green-600' : user.karma < 0 ? 'text-red-600' : 'text-gray-600'}">
+              ${user.karma}
+            </span>
+          </td>
+          <td class="py-3 px-4 text-sm">
+            <span class="px-2 py-1 rounded text-xs ${
+              user.role === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-700'
+            }">${user.role === 'admin' ? '管理员' : '学生'}</span>
+          </td>
+          <td class="py-3 px-4 text-sm text-gray-600">${new Date(user.created_at).toLocaleDateString('zh-CN')}</td>
+          <td class="py-3 px-4 text-sm">
+            ${user.role === 'admin' 
+              ? `<button onclick="removeAdmin(${user.id})" class="text-red-600 hover:text-red-800">取消管理员</button>`
+              : `<button onclick="setAdmin(${user.id})" class="text-blue-600 hover:text-blue-800">设为管理员</button>`
+            }
+          </td>
+        </tr>
+      `).join('');
+      
+      pageInfo.textContent = `第 ${currentPage} 页`;
+      prevPage.disabled = currentPage === 1;
+    } catch (err) {
+      console.error('Load users error:', err);
+      userList.innerHTML = '<tr><td colspan="7" class="text-center py-8 text-red-500">加载失败</td></tr>';
+    }
+  }
+  
+  window.setAdmin = async (id) => {
+    if (!confirm('确认将此用户设为管理员？')) return;
+    await fetch(`${API_BASE}/api/admin/users/${id}/set-admin`, { method: 'POST', credentials: 'include' });
+    loadUsers();
+  };
+  
+  window.removeAdmin = async (id) => {
+    if (!confirm('确认取消此用户的管理员权限？')) return;
+    await fetch(`${API_BASE}/api/admin/users/${id}/remove-admin`, { method: 'POST', credentials: 'include' });
+    loadUsers();
+  };
+  
+  loadUsers();
+</script>

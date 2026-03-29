@@ -1,0 +1,36 @@
+---
+interface Props {
+  title: string;
+  value: string | number;
+  icon: string;
+  color?: string;
+  change?: string;
+}
+
+const { title, value, icon, color = 'blue', change } = Astro.props;
+
+const colorClasses: Record<string, string> = {
+  blue: 'bg-blue-500',
+  green: 'bg-green-500',
+  yellow: 'bg-yellow-500',
+  red: 'bg-red-500',
+  purple: 'bg-purple-500',
+};
+---
+
+<div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+  <div class="flex items-center justify-between">
+    <div>
+      <p class="text-sm font-medium text-gray-500">{title}</p>
+      <p class="text-3xl font-bold text-gray-900 mt-1">{value}</p>
+      {change && (
+        <p class="text-sm text-green-600 mt-1">{change}</p>
+      )}
+    </div>
+    <div class={`w-12 h-12 rounded-lg ${colorClasses[color]} flex items-center justify-center`}>
+      <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d={icon} />
+      </svg>
+    </div>
+  </div>
+</div>

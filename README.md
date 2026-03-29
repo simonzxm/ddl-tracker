@@ -7,6 +7,7 @@
 ### 环境要求
 - Docker & Docker Compose
 - Python 3.11+ (本地开发)
+- Node.js 18+ (管理面板开发)
 
 ### 本地开发
 
@@ -37,6 +38,14 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 - Swagger UI: http://localhost:8000/docs
 - ReDoc: http://localhost:8000/redoc
 
+### 管理面板开发
+```bash
+cd admin-panel
+npm install
+npm run dev
+```
+访问 http://localhost:4321
+
 ### Docker 部署
 
 ```bash
@@ -54,7 +63,7 @@ docker compose exec api alembic upgrade head
 
 ```
 ddl-tracker/
-├── backend/
+├── backend/                 # FastAPI 后端
 │   ├── app/
 │   │   ├── main.py          # FastAPI 入口
 │   │   ├── config.py        # 配置管理
@@ -67,6 +76,12 @@ ddl-tracker/
 │   │   └── services/        # 业务逻辑
 │   ├── alembic/             # 数据库迁移
 │   └── Dockerfile
+├── admin-panel/             # Astro + Tailwind 管理面板
+│   ├── src/
+│   │   ├── layouts/         # 布局组件
+│   │   ├── components/      # UI 组件
+│   │   └── pages/           # 页面
+│   └── dist/                # 构建输出
 ├── nginx/                   # Nginx 配置
 ├── docker-compose.yml
 └── .env.example
@@ -117,6 +132,14 @@ ddl-tracker/
 - `GET /tasks/reported` - 被举报任务
 - `POST /tasks/{id}/verify` - 验证任务
 - `POST /tasks/{id}/hide` - 隐藏任务
+
+## 🖥️ 管理面板
+
+管理面板提供以下功能：
+- **大盘概览**: 用户统计、任务统计、活跃度趋势
+- **任务审核**: 审核被举报和低评分的任务
+- **用户管理**: 查看用户、设置管理员
+- **课程管理**: 添加和管理课程底库
 
 ## 📄 License
 

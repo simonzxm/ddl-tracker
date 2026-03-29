@@ -1,0 +1,126 @@
+---
+import AdminLayout from '../layouts/AdminLayout.astro';
+import StatCard from '../components/StatCard.astro';
+
+const API_BASE = import.meta.env.PUBLIC_API_URL || 'http://localhost:8000';
+---
+
+<AdminLayout title="大盘概览" currentPage="/">
+  <div class="mb-8">
+    <h2 class="text-2xl font-bold text-gray-900">大盘概览</h2>
+    <p class="text-gray-500 mt-1">系统运行状态一览</p>
+  </div>
+  
+  <!-- Stats Grid -->
+  <div id="stats-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+    <StatCard 
+      title="注册用户" 
+      value="-" 
+      icon="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"
+      color="blue"
+    />
+    <StatCard 
+      title="本周活跃" 
+      value="-" 
+      icon="M13 10V3L4 14h7v7l9-11h-7z"
+      color="green"
+    />
+    <StatCard 
+      title="课程总数" 
+      value="-" 
+      icon="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
+      color="purple"
+    />
+    <StatCard 
+      title="待审核任务" 
+      value="-" 
+      icon="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+      color="yellow"
+    />
+  </div>
+  
+  <!-- Second Row -->
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+    <StatCard 
+      title="任务总数" 
+      value="-" 
+      icon="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+      color="blue"
+    />
+    <StatCard 
+      title="被举报任务" 
+      value="-" 
+      icon="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+      color="red"
+    />
+    <StatCard 
+      title="本周新增任务" 
+      value="-" 
+      icon="M12 6v6m0 0v6m0-6h6m-6 0H6"
+      color="green"
+    />
+  </div>
+  
+  <!-- Quick Actions -->
+  <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+    <h3 class="text-lg font-semibold text-gray-900 mb-4">快捷操作</h3>
+    <div class="flex flex-wrap gap-4">
+      <a href="/tasks" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors">
+        审核任务
+      </a>
+      <a href="/users" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
+        管理用户
+      </a>
+      <a href="/courses" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
+        管理课程
+      </a>
+    </div>
+  </div>
+</AdminLayout>
+
+<script define:vars={{ API_BASE }}>
+  async function loadDashboard() {
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/dashboard`, {
+        credentials: 'include'
+      });
+      
+      if (!res.ok) {
+        console.error('Failed to load dashboard:', res.status);
+        return;
+      }
+      
+      const data = await res.json();
+      
+      // Update stat cards
+      const cards = document.querySelectorAll('#stats-grid > div');
+      const values = [
+        data.total_users,
+        data.active_users_7d,
+        data.total_courses,
+        data.pending_tasks,
+      ];
+      
+      cards.forEach((card, i) => {
+        const valueEl = card.querySelector('.text-3xl');
+        if (valueEl && values[i] !== undefined) {
+          valueEl.textContent = values[i].toLocaleString();
+        }
+      });
+      
+      // Update second row
+      const secondRow = document.querySelectorAll('.grid.grid-cols-1.md\\:grid-cols-3 > div');
+      const secondValues = [data.total_tasks, data.reported_tasks, data.new_tasks_7d];
+      secondRow.forEach((card, i) => {
+        const valueEl = card.querySelector('.text-3xl');
+        if (valueEl && secondValues[i] !== undefined) {
+          valueEl.textContent = secondValues[i].toLocaleString();
+        }
+      });
+    } catch (err) {
+      console.error('Dashboard error:', err);
+    }
+  }
+  
+  loadDashboard();
+</script>

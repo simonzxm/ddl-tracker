@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,11 +7,18 @@ import {
   SafeAreaView,
   Alert,
 } from 'react-native';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { useAuth } from '../../src/hooks/useAuth';
 
 export default function ProfileScreen() {
-  const { user, logout } = useAuth();
+  const { user, logout, refresh } = useAuth();
+
+  // Refresh user data when screen is focused
+  useFocusEffect(
+    useCallback(() => {
+      refresh();
+    }, [])
+  );
 
   const handleLogout = () => {
     Alert.alert('确认登出', '确定要退出登录吗？', [

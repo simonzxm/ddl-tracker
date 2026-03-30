@@ -13,7 +13,7 @@ import { api } from '../../src/services/api';
 import { Task } from '../../src/types';
 
 export default function TaskDetailScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, tab } = useLocalSearchParams<{ id: string; tab?: string }>();
   const [task, setTask] = useState<Task | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -44,6 +44,15 @@ export default function TaskDetailScreen() {
     }
   };
 
+  const handleBack = () => {
+    // Navigate back with tab parameter preserved
+    if (tab) {
+      router.replace({ pathname: '/(tabs)', params: { tab } });
+    } else {
+      router.back();
+    }
+  };
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -56,7 +65,7 @@ export default function TaskDetailScreen() {
     return (
       <View style={styles.errorContainer}>
         <Text style={styles.errorText}>任务不存在</Text>
-        <TouchableOpacity onPress={() => router.back()}>
+        <TouchableOpacity onPress={handleBack}>
           <Text style={styles.backLink}>返回</Text>
         </TouchableOpacity>
       </View>
@@ -64,12 +73,34 @@ export default function TaskDetailScreen() {
   }
 
   const dueDate = new Date(task.due_time);
-  const isOverdue = dueDate < new Date();
+  const now = new Date();
+  const isOverdue = dueDate < now;
+
+  // Calculate remaining time
+  const diffMs = dueDate.getTime() - now.getTime();
+  const diffDays = Math.floor(Math.abs(diffMs) / (1000 * 60 * 60 * 24));
+  const diffHours = Math.floor((Math.abs(diffMs) % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+
+  const formatRemaining = () => {
+    if (isOverdue) {
+      if (diffDays > 0) return `已逾期 ${diffDays}天${diffHours}小时`;
+      return `已逾期 ${diffHours}小时`;
+    }
+    if (diffDays > 0) return `剩余 ${diffDays}天${diffHours}小时`;
+    return `剩余 ${diffHours}小时`;
+  };
+
+  const getTimeColor = () => {
+    if (isOverdue) return '#dc2626';
+    if (diffDays < 1) return '#ea580c';
+    if (diffDays < 3) return '#ca8a04';
+    return '#16a34a';
+  };
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
+        <TouchableOpacity onPress={handleBack}>
           <Text style={styles.backBtn}>← 返回</Text>
         </TouchableOpacity>
       </View>
@@ -78,7 +109,7 @@ export default function TaskDetailScreen() {
         <View style={styles.tags}>
           <View style={styles.courseTag}>
             <Text style={styles.courseTagText}>
-              {task.course_abbr || task.course_name}
+              {task.course_name || task.course_abbr}
             </Text>
           </View>
           {task.status === 'verified' && (
@@ -105,7 +136,9 @@ export default function TaskDetailScreen() {
               minute: '2-digit',
             })}
           </Text>
-          {isOverdue && <Text style={styles.overdueLabel}>已逾期</Text>}
+          <Text style={[styles.remainingTime, { color: getTimeColor() }]}>
+            {formatRemaining()}
+          </Text>
         </View>
 
         {task.description && (
@@ -246,11 +279,10 @@ const styles = StyleSheet.create({
   overdue: {
     color: '#dc2626',
   },
-  overdueLabel: {
-    marginTop: 4,
-    fontSize: 12,
-    color: '#dc2626',
-    fontWeight: '600',
+  remainingTime: {
+    marginTop: 8,
+    fontSize: 15,
+    fontWeight: '700',
   },
   descriptionContainer: {
     marginBottom: 16,

@@ -36,6 +36,45 @@ export default function CreateTaskScreen() {
     }
   };
 
+  // Auto-format date input: YYYY-MM-DD
+  const handleDateChange = (text: string) => {
+    // Remove non-digits
+    let cleaned = text.replace(/\D/g, '');
+    
+    // Auto-insert dashes
+    if (cleaned.length >= 4) {
+      cleaned = cleaned.slice(0, 4) + '-' + cleaned.slice(4);
+    }
+    if (cleaned.length >= 7) {
+      cleaned = cleaned.slice(0, 7) + '-' + cleaned.slice(7);
+    }
+    
+    // Limit to YYYY-MM-DD format
+    if (cleaned.length > 10) {
+      cleaned = cleaned.slice(0, 10);
+    }
+    
+    setDueDate(cleaned);
+  };
+
+  // Auto-format time input: HH:MM
+  const handleTimeChange = (text: string) => {
+    // Remove non-digits
+    let cleaned = text.replace(/\D/g, '');
+    
+    // Auto-insert colon
+    if (cleaned.length >= 2) {
+      cleaned = cleaned.slice(0, 2) + ':' + cleaned.slice(2);
+    }
+    
+    // Limit to HH:MM format
+    if (cleaned.length > 5) {
+      cleaned = cleaned.slice(0, 5);
+    }
+    
+    setDueTime(cleaned);
+  };
+
   const handleSubmit = async () => {
     if (!selectedCourse) {
       Alert.alert('提示', '请选择课程');
@@ -45,8 +84,8 @@ export default function CreateTaskScreen() {
       Alert.alert('提示', '请输入DDL标题');
       return;
     }
-    if (!dueDate) {
-      Alert.alert('提示', '请选择截止日期');
+    if (!dueDate || dueDate.length !== 10) {
+      Alert.alert('提示', '请输入完整的截止日期 (YYYY-MM-DD)');
       return;
     }
 
@@ -76,7 +115,7 @@ export default function CreateTaskScreen() {
         <TouchableOpacity onPress={() => router.back()}>
           <Text style={styles.backBtn}>← 返回</Text>
         </TouchableOpacity>
-        <Text style={styles.title}>创建 DDL</Text>
+        <Text style={styles.pageTitle}>创建 DDL</Text>
       </View>
 
       <View style={styles.form}>
@@ -134,10 +173,11 @@ export default function CreateTaskScreen() {
           <Text style={styles.label}>截止日期 *</Text>
           <TextInput
             style={styles.input}
-            placeholder="YYYY-MM-DD"
+            placeholder="YYYY-MM-DD（自动格式化）"
             placeholderTextColor="#9ca3af"
             value={dueDate}
-            onChangeText={setDueDate}
+            onChangeText={handleDateChange}
+            keyboardType="numeric"
             maxLength={10}
           />
         </View>
@@ -146,10 +186,11 @@ export default function CreateTaskScreen() {
           <Text style={styles.label}>截止时间</Text>
           <TextInput
             style={styles.input}
-            placeholder="HH:MM"
+            placeholder="HH:MM（自动格式化）"
             placeholderTextColor="#9ca3af"
             value={dueTime}
-            onChangeText={setDueTime}
+            onChangeText={handleTimeChange}
+            keyboardType="numeric"
             maxLength={5}
           />
         </View>
@@ -199,7 +240,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#2563eb',
   },
-  title: {
+  pageTitle: {
     fontSize: 20,
     fontWeight: '600',
     color: '#1f2937',

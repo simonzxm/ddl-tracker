@@ -7,33 +7,87 @@ import {
   StyleSheet,
   RefreshControl,
   SafeAreaView,
+  ScrollView,
 } from 'react-native';
-import { router, useFocusEffect } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { api } from '../../src/services/api';
 import { TaskCard } from '../../src/components/TaskCard';
-import { Task } from '../../src/types';
+import { Task, Course } from '../../src/types';
 
-type FilterType = 'week' | 'all' | 'overdue';
+type FilterType = 'all' | 'overdue' | string; // string for course_id
 
 export default function HomeScreen() {
+  const params = useLocalSearchParams<{ tab?: string }>();
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [filter, setFilter] = useState<FilterType>('week');
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [filter, setFilter] = useState<FilterType>('all');
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [completedTasks, setCompletedTasks] = useState<Set<number>>(new Set());
+
+  // Load saved filter and completed tasks
+  useEffect(() => {
+    const loadSavedState = async () => {
+      try {
+        // Restore filter from params or storage
+        if (params.tab) {
+          setFilter(params.tab);
+        } else {
+          const savedFilter = await AsyncStorage.getItem('ddl_filter');
+          if (savedFilter) setFilter(savedFilter);
+        }
+        
+        // Load completed tasks
+        const saved = await AsyncStorage.getItem('completed_tasks');
+        if (saved) setCompletedTasks(new Set(JSON.parse(saved)));
+      } catch (e) {
+        console.error('Failed to load saved state:', e);
+      }
+    };
+    loadSavedState();
+  }, [params.tab]);
+
+  // Save filter when changed
+  useEffect(() => {
+    AsyncStorage.setItem('ddl_filter', filter);
+  }, [filter]);
+
+  // Load followed courses
+  useEffect(() => {
+    api.getFollowedCourses().then(setCourses).catch(console.error);
+  }, []);
 
   const loadTasks = async () => {
     try {
       let data: Task[];
-      switch (filter) {
-        case 'week':
-          data = await api.getMyDeadlines(7);
-          break;
-        case 'overdue':
-          data = await api.getOverdueTasks();
-          break;
-        default:
-          data = await api.getMyDeadlines(30);
+      
+      if (filter === 'overdue') {
+        data = await api.getOverdueTasks();
+      } else if (filter.startsWith('course_')) {
+        const courseId = parseInt(filter.replace('course_', ''));
+        data = await api.getTasks({ course_id: courseId });
+      } else {
+        // 'all' - get all tasks from followed courses, 90 days
+        data = await api.getMyDeadlines(90);
       }
+      
+      // Sort: overdue first (by due_time asc), then upcoming (by due_time asc)
+      const now = new Date();
+      data.sort((a, b) => {
+        const aDate = new Date(a.due_time);
+        const bDate = new Date(b.due_time);
+        const aOverdue = aDate < now;
+        const bOverdue = bDate < now;
+        
+        // Overdue items first
+        if (aOverdue && !bOverdue) return -1;
+        if (!aOverdue && bOverdue) return 1;
+        
+        // Within same category, sort by due time
+        return aDate.getTime() - bDate.getTime();
+      });
+      
       setTasks(data);
     } catch (error) {
       console.error('Failed to load tasks:', error);
@@ -63,6 +117,17 @@ export default function HomeScreen() {
     }
   };
 
+  const toggleComplete = async (taskId: number) => {
+    const newCompleted = new Set(completedTasks);
+    if (newCompleted.has(taskId)) {
+      newCompleted.delete(taskId);
+    } else {
+      newCompleted.add(taskId);
+    }
+    setCompletedTasks(newCompleted);
+    await AsyncStorage.setItem('completed_tasks', JSON.stringify([...newCompleted]));
+  };
+
   const FilterButton = ({ type, label }: { type: FilterType; label: string }) => (
     <TouchableOpacity
       style={[styles.filterBtn, filter === type && styles.filterBtnActive]}
@@ -77,11 +142,19 @@ export default function HomeScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <View style={styles.filters}>
-          <FilterButton type="week" label="本周" />
-          <FilterButton type="all" label="全部" />
-          <FilterButton type="overdue" label="已逾期" />
-        </View>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filtersScroll}>
+          <View style={styles.filters}>
+            <FilterButton type="all" label="全部" />
+            <FilterButton type="overdue" label="已逾期" />
+            {courses.map((course) => (
+              <FilterButton 
+                key={course.id} 
+                type={`course_${course.id}`} 
+                label={course.name_abbr || course.name} 
+              />
+            ))}
+          </View>
+        </ScrollView>
       </View>
 
       <FlatList
@@ -90,8 +163,10 @@ export default function HomeScreen() {
         renderItem={({ item }) => (
           <TaskCard
             task={item}
-            onPress={() => router.push(`/task/${item.id}`)}
+            onPress={() => router.push({ pathname: `/task/${item.id}`, params: { tab: filter } })}
             onVote={(type) => handleVote(item.id, type)}
+            onComplete={() => toggleComplete(item.id)}
+            isCompleted={completedTasks.has(item.id)}
           />
         )}
         contentContainerStyle={styles.list}
@@ -126,14 +201,16 @@ const styles = StyleSheet.create({
     backgroundColor: '#f8fafc',
   },
   header: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
     backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#f3f4f6',
   },
+  filtersScroll: {
+    paddingVertical: 12,
+  },
   filters: {
     flexDirection: 'row',
+    paddingHorizontal: 16,
     gap: 8,
   },
   filterBtn: {

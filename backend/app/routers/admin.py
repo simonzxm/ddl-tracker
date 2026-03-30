@@ -519,7 +519,12 @@ async def list_all_tasks(
         query = query.where(Task.title.ilike(f"%{q}%"))
     
     if status_filter:
-        query = query.where(Task.status == TaskStatus(status_filter.upper()))
+        # TaskStatus enum uses lowercase values: pending, verified, hidden
+        try:
+            task_status = TaskStatus(status_filter.lower())
+            query = query.where(Task.status == task_status)
+        except ValueError:
+            pass  # Invalid status, ignore filter
     
     query = query.order_by(Task.created_at.desc()).offset((page - 1) * page_size).limit(page_size)
     result = await db.execute(query)

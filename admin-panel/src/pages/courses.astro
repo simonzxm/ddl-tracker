@@ -28,50 +28,54 @@ const API_BASE = import.meta.env.PUBLIC_API_URL || 'http://localhost:8000';
     <table class="w-full">
       <thead class="bg-gray-50 border-b border-gray-100">
         <tr>
+          <th class="text-left py-3 px-4 text-sm font-medium text-gray-500">ID</th>
           <th class="text-left py-3 px-4 text-sm font-medium text-gray-500">课号</th>
           <th class="text-left py-3 px-4 text-sm font-medium text-gray-500">名称</th>
           <th class="text-left py-3 px-4 text-sm font-medium text-gray-500">教师</th>
           <th class="text-left py-3 px-4 text-sm font-medium text-gray-500">学期</th>
-          <th class="text-left py-3 px-4 text-sm font-medium text-gray-500">关注数</th>
+          <th class="text-left py-3 px-4 text-sm font-medium text-gray-500">关注</th>
+          <th class="text-left py-3 px-4 text-sm font-medium text-gray-500">任务</th>
+          <th class="text-left py-3 px-4 text-sm font-medium text-gray-500">操作</th>
         </tr>
       </thead>
       <tbody id="course-list">
         <tr>
-          <td colspan="5" class="text-center py-8 text-gray-500">加载中...</td>
+          <td colspan="8" class="text-center py-8 text-gray-500">加载中...</td>
         </tr>
       </tbody>
     </table>
   </div>
 </AdminLayout>
 
-<!-- Add Course Modal -->
-<div id="add-modal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
+<!-- Add/Edit Course Modal -->
+<div id="course-modal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
   <div class="bg-white rounded-xl p-6 w-full max-w-md">
-    <h3 class="text-lg font-semibold mb-4">添加课程</h3>
-    <form id="add-form" class="space-y-4">
+    <h3 id="modal-title" class="text-lg font-semibold mb-4">添加课程</h3>
+    <form id="course-form" class="space-y-4">
+      <input type="hidden" id="course-id" />
       <div>
         <label class="block text-sm font-medium text-gray-700 mb-1">课程号</label>
-        <input type="text" name="course_code" required class="w-full px-3 py-2 border rounded-lg" placeholder="如: CS101" />
+        <input type="text" id="course-code" required class="w-full px-3 py-2 border rounded-lg" placeholder="如: CS101" />
       </div>
       <div>
         <label class="block text-sm font-medium text-gray-700 mb-1">课程名称</label>
-        <input type="text" name="name" required class="w-full px-3 py-2 border rounded-lg" placeholder="如: 数据结构" />
+        <input type="text" id="course-name" required class="w-full px-3 py-2 border rounded-lg" placeholder="如: 数据结构" />
       </div>
       <div>
         <label class="block text-sm font-medium text-gray-700 mb-1">简称（可选）</label>
-        <input type="text" name="name_abbr" class="w-full px-3 py-2 border rounded-lg" placeholder="如: DS" />
+        <input type="text" id="course-abbr" class="w-full px-3 py-2 border rounded-lg" placeholder="如: DS" />
       </div>
       <div>
         <label class="block text-sm font-medium text-gray-700 mb-1">授课教师</label>
-        <input type="text" name="teacher" required class="w-full px-3 py-2 border rounded-lg" placeholder="如: 张三" />
+        <input type="text" id="course-teacher" required class="w-full px-3 py-2 border rounded-lg" placeholder="如: 张三" />
       </div>
       <div>
         <label class="block text-sm font-medium text-gray-700 mb-1">学期</label>
-        <input type="text" name="semester" required class="w-full px-3 py-2 border rounded-lg" placeholder="如: 2026-Spring" />
+        <input type="text" id="course-semester" required class="w-full px-3 py-2 border rounded-lg" placeholder="如: 2026-Spring" />
       </div>
       <div class="flex gap-2 justify-end">
         <button type="button" id="cancel-btn" class="px-4 py-2 bg-gray-100 rounded-lg">取消</button>
-        <button type="submit" class="px-4 py-2 bg-blue-500 text-white rounded-lg">添加</button>
+        <button type="submit" class="px-4 py-2 bg-blue-500 text-white rounded-lg">保存</button>
       </div>
     </form>
   </div>
@@ -80,41 +84,61 @@ const API_BASE = import.meta.env.PUBLIC_API_URL || 'http://localhost:8000';
 <script define:vars={{ API_BASE }}>
   const courseList = document.getElementById('course-list');
   const searchInput = document.getElementById('search-input');
-  const addModal = document.getElementById('add-modal');
-  const addForm = document.getElementById('add-form');
+  const courseModal = document.getElementById('course-modal');
+  const courseForm = document.getElementById('course-form');
+  const modalTitle = document.getElementById('modal-title');
   const addBtn = document.getElementById('add-course-btn');
   const cancelBtn = document.getElementById('cancel-btn');
   
+  let isEditing = false;
+  
   addBtn?.addEventListener('click', () => {
-    addModal.classList.remove('hidden');
-    addModal.classList.add('flex');
+    isEditing = false;
+    modalTitle.textContent = '添加课程';
+    document.getElementById('course-id').value = '';
+    document.getElementById('course-code').value = '';
+    document.getElementById('course-name').value = '';
+    document.getElementById('course-abbr').value = '';
+    document.getElementById('course-teacher').value = '';
+    document.getElementById('course-semester').value = '';
+    courseModal.classList.remove('hidden');
+    courseModal.classList.add('flex');
   });
   
   cancelBtn?.addEventListener('click', () => {
-    addModal.classList.add('hidden');
-    addModal.classList.remove('flex');
+    courseModal.classList.add('hidden');
+    courseModal.classList.remove('flex');
   });
   
-  addForm?.addEventListener('submit', async (e) => {
+  courseForm?.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const formData = new FormData(addForm);
-    const data = Object.fromEntries(formData.entries());
+    const id = document.getElementById('course-id').value;
+    const data = {
+      code: document.getElementById('course-code').value,
+      name: document.getElementById('course-name').value,
+      name_abbr: document.getElementById('course-abbr').value || null,
+      teacher: document.getElementById('course-teacher').value,
+      semester: document.getElementById('course-semester').value,
+    };
     
     try {
-      const res = await fetch(`${API_BASE}/api/courses`, {
-        method: 'POST',
+      const url = isEditing ? `${API_BASE}/api/admin/courses/${id}` : `${API_BASE}/api/admin/courses`;
+      const method = isEditing ? 'PUT' : 'POST';
+      
+      const res = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
         credentials: 'include'
       });
       
       if (res.ok) {
-        addModal.classList.add('hidden');
-        addForm.reset();
+        courseModal.classList.add('hidden');
+        courseModal.classList.remove('flex');
         loadCourses();
       } else {
         const err = await res.json();
-        alert(err.detail || '添加失败');
+        alert(err.detail || '操作失败');
       }
     } catch (err) {
       alert('请求失败');
@@ -127,40 +151,79 @@ const API_BASE = import.meta.env.PUBLIC_API_URL || 'http://localhost:8000';
     searchTimeout = setTimeout(loadCourses, 300);
   });
   
+  window.openEdit = (id, code, name, abbr, teacher, semester) => {
+    isEditing = true;
+    modalTitle.textContent = '编辑课程';
+    document.getElementById('course-id').value = id;
+    document.getElementById('course-code').value = code;
+    document.getElementById('course-name').value = name;
+    document.getElementById('course-abbr').value = abbr || '';
+    document.getElementById('course-teacher').value = teacher;
+    document.getElementById('course-semester').value = semester;
+    courseModal.classList.remove('hidden');
+    courseModal.classList.add('flex');
+  };
+  
+  window.deleteCourse = async (id) => {
+    if (!confirm('确认删除此课程？如果课程下有任务，则无法删除。')) return;
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/courses/${id}`, {
+        method: 'DELETE',
+        credentials: 'include'
+      });
+      if (res.ok) {
+        loadCourses();
+      } else {
+        const err = await res.json();
+        alert(err.detail || '删除失败');
+      }
+    } catch (err) {
+      alert('请求失败');
+    }
+  };
+  
   async function loadCourses() {
     const q = searchInput?.value || '';
     const params = new URLSearchParams({ page_size: '50' });
     if (q) params.set('q', q);
     
     try {
-      const res = await fetch(`${API_BASE}/api/courses?${params}`, {
+      const res = await fetch(`${API_BASE}/api/admin/courses?${params}`, {
         credentials: 'include'
       });
       
       if (!res.ok) {
-        courseList.innerHTML = '<tr><td colspan="5" class="text-center py-8 text-red-500">加载失败</td></tr>';
+        courseList.innerHTML = '<tr><td colspan="8" class="text-center py-8 text-red-500">加载失败，请确认管理员登录</td></tr>';
         return;
       }
       
       const courses = await res.json();
       
       if (courses.length === 0) {
-        courseList.innerHTML = '<tr><td colspan="5" class="text-center py-8 text-gray-500">暂无课程</td></tr>';
+        courseList.innerHTML = '<tr><td colspan="8" class="text-center py-8 text-gray-500">暂无课程</td></tr>';
         return;
       }
       
       courseList.innerHTML = courses.map(course => `
         <tr class="border-b border-gray-50 hover:bg-gray-50">
-          <td class="py-3 px-4 text-sm text-gray-600">${course.course_code}</td>
+          <td class="py-3 px-4 text-sm text-gray-600">${course.id}</td>
+          <td class="py-3 px-4 text-sm text-gray-600">${course.code}</td>
           <td class="py-3 px-4 text-sm text-gray-900">${course.name}${course.name_abbr ? ` (${course.name_abbr})` : ''}</td>
           <td class="py-3 px-4 text-sm text-gray-600">${course.teacher}</td>
           <td class="py-3 px-4 text-sm text-gray-600">${course.semester}</td>
-          <td class="py-3 px-4 text-sm text-gray-600">${course.followers_count}</td>
+          <td class="py-3 px-4 text-sm text-gray-600">${course.follower_count}</td>
+          <td class="py-3 px-4 text-sm text-gray-600">${course.task_count}</td>
+          <td class="py-3 px-4 text-sm">
+            <div class="flex gap-2">
+              <button onclick="openEdit(${course.id}, '${course.code}', '${course.name.replace(/'/g, "\\'")}', '${(course.name_abbr || '').replace(/'/g, "\\'")}', '${course.teacher.replace(/'/g, "\\'")}', '${course.semester}')" class="text-blue-600 hover:text-blue-800">编辑</button>
+              <button onclick="deleteCourse(${course.id})" class="text-red-600 hover:text-red-800">删除</button>
+            </div>
+          </td>
         </tr>
       `).join('');
     } catch (err) {
       console.error('Load courses error:', err);
-      courseList.innerHTML = '<tr><td colspan="5" class="text-center py-8 text-red-500">加载失败</td></tr>';
+      courseList.innerHTML = '<tr><td colspan="8" class="text-center py-8 text-red-500">加载失败</td></tr>';
     }
   }
   

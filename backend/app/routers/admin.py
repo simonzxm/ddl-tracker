@@ -301,3 +301,240 @@ async def remove_user_admin(
     
     user.role = UserRole.STUDENT
     return {"message": f"{user.nickname} 已取消管理员权限"}
+
+
+class UserUpdateRequest(BaseModel):
+    nickname: Optional[str] = None
+    karma: Optional[int] = None
+
+
+@router.put("/users/{user_id}")
+async def update_user(
+    user_id: int,
+    data: UserUpdateRequest,
+    admin: User = Depends(get_current_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """修改用户信息"""
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    
+    if not user:
+        raise HTTPException(status_code=404, detail="用户不存在")
+    
+    if data.nickname is not None:
+        user.nickname = data.nickname
+    if data.karma is not None:
+        user.karma = data.karma
+    
+    return {"message": "用户信息已更新"}
+
+
+@router.delete("/users/{user_id}")
+async def delete_user(
+    user_id: int,
+    admin: User = Depends(get_current_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """删除用户"""
+    if user_id == admin.id:
+        raise HTTPException(status_code=400, detail="不能删除自己")
+    
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    
+    if not user:
+        raise HTTPException(status_code=404, detail="用户不存在")
+    
+    await db.delete(user)
+    return {"message": "用户已删除"}
+
+
+# Course management
+class CourseListResponse(BaseModel):
+    id: int
+    code: str
+    name: str
+    name_abbr: Optional[str]
+    teacher: str
+    semester: str
+    follower_count: int = 0
+    task_count: int = 0
+    created_at: datetime
+
+
+class CourseCreateRequest(BaseModel):
+    code: str
+    name: str
+    name_abbr: Optional[str] = None
+    teacher: str
+    semester: str
+
+
+class CourseUpdateRequest(BaseModel):
+    code: Optional[str] = None
+    name: Optional[str] = None
+    name_abbr: Optional[str] = None
+    teacher: Optional[str] = None
+    semester: Optional[str] = None
+
+
+@router.get("/courses", response_model=list[CourseListResponse])
+async def list_courses(
+    q: Optional[str] = Query(None, description="搜索课程名/课号/教师"),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    admin: User = Depends(get_current_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """获取课程列表"""
+    query = select(
+        Course,
+        func.count(func.distinct(UserCourse.user_id)).label('follower_count'),
+        func.count(func.distinct(Task.id)).label('task_count'),
+    ).outerjoin(UserCourse, Course.id == UserCourse.course_id).outerjoin(Task, Course.id == Task.course_id).group_by(Course.id)
+    
+    if q:
+        pattern = f"%{q}%"
+        query = query.where(
+            (Course.name.ilike(pattern)) | 
+            (Course.course_code.ilike(pattern)) | 
+            (Course.teacher.ilike(pattern))
+        )
+    
+    query = query.order_by(Course.created_at.desc()).offset((page - 1) * page_size).limit(page_size)
+    result = await db.execute(query)
+    
+    return [
+        CourseListResponse(
+            id=course.id,
+            code=course.course_code,
+            name=course.name,
+            name_abbr=course.name_abbr,
+            teacher=course.teacher,
+            semester=course.semester,
+            follower_count=follower_count or 0,
+            task_count=task_count or 0,
+            created_at=course.created_at,
+        )
+        for course, follower_count, task_count in result.all()
+    ]
+
+
+@router.post("/courses", status_code=status.HTTP_201_CREATED)
+async def create_course(
+    data: CourseCreateRequest,
+    admin: User = Depends(get_current_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """创建课程"""
+    # Check for duplicate
+    exists = await db.execute(
+        select(Course).where(
+            Course.course_code == data.code,
+            Course.teacher == data.teacher,
+            Course.semester == data.semester,
+        )
+    )
+    if exists.scalar_one_or_none():
+        raise HTTPException(status_code=400, detail="课程已存在（课号+教师+学期重复）")
+    
+    course = Course(
+        course_code=data.code,
+        name=data.name,
+        name_abbr=data.name_abbr,
+        teacher=data.teacher,
+        semester=data.semester,
+    )
+    db.add(course)
+    await db.flush()
+    
+    return {"message": "课程已创建", "id": course.id}
+
+
+@router.put("/courses/{course_id}")
+async def update_course(
+    course_id: int,
+    data: CourseUpdateRequest,
+    admin: User = Depends(get_current_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """修改课程"""
+    result = await db.execute(select(Course).where(Course.id == course_id))
+    course = result.scalar_one_or_none()
+    
+    if not course:
+        raise HTTPException(status_code=404, detail="课程不存在")
+    
+    update_data = data.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        if value is not None:
+            setattr(course, field, value)
+    
+    return {"message": "课程已更新"}
+
+
+@router.delete("/courses/{course_id}")
+async def delete_course(
+    course_id: int,
+    admin: User = Depends(get_current_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """删除课程"""
+    result = await db.execute(select(Course).where(Course.id == course_id))
+    course = result.scalar_one_or_none()
+    
+    if not course:
+        raise HTTPException(status_code=404, detail="课程不存在")
+    
+    # Check if there are tasks
+    task_count = await db.scalar(
+        select(func.count()).where(Task.course_id == course_id)
+    )
+    if task_count > 0:
+        raise HTTPException(status_code=400, detail=f"该课程下有 {task_count} 个任务，无法删除")
+    
+    await db.delete(course)
+    return {"message": "课程已删除"}
+
+
+# Task management (all tasks)
+@router.get("/tasks", response_model=list[TaskAuditResponse])
+async def list_all_tasks(
+    q: Optional[str] = Query(None, description="搜索标题"),
+    status_filter: Optional[str] = Query(None, alias="status"),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    admin: User = Depends(get_current_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """获取所有任务列表"""
+    query = (
+        select(Task, Course.name, User.nickname)
+        .join(Course, Task.course_id == Course.id)
+        .outerjoin(User, Task.creator_id == User.id)
+    )
+    
+    if q:
+        query = query.where(Task.title.ilike(f"%{q}%"))
+    
+    if status_filter:
+        query = query.where(Task.status == TaskStatus(status_filter.upper()))
+    
+    query = query.order_by(Task.created_at.desc()).offset((page - 1) * page_size).limit(page_size)
+    result = await db.execute(query)
+    
+    return [
+        TaskAuditResponse(
+            id=task.id,
+            course_name=course_name,
+            title=task.title,
+            creator_nickname=nickname,
+            status=task.status.value.lower(),
+            upvotes=task.upvotes,
+            downvotes=task.downvotes,
+            is_reported=task.is_reported,
+            created_at=task.created_at,
+        )
+        for task, course_name, nickname in result.all()
+    ]

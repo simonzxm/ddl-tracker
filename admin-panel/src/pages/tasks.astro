@@ -4,19 +4,22 @@ import AdminLayout from '../layouts/AdminLayout.astro';
 const API_BASE = import.meta.env.PUBLIC_API_URL || 'http://localhost:8000';
 ---
 
-<AdminLayout title="任务审核" currentPage="/tasks">
+<AdminLayout title="任务管理" currentPage="/tasks">
   <div class="mb-8 flex justify-between items-center">
     <div>
-      <h2 class="text-2xl font-bold text-gray-900">任务审核</h2>
-      <p class="text-gray-500 mt-1">审核被举报和低评分的任务</p>
+      <h2 class="text-2xl font-bold text-gray-900">任务管理</h2>
+      <p class="text-gray-500 mt-1">查看和管理所有 DDL 任务</p>
     </div>
     <div class="flex gap-2">
-      <button id="tab-reported" class="px-4 py-2 bg-red-500 text-white rounded-lg">
-        被举报
-      </button>
-      <button id="tab-lowscore" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg">
-        低评分
-      </button>
+      <input type="text" id="search" placeholder="搜索标题..." class="px-4 py-2 border rounded-lg" />
+      <select id="status-filter" class="px-4 py-2 border rounded-lg">
+        <option value="">全部状态</option>
+        <option value="pending">待验证</option>
+        <option value="verified">已验证</option>
+        <option value="hidden">已隐藏</option>
+      </select>
+      <button id="tab-all" class="px-4 py-2 bg-blue-500 text-white rounded-lg">全部</button>
+      <button id="tab-reported" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg">被举报</button>
     </div>
   </div>
   
@@ -31,12 +34,13 @@ const API_BASE = import.meta.env.PUBLIC_API_URL || 'http://localhost:8000';
           <th class="text-left py-3 px-4 text-sm font-medium text-gray-500">创建者</th>
           <th class="text-left py-3 px-4 text-sm font-medium text-gray-500">评分</th>
           <th class="text-left py-3 px-4 text-sm font-medium text-gray-500">状态</th>
+          <th class="text-left py-3 px-4 text-sm font-medium text-gray-500">创建时间</th>
           <th class="text-left py-3 px-4 text-sm font-medium text-gray-500">操作</th>
         </tr>
       </thead>
       <tbody id="task-list">
         <tr>
-          <td colspan="7" class="text-center py-8 text-gray-500">加载中...</td>
+          <td colspan="8" class="text-center py-8 text-gray-500">加载中...</td>
         </tr>
       </tbody>
     </table>
@@ -44,43 +48,56 @@ const API_BASE = import.meta.env.PUBLIC_API_URL || 'http://localhost:8000';
 </AdminLayout>
 
 <script define:vars={{ API_BASE }}>
-  let currentTab = 'reported';
+  let currentTab = 'all';
   
+  const tabAll = document.getElementById('tab-all');
   const tabReported = document.getElementById('tab-reported');
-  const tabLowscore = document.getElementById('tab-lowscore');
   const taskList = document.getElementById('task-list');
+  const searchInput = document.getElementById('search');
+  const statusFilter = document.getElementById('status-filter');
   
-  tabReported?.addEventListener('click', () => {
-    currentTab = 'reported';
-    tabReported.className = 'px-4 py-2 bg-red-500 text-white rounded-lg';
-    tabLowscore.className = 'px-4 py-2 bg-gray-100 text-gray-700 rounded-lg';
-    loadTasks();
-  });
-  
-  tabLowscore?.addEventListener('click', () => {
-    currentTab = 'lowscore';
-    tabLowscore.className = 'px-4 py-2 bg-yellow-500 text-white rounded-lg';
+  tabAll?.addEventListener('click', () => {
+    currentTab = 'all';
+    tabAll.className = 'px-4 py-2 bg-blue-500 text-white rounded-lg';
     tabReported.className = 'px-4 py-2 bg-gray-100 text-gray-700 rounded-lg';
     loadTasks();
   });
   
+  tabReported?.addEventListener('click', () => {
+    currentTab = 'reported';
+    tabReported.className = 'px-4 py-2 bg-red-500 text-white rounded-lg';
+    tabAll.className = 'px-4 py-2 bg-gray-100 text-gray-700 rounded-lg';
+    loadTasks();
+  });
+  
+  searchInput?.addEventListener('input', debounce(loadTasks, 300));
+  statusFilter?.addEventListener('change', loadTasks);
+  
+  function debounce(fn, ms) {
+    let timeout;
+    return () => { clearTimeout(timeout); timeout = setTimeout(fn, ms); };
+  }
+  
   async function loadTasks() {
-    const endpoint = currentTab === 'reported' ? '/api/admin/tasks/reported' : '/api/admin/tasks/low-score';
+    const q = searchInput?.value || '';
+    const status = statusFilter?.value || '';
+    
+    let endpoint = currentTab === 'reported' 
+      ? '/api/admin/tasks/reported'
+      : `/api/admin/tasks?q=${encodeURIComponent(q)}${status ? `&status=${status}` : ''}`;
     
     try {
-      const res = await fetch(`${API_BASE}${endpoint}`, {
-        credentials: 'include'
-      });
+      const res = await fetch(`${API_BASE}${endpoint}`, { credentials: 'include' });
       
       if (!res.ok) {
-        taskList.innerHTML = '<tr><td colspan="7" class="text-center py-8 text-red-500">加载失败，请确认管理员登录</td></tr>';
+        taskList.innerHTML = '<tr><td colspan="8" class="text-center py-8 text-red-500">加载失败，请确认管理员登录</td></tr>';
         return;
       }
       
       const tasks = await res.json();
       
       if (tasks.length === 0) {
-        taskList.innerHTML = '<tr><td colspan="7" class="text-center py-8 text-gray-500">暂无数据</td></tr>';
+        taskList.innerHTML = '<tr><td colspan="8" class="text-center py-8 text-gray-500">暂无数据</td></tr>';
         return;
       }
       
@@ -99,9 +116,10 @@ const API_BASE = import.meta.env.PUBLIC_API_URL || 'http://localhost:8000';
               task.status === 'verified' ? 'bg-green-100 text-green-700' :
               task.status === 'hidden' ? 'bg-gray-100 text-gray-700' :
               'bg-yellow-100 text-yellow-700'
-            }">${task.status}</span>
+            }">${task.status === 'verified' ? '已验证' : task.status === 'hidden' ? '已隐藏' : '待验证'}</span>
             ${task.is_reported ? '<span class="ml-1 px-2 py-1 bg-red-100 text-red-700 rounded text-xs">举报</span>' : ''}
           </td>
+          <td class="py-3 px-4 text-sm text-gray-500">${new Date(task.created_at).toLocaleString('zh-CN')}</td>
           <td class="py-3 px-4 text-sm">
             <div class="flex gap-2">
               <button onclick="verifyTask(${task.id})" class="text-green-600 hover:text-green-800">验证</button>
@@ -113,7 +131,7 @@ const API_BASE = import.meta.env.PUBLIC_API_URL || 'http://localhost:8000';
       `).join('');
     } catch (err) {
       console.error('Load tasks error:', err);
-      taskList.innerHTML = '<tr><td colspan="7" class="text-center py-8 text-red-500">加载失败</td></tr>';
+      taskList.innerHTML = '<tr><td colspan="8" class="text-center py-8 text-red-500">加载失败</td></tr>';
     }
   }
   

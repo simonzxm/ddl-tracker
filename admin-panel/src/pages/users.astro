@@ -51,6 +51,28 @@ const API_BASE = import.meta.env.PUBLIC_API_URL || 'http://localhost:8000';
     <span id="page-info" class="text-gray-600">第 1 页</span>
     <button id="next-page" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg">下一页</button>
   </div>
+  
+  <!-- Edit Modal -->
+  <div id="edit-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white rounded-xl p-6 w-full max-w-md">
+      <h3 class="text-lg font-bold mb-4">编辑用户</h3>
+      <form id="edit-form" class="space-y-4">
+        <input type="hidden" id="edit-id" />
+        <div>
+          <label class="block text-sm font-medium mb-1">昵称</label>
+          <input type="text" id="edit-nickname" class="w-full px-4 py-2 border rounded-lg" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Karma</label>
+          <input type="number" id="edit-karma" class="w-full px-4 py-2 border rounded-lg" />
+        </div>
+        <div class="flex gap-2 justify-end">
+          <button type="button" id="cancel-edit" class="px-4 py-2 bg-gray-100 rounded-lg">取消</button>
+          <button type="submit" class="px-4 py-2 bg-blue-500 text-white rounded-lg">保存</button>
+        </div>
+      </form>
+    </div>
+  </div>
 </AdminLayout>
 
 <script define:vars={{ API_BASE }}>
@@ -63,6 +85,9 @@ const API_BASE = import.meta.env.PUBLIC_API_URL || 'http://localhost:8000';
   const prevPage = document.getElementById('prev-page');
   const nextPage = document.getElementById('next-page');
   const pageInfo = document.getElementById('page-info');
+  const editModal = document.getElementById('edit-modal');
+  const editForm = document.getElementById('edit-form');
+  const cancelEdit = document.getElementById('cancel-edit');
   
   searchBtn?.addEventListener('click', () => {
     searchQuery = searchInput?.value || '';
@@ -87,6 +112,27 @@ const API_BASE = import.meta.env.PUBLIC_API_URL || 'http://localhost:8000';
   
   nextPage?.addEventListener('click', () => {
     currentPage++;
+    loadUsers();
+  });
+  
+  cancelEdit?.addEventListener('click', () => {
+    editModal?.classList.add('hidden');
+  });
+  
+  editForm?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const id = document.getElementById('edit-id')?.value;
+    const nickname = document.getElementById('edit-nickname')?.value;
+    const karma = document.getElementById('edit-karma')?.value;
+    
+    await fetch(`${API_BASE}/api/admin/users/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ nickname, karma: parseInt(karma) }),
+    });
+    
+    editModal?.classList.add('hidden');
     loadUsers();
   });
   
@@ -128,10 +174,14 @@ const API_BASE = import.meta.env.PUBLIC_API_URL || 'http://localhost:8000';
           </td>
           <td class="py-3 px-4 text-sm text-gray-600">${new Date(user.created_at).toLocaleDateString('zh-CN')}</td>
           <td class="py-3 px-4 text-sm">
-            ${user.role === 'admin' 
-              ? `<button onclick="removeAdmin(${user.id})" class="text-red-600 hover:text-red-800">取消管理员</button>`
-              : `<button onclick="setAdmin(${user.id})" class="text-blue-600 hover:text-blue-800">设为管理员</button>`
-            }
+            <div class="flex gap-2">
+              <button onclick="openEdit(${user.id}, '${user.nickname}', ${user.karma})" class="text-blue-600 hover:text-blue-800">编辑</button>
+              ${user.role === 'admin' 
+                ? `<button onclick="removeAdmin(${user.id})" class="text-yellow-600 hover:text-yellow-800">降权</button>`
+                : `<button onclick="setAdmin(${user.id})" class="text-green-600 hover:text-green-800">升权</button>`
+              }
+              <button onclick="deleteUser(${user.id})" class="text-red-600 hover:text-red-800">删除</button>
+            </div>
           </td>
         </tr>
       `).join('');
@@ -144,6 +194,13 @@ const API_BASE = import.meta.env.PUBLIC_API_URL || 'http://localhost:8000';
     }
   }
   
+  window.openEdit = (id, nickname, karma) => {
+    document.getElementById('edit-id').value = id;
+    document.getElementById('edit-nickname').value = nickname;
+    document.getElementById('edit-karma').value = karma;
+    editModal?.classList.remove('hidden');
+  };
+  
   window.setAdmin = async (id) => {
     if (!confirm('确认将此用户设为管理员？')) return;
     await fetch(`${API_BASE}/api/admin/users/${id}/set-admin`, { method: 'POST', credentials: 'include' });
@@ -153,6 +210,12 @@ const API_BASE = import.meta.env.PUBLIC_API_URL || 'http://localhost:8000';
   window.removeAdmin = async (id) => {
     if (!confirm('确认取消此用户的管理员权限？')) return;
     await fetch(`${API_BASE}/api/admin/users/${id}/remove-admin`, { method: 'POST', credentials: 'include' });
+    loadUsers();
+  };
+  
+  window.deleteUser = async (id) => {
+    if (!confirm('确认删除此用户？此操作不可恢复！')) return;
+    await fetch(`${API_BASE}/api/admin/users/${id}`, { method: 'DELETE', credentials: 'include' });
     loadUsers();
   };
   

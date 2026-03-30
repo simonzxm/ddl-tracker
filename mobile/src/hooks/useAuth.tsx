@@ -24,10 +24,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const init = async () => {
     try {
+      // First initialize API to restore session from SecureStore
       await api.init();
+      
+      // Check if we have a stored session
+      const hasSession = api.hasStoredSession();
+      if (!hasSession) {
+        // No stored session, go to login
+        setState({ user: null, isLoading: false, isAuthenticated: false });
+        return;
+      }
+      
+      // We have a session, try to validate it
       const user = await api.getMe();
       setState({ user, isLoading: false, isAuthenticated: true });
-    } catch {
+    } catch (error) {
+      // Session invalid or expired
+      await api.clearSession();
       setState({ user: null, isLoading: false, isAuthenticated: false });
     }
   };

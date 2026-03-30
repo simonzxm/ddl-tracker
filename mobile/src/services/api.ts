@@ -1,22 +1,52 @@
 import * as SecureStore from 'expo-secure-store';
+import { Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const API_BASE = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000';
+
+// Web fallback for SecureStore
+const storage = {
+  async getItem(key: string): Promise<string | null> {
+    if (Platform.OS === 'web') {
+      return AsyncStorage.getItem(key);
+    }
+    return SecureStore.getItemAsync(key);
+  },
+  async setItem(key: string, value: string): Promise<void> {
+    if (Platform.OS === 'web') {
+      await AsyncStorage.setItem(key, value);
+    } else {
+      await SecureStore.setItemAsync(key, value);
+    }
+  },
+  async deleteItem(key: string): Promise<void> {
+    if (Platform.OS === 'web') {
+      await AsyncStorage.removeItem(key);
+    } else {
+      await SecureStore.deleteItemAsync(key);
+    }
+  },
+};
 
 class ApiClient {
   private sessionId: string | null = null;
 
   async init() {
-    this.sessionId = await SecureStore.getItemAsync('session_id');
+    this.sessionId = await storage.getItem('session_id');
+  }
+
+  hasStoredSession(): boolean {
+    return this.sessionId !== null && this.sessionId !== '';
   }
 
   async setSession(sessionId: string) {
     this.sessionId = sessionId;
-    await SecureStore.setItemAsync('session_id', sessionId);
+    await storage.setItem('session_id', sessionId);
   }
 
   async clearSession() {
     this.sessionId = null;
-    await SecureStore.deleteItemAsync('session_id');
+    await storage.deleteItem('session_id');
   }
 
   private async request<T>(

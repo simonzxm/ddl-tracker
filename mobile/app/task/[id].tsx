@@ -16,12 +16,19 @@ export default function TaskDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [task, setTask] = useState<Task | null>(null);
   const [loading, setLoading] = useState(true);
+  const [now, setNow] = useState(new Date());
 
   useEffect(() => {
     if (id) {
       loadTask(parseInt(id));
     }
   }, [id]);
+
+  // Update countdown every second
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   const loadTask = async (taskId: number) => {
     try {
@@ -64,19 +71,23 @@ export default function TaskDetailScreen() {
   }
 
   const dueDate = new Date(task.due_time);
-  const now = new Date();
   const isOverdue = dueDate < now;
   const diffMs = dueDate.getTime() - now.getTime();
-  const diffDays = Math.floor(Math.abs(diffMs) / (1000 * 60 * 60 * 24));
-  const diffHours = Math.floor((Math.abs(diffMs) % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  const absDiffMs = Math.abs(diffMs);
+  const diffDays = Math.floor(absDiffMs / (1000 * 60 * 60 * 24));
+  const diffHours = Math.floor((absDiffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  const diffMinutes = Math.floor((absDiffMs % (1000 * 60 * 60)) / (1000 * 60));
+  const diffSeconds = Math.floor((absDiffMs % (1000 * 60)) / 1000);
 
   const formatRemaining = () => {
-    if (isOverdue) {
-      if (diffDays > 0) return `已逾期 ${diffDays}天`;
-      return `已逾期 ${diffHours}小时`;
+    const prefix = isOverdue ? '已逾期 ' : '剩余 ';
+    if (diffDays > 0) {
+      return `${prefix}${diffDays}天 ${diffHours}时 ${diffMinutes}分 ${diffSeconds}秒`;
     }
-    if (diffDays === 0) return `${diffHours}小时后截止`;
-    return `${diffDays}天${diffHours}小时后截止`;
+    if (diffHours > 0) {
+      return `${prefix}${diffHours}时 ${diffMinutes}分 ${diffSeconds}秒`;
+    }
+    return `${prefix}${diffMinutes}分 ${diffSeconds}秒`;
   };
 
   return (
@@ -90,15 +101,20 @@ export default function TaskDetailScreen() {
 
       {/* Main Content */}
       <View style={styles.main}>
-        <View style={styles.courseBadge}>
-          <Text style={styles.courseText}>{task.course_name || task.course_abbr}</Text>
+        <View style={styles.topRow}>
+          <View style={styles.courseBadge}>
+            <Text style={styles.courseText}>{task.course_name || task.course_abbr}</Text>
+          </View>
+          {task.status === 'verified' && (
+            <Text style={styles.verifiedSmall}>✓ 已验证</Text>
+          )}
         </View>
 
         <Text style={styles.title}>{task.title}</Text>
 
         <View style={styles.dueRow}>
           <Text style={[styles.dueTime, isOverdue && styles.overdue]}>
-            {dueDate.toLocaleDateString('zh-CN', {
+            截止：{dueDate.toLocaleDateString('zh-CN', {
               month: 'long',
               day: 'numeric',
               weekday: 'short',
@@ -110,12 +126,6 @@ export default function TaskDetailScreen() {
             {formatRemaining()}
           </Text>
         </View>
-
-        {task.status === 'verified' && (
-          <View style={styles.verifiedBanner}>
-            <Text style={styles.verifiedText}>✓ 信息已验证</Text>
-          </View>
-        )}
 
         {task.description && (
           <View style={styles.descSection}>
@@ -199,18 +209,27 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 20,
   },
+  topRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
   courseBadge: {
     backgroundColor: '#e0e7ff',
-    alignSelf: 'flex-start',
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 6,
-    marginBottom: 12,
   },
   courseText: {
     color: '#4338ca',
     fontSize: 13,
     fontWeight: '600',
+  },
+  verifiedSmall: {
+    fontSize: 12,
+    color: '#16a34a',
+    fontWeight: '500',
   },
   title: {
     fontSize: 20,
@@ -233,18 +252,6 @@ const styles = StyleSheet.create({
   },
   overdue: {
     color: '#dc2626',
-  },
-  verifiedBanner: {
-    backgroundColor: '#dcfce7',
-    padding: 10,
-    borderRadius: 8,
-    marginBottom: 12,
-  },
-  verifiedText: {
-    color: '#166534',
-    fontSize: 14,
-    fontWeight: '500',
-    textAlign: 'center',
   },
   descSection: {
     borderTopWidth: 1,

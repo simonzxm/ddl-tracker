@@ -88,6 +88,54 @@ async def get_dashboard_stats(
     )
 
 
+# Task management (all tasks) - MUST be before /tasks/{task_id} routes
+@router.get("/tasks", response_model=list[TaskAuditResponse])
+async def list_all_tasks(
+    q: Optional[str] = Query(None, description="搜索标题"),
+    status_filter: Optional[str] = Query(None, alias="status"),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    admin: User = Depends(get_current_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """获取所有任务列表"""
+    query = (
+        select(Task, Course.name, User.nickname)
+        .join(Course, Task.course_id == Course.id)
+        .outerjoin(User, Task.creator_id == User.id)
+    )
+    
+    if q:
+        query = query.where(Task.title.ilike(f"%{q}%"))
+    
+    if status_filter:
+        # TaskStatus enum uses lowercase values: pending, verified, hidden
+        try:
+            task_status = TaskStatus(status_filter.lower())
+            query = query.where(Task.status == task_status)
+        except ValueError:
+            pass  # Invalid status, ignore filter
+    
+    query = query.order_by(Task.created_at.desc()).offset((page - 1) * page_size).limit(page_size)
+    result = await db.execute(query)
+    
+    return [
+        TaskAuditResponse(
+            id=task.id,
+            course_name=course_name,
+            title=task.title,
+            creator_nickname=nickname,
+            status=task.status.value.lower(),
+            upvotes=task.upvotes,
+            downvotes=task.downvotes,
+            is_reported=task.is_reported,
+            due_time=task.due_time,
+            created_at=task.created_at,
+        )
+        for task, course_name, nickname in result.all()
+    ]
+
+
 @router.get("/tasks/reported", response_model=list[TaskAuditResponse])
 async def get_reported_tasks(
     page: int = Query(1, ge=1),
@@ -236,13 +284,18 @@ async def admin_update_task(
     if data.description is not None:
         task.description = data.description
     if data.due_time is not None:
-        task.due_time = data.due_time
+        # Remove timezone info to match database column type
+        due_time = data.due_time
+        if due_time.tzinfo is not None:
+            due_time = due_time.replace(tzinfo=None)
+        task.due_time = due_time
     if data.status is not None:
         try:
             task.status = TaskStatus(data.status.lower())
         except ValueError:
             raise HTTPException(status_code=400, detail="无效的状态值")
     
+    await db.commit()
     return {"message": "任务已更新"}
 
 
@@ -568,51 +621,3 @@ async def delete_course(
     
     await db.delete(course)
     return {"message": "课程已删除"}
-
-
-# Task management (all tasks)
-@router.get("/tasks", response_model=list[TaskAuditResponse])
-async def list_all_tasks(
-    q: Optional[str] = Query(None, description="搜索标题"),
-    status_filter: Optional[str] = Query(None, alias="status"),
-    page: int = Query(1, ge=1),
-    page_size: int = Query(20, ge=1, le=100),
-    admin: User = Depends(get_current_admin),
-    db: AsyncSession = Depends(get_db),
-):
-    """获取所有任务列表"""
-    query = (
-        select(Task, Course.name, User.nickname)
-        .join(Course, Task.course_id == Course.id)
-        .outerjoin(User, Task.creator_id == User.id)
-    )
-    
-    if q:
-        query = query.where(Task.title.ilike(f"%{q}%"))
-    
-    if status_filter:
-        # TaskStatus enum uses lowercase values: pending, verified, hidden
-        try:
-            task_status = TaskStatus(status_filter.lower())
-            query = query.where(Task.status == task_status)
-        except ValueError:
-            pass  # Invalid status, ignore filter
-    
-    query = query.order_by(Task.created_at.desc()).offset((page - 1) * page_size).limit(page_size)
-    result = await db.execute(query)
-    
-    return [
-        TaskAuditResponse(
-            id=task.id,
-            course_name=course_name,
-            title=task.title,
-            creator_nickname=nickname,
-            status=task.status.value.lower(),
-            upvotes=task.upvotes,
-            downvotes=task.downvotes,
-            is_reported=task.is_reported,
-            due_time=task.due_time,
-            created_at=task.created_at,
-        )
-        for task, course_name, nickname in result.all()
-    ]

@@ -205,10 +205,12 @@ const API_BASE = import.meta.env.PUBLIC_API_URL || 'http://localhost:8000';
   editForm?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const id = document.getElementById('edit-id').value;
+    // Send datetime without timezone conversion - keep as local time
+    const dueTimeValue = document.getElementById('edit-due-time').value;
     const data = {
       title: document.getElementById('edit-title').value,
       description: document.getElementById('edit-description').value || null,
-      due_time: new Date(document.getElementById('edit-due-time').value).toISOString(),
+      due_time: dueTimeValue ? dueTimeValue + ':00' : null,  // Format: 2026-03-30T23:59:00
       status: document.getElementById('edit-status').value,
     };
     

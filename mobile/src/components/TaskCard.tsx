@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Pressable } from 'react-native';
 import { Task } from '../types';
 
@@ -11,37 +11,44 @@ interface TaskCardProps {
 }
 
 export function TaskCard({ task, onPress, onVote, onComplete, isCompleted }: TaskCardProps) {
+  const [now, setNow] = useState(new Date());
   const dueDate = new Date(task.due_time);
-  const now = new Date();
   const isOverdue = dueDate < now && !isCompleted;
 
-  // Calculate remaining time
+  // Update countdown every second
+  useEffect(() => {
+    if (isCompleted) return;
+    const timer = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, [isCompleted]);
+
+  // Calculate remaining time precisely
   const diffMs = dueDate.getTime() - now.getTime();
-  const diffDays = Math.floor(Math.abs(diffMs) / (1000 * 60 * 60 * 24));
-  const diffHours = Math.floor((Math.abs(diffMs) % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  const absDiffMs = Math.abs(diffMs);
+  const diffDays = Math.floor(absDiffMs / (1000 * 60 * 60 * 24));
+  const diffHours = Math.floor((absDiffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  const diffMinutes = Math.floor((absDiffMs % (1000 * 60 * 60)) / (1000 * 60));
+  const diffSeconds = Math.floor((absDiffMs % (1000 * 60)) / 1000);
 
   const formatRemaining = () => {
     if (isCompleted) return '已完成';
-    if (isOverdue) {
-      if (diffDays > 0) return `逾期 ${diffDays}天`;
-      return `逾期 ${diffHours}小时`;
+    const prefix = isOverdue ? '逾期 ' : '';
+    if (diffDays > 0) {
+      return `${prefix}${diffDays}天${diffHours}时${diffMinutes}分`;
     }
-    if (diffDays === 0) {
-      if (diffHours <= 1) return '即将截止';
-      return `${diffHours}小时后`;
+    if (diffHours > 0) {
+      return `${prefix}${diffHours}时${diffMinutes}分${diffSeconds}秒`;
     }
-    if (diffDays === 1) return '明天';
-    if (diffDays < 7) return `${diffDays}天后`;
-    return dueDate.toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' });
+    return `${prefix}${diffMinutes}分${diffSeconds}秒`;
   };
 
   // Color based on urgency
   const getTimeColor = () => {
     if (isCompleted) return '#9ca3af';
     if (isOverdue) return '#dc2626';
-    if (diffDays === 0) return '#ea580c';
+    if (diffDays === 0 && diffHours < 6) return '#ea580c';
     if (diffDays < 3) return '#d97706';
-    return '#6b7280';
+    return '#059669';
   };
 
   return (
@@ -73,20 +80,22 @@ export function TaskCard({ task, onPress, onVote, onComplete, isCompleted }: Tas
             {formatRemaining()}
           </Text>
         </View>
-        
-        {/* Bottom row: votes + verified */}
-        {!isCompleted && (
-          <View style={styles.bottomRow}>
+      </View>
+
+      {/* Right side: votes + verified */}
+      {!isCompleted && (
+        <View style={styles.rightColumn}>
+          {(task.upvotes > 0 || task.downvotes > 0) && (
             <View style={styles.votes}>
               {task.upvotes > 0 && <Text style={styles.voteUp}>👍{task.upvotes}</Text>}
               {task.downvotes > 0 && <Text style={styles.voteDown}>👎{task.downvotes}</Text>}
             </View>
-            {task.status === 'verified' && (
-              <Text style={styles.verified}>✓已验证</Text>
-            )}
-          </View>
-        )}
-      </View>
+          )}
+          {task.status === 'verified' && (
+            <Text style={styles.verified}>✓</Text>
+          )}
+        </View>
+      )}
     </Pressable>
   );
 }
@@ -160,27 +169,25 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '500',
   },
-  bottomRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 6,
+  rightColumn: {
+    alignItems: 'flex-end',
+    marginLeft: 8,
+    gap: 4,
   },
   votes: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 6,
   },
   voteUp: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#6b7280',
   },
   voteDown: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#6b7280',
   },
   verified: {
-    fontSize: 11,
+    fontSize: 12,
     color: '#16a34a',
-    fontWeight: '500',
   },
 });

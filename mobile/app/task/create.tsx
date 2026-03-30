@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -19,22 +19,23 @@ export default function CreateTaskScreen() {
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [dueDate, setDueDate] = useState('');
-  const [dueTime, setDueTime] = useState('23:59');
+  // Separate date/time fields for better UX
+  const [year, setYear] = useState('');
+  const [month, setMonth] = useState('');
+  const [day, setDay] = useState('');
+  const [hour, setHour] = useState('23');
+  const [minute, setMinute] = useState('59');
   const [loading, setLoading] = useState(false);
   const [showCourses, setShowCourses] = useState(false);
-  
-  const prevDateRef = useRef('');
-  const prevTimeRef = useRef('23:59');
 
   useEffect(() => {
     loadFollowedCourses();
     // Set default date to tomorrow
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
-    const dateStr = tomorrow.toISOString().split('T')[0];
-    setDueDate(dateStr);
-    prevDateRef.current = dateStr;
+    setYear(tomorrow.getFullYear().toString());
+    setMonth(String(tomorrow.getMonth() + 1).padStart(2, '0'));
+    setDay(String(tomorrow.getDate()).padStart(2, '0'));
   }, []);
 
   const loadFollowedCourses = async () => {
@@ -46,69 +47,6 @@ export default function CreateTaskScreen() {
     }
   };
 
-  // Smart date formatting that handles backspace properly
-  const handleDateChange = (text: string) => {
-    const prev = prevDateRef.current;
-    const isDeleting = text.length < prev.length;
-    
-    if (isDeleting) {
-      // If deleting and cursor was after a dash, also remove the dash
-      if (prev.endsWith('-') && !text.endsWith('-')) {
-        setDueDate(text);
-      } else {
-        setDueDate(text);
-      }
-    } else {
-      // Adding characters - auto-format
-      let cleaned = text.replace(/[^0-9-]/g, '');
-      
-      // Remove extra dashes
-      const parts = cleaned.split('-').filter(p => p !== '');
-      
-      if (parts.length === 1 && parts[0].length >= 4 && !cleaned.includes('-')) {
-        // Auto add first dash after year
-        cleaned = parts[0].slice(0, 4) + '-' + parts[0].slice(4);
-      } else if (parts.length === 2 && parts[1].length >= 2 && cleaned.split('-').length === 2) {
-        // Auto add second dash after month
-        cleaned = parts[0] + '-' + parts[1].slice(0, 2) + '-' + parts[1].slice(2);
-      }
-      
-      // Limit length
-      if (cleaned.length > 10) {
-        cleaned = cleaned.slice(0, 10);
-      }
-      
-      setDueDate(cleaned);
-    }
-    
-    prevDateRef.current = text.length < prev.length ? text : (dueDate.length < text.length ? text : dueDate);
-  };
-
-  // Smart time formatting
-  const handleTimeChange = (text: string) => {
-    const prev = prevTimeRef.current;
-    const isDeleting = text.length < prev.length;
-    
-    if (isDeleting) {
-      setDueTime(text);
-    } else {
-      let cleaned = text.replace(/[^0-9:]/g, '');
-      const parts = cleaned.split(':').filter(p => p !== '');
-      
-      if (parts.length === 1 && parts[0].length >= 2 && !cleaned.includes(':')) {
-        cleaned = parts[0].slice(0, 2) + ':' + parts[0].slice(2);
-      }
-      
-      if (cleaned.length > 5) {
-        cleaned = cleaned.slice(0, 5);
-      }
-      
-      setDueTime(cleaned);
-    }
-    
-    prevTimeRef.current = text;
-  };
-
   const handleSubmit = async () => {
     if (!selectedCourse) {
       Alert.alert('提示', '请选择课程');
@@ -118,19 +56,39 @@ export default function CreateTaskScreen() {
       Alert.alert('提示', '请输入DDL标题');
       return;
     }
-    if (!dueDate) {
-      Alert.alert('提示', '请输入截止日期');
+    if (!year || !month || !day) {
+      Alert.alert('提示', '请填写完整日期');
       return;
     }
 
-    // Validate date format
-    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-    if (!dateRegex.test(dueDate)) {
-      Alert.alert('提示', '日期格式错误，请使用 YYYY-MM-DD 格式');
+    // Validate date
+    const y = parseInt(year), m = parseInt(month), d = parseInt(day);
+    const h = parseInt(hour) || 23, min = parseInt(minute) || 59;
+    
+    if (isNaN(y) || y < 2020 || y > 2100) {
+      Alert.alert('提示', '年份无效');
+      return;
+    }
+    if (isNaN(m) || m < 1 || m > 12) {
+      Alert.alert('提示', '月份无效 (1-12)');
+      return;
+    }
+    if (isNaN(d) || d < 1 || d > 31) {
+      Alert.alert('提示', '日期无效 (1-31)');
+      return;
+    }
+    if (h < 0 || h > 23) {
+      Alert.alert('提示', '小时无效 (0-23)');
+      return;
+    }
+    if (min < 0 || min > 59) {
+      Alert.alert('提示', '分钟无效 (0-59)');
       return;
     }
 
-    const dueDateTime = `${dueDate}T${dueTime || '23:59'}:00`;
+    const dateStr = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+    const timeStr = `${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
+    const dueDateTime = `${dateStr}T${timeStr}:00`;
 
     setLoading(true);
     try {
@@ -140,7 +98,6 @@ export default function CreateTaskScreen() {
         description: description.trim() || undefined,
         due_time: dueDateTime,
       });
-      // Success - go back immediately
       router.back();
     } catch (error: any) {
       Alert.alert('创建失败', error.message);
@@ -221,30 +178,64 @@ export default function CreateTaskScreen() {
           />
         </View>
 
-        {/* Due Date & Time */}
-        <View style={styles.dateTimeRow}>
-          <View style={styles.dateField}>
-            <Text style={styles.fieldLabel}>截止日期</Text>
+        {/* Due Date - Separate fields */}
+        <View style={styles.field}>
+          <Text style={styles.fieldLabel}>截止日期</Text>
+          <View style={styles.dateRow}>
             <TextInput
-              style={styles.dateInput}
-              placeholder="YYYY-MM-DD"
+              style={styles.yearInput}
+              placeholder="年"
               placeholderTextColor="#9ca3af"
-              value={dueDate}
-              onChangeText={handleDateChange}
-              maxLength={10}
-              keyboardType="numbers-and-punctuation"
+              value={year}
+              onChangeText={(t) => setYear(t.replace(/[^0-9]/g, '').slice(0, 4))}
+              keyboardType="number-pad"
+              maxLength={4}
+            />
+            <Text style={styles.dateSep}>-</Text>
+            <TextInput
+              style={styles.mdInput}
+              placeholder="月"
+              placeholderTextColor="#9ca3af"
+              value={month}
+              onChangeText={(t) => setMonth(t.replace(/[^0-9]/g, '').slice(0, 2))}
+              keyboardType="number-pad"
+              maxLength={2}
+            />
+            <Text style={styles.dateSep}>-</Text>
+            <TextInput
+              style={styles.mdInput}
+              placeholder="日"
+              placeholderTextColor="#9ca3af"
+              value={day}
+              onChangeText={(t) => setDay(t.replace(/[^0-9]/g, '').slice(0, 2))}
+              keyboardType="number-pad"
+              maxLength={2}
             />
           </View>
-          <View style={styles.timeField}>
-            <Text style={styles.fieldLabel}>时间</Text>
+        </View>
+
+        {/* Due Time */}
+        <View style={styles.field}>
+          <Text style={styles.fieldLabel}>截止时间</Text>
+          <View style={styles.timeRow}>
             <TextInput
               style={styles.timeInput}
-              placeholder="HH:MM"
+              placeholder="时"
               placeholderTextColor="#9ca3af"
-              value={dueTime}
-              onChangeText={handleTimeChange}
-              maxLength={5}
-              keyboardType="numbers-and-punctuation"
+              value={hour}
+              onChangeText={(t) => setHour(t.replace(/[^0-9]/g, '').slice(0, 2))}
+              keyboardType="number-pad"
+              maxLength={2}
+            />
+            <Text style={styles.timeSep}>:</Text>
+            <TextInput
+              style={styles.timeInput}
+              placeholder="分"
+              placeholderTextColor="#9ca3af"
+              value={minute}
+              onChangeText={(t) => setMinute(t.replace(/[^0-9]/g, '').slice(0, 2))}
+              keyboardType="number-pad"
+              maxLength={2}
             />
           </View>
         </View>
@@ -385,33 +376,50 @@ const styles = StyleSheet.create({
     color: '#1f2937',
     padding: 0,
   },
-  dateTimeRow: {
+  dateRow: {
     flexDirection: 'row',
-    marginHorizontal: 16,
-    gap: 12,
-    marginBottom: 12,
+    alignItems: 'center',
   },
-  dateField: {
-    flex: 2,
-    backgroundColor: '#fff',
-    padding: 16,
-    borderRadius: 12,
-  },
-  timeField: {
-    flex: 1,
-    backgroundColor: '#fff',
-    padding: 16,
-    borderRadius: 12,
-  },
-  dateInput: {
+  yearInput: {
     fontSize: 16,
     color: '#1f2937',
-    padding: 0,
+    textAlign: 'center',
+    width: 60,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+    paddingVertical: 4,
+  },
+  mdInput: {
+    fontSize: 16,
+    color: '#1f2937',
+    textAlign: 'center',
+    width: 40,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+    paddingVertical: 4,
+  },
+  dateSep: {
+    fontSize: 16,
+    color: '#9ca3af',
+    marginHorizontal: 4,
+  },
+  timeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   timeInput: {
     fontSize: 16,
     color: '#1f2937',
-    padding: 0,
+    textAlign: 'center',
+    width: 40,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+    paddingVertical: 4,
+  },
+  timeSep: {
+    fontSize: 16,
+    color: '#9ca3af',
+    marginHorizontal: 4,
   },
   descInput: {
     fontSize: 15,

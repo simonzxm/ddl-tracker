@@ -47,6 +47,7 @@ export default function TabsLayout() {
         name="index"
         options={{
           title: '我的DDL',
+          headerShown: false,
           tabBarIcon: ({ focused }) => <TabIcon name="index" focused={focused} />,
         }}
       />

@@ -13,7 +13,7 @@ import { api } from '../../src/services/api';
 import { Task } from '../../src/types';
 
 export default function TaskDetailScreen() {
-  const { id, tab } = useLocalSearchParams<{ id: string; tab?: string }>();
+  const { id } = useLocalSearchParams<{ id: string }>();
   const [task, setTask] = useState<Task | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -44,15 +44,6 @@ export default function TaskDetailScreen() {
     }
   };
 
-  const handleBack = () => {
-    // Navigate back with tab parameter preserved
-    if (tab) {
-      router.replace({ pathname: '/(tabs)', params: { tab } });
-    } else {
-      router.back();
-    }
-  };
-
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -65,7 +56,7 @@ export default function TaskDetailScreen() {
     return (
       <View style={styles.errorContainer}>
         <Text style={styles.errorText}>任务不存在</Text>
-        <TouchableOpacity onPress={handleBack}>
+        <TouchableOpacity onPress={() => router.back()}>
           <Text style={styles.backLink}>返回</Text>
         </TouchableOpacity>
       </View>
@@ -75,89 +66,72 @@ export default function TaskDetailScreen() {
   const dueDate = new Date(task.due_time);
   const now = new Date();
   const isOverdue = dueDate < now;
-
-  // Calculate remaining time
   const diffMs = dueDate.getTime() - now.getTime();
   const diffDays = Math.floor(Math.abs(diffMs) / (1000 * 60 * 60 * 24));
   const diffHours = Math.floor((Math.abs(diffMs) % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
 
   const formatRemaining = () => {
     if (isOverdue) {
-      if (diffDays > 0) return `已逾期 ${diffDays}天${diffHours}小时`;
+      if (diffDays > 0) return `已逾期 ${diffDays}天`;
       return `已逾期 ${diffHours}小时`;
     }
-    if (diffDays > 0) return `剩余 ${diffDays}天${diffHours}小时`;
-    return `剩余 ${diffHours}小时`;
-  };
-
-  const getTimeColor = () => {
-    if (isOverdue) return '#dc2626';
-    if (diffDays < 1) return '#ea580c';
-    if (diffDays < 3) return '#ca8a04';
-    return '#16a34a';
+    if (diffDays === 0) return `${diffHours}小时后截止`;
+    return `${diffDays}天${diffHours}小时后截止`;
   };
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={handleBack}>
-          <Text style={styles.backBtn}>← 返回</Text>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+          <Text style={styles.backText}>← 返回</Text>
         </TouchableOpacity>
       </View>
 
-      <View style={styles.card}>
-        <View style={styles.tags}>
-          <View style={styles.courseTag}>
-            <Text style={styles.courseTagText}>
-              {task.course_name || task.course_abbr}
-            </Text>
-          </View>
-          {task.status === 'verified' && (
-            <View style={styles.verifiedTag}>
-              <Text style={styles.verifiedTagText}>✓ 已验证</Text>
-            </View>
-          )}
+      {/* Main Content */}
+      <View style={styles.main}>
+        <View style={styles.courseBadge}>
+          <Text style={styles.courseText}>{task.course_name || task.course_abbr}</Text>
         </View>
 
         <Text style={styles.title}>{task.title}</Text>
 
-        <View style={styles.dueContainer}>
-          <Text style={styles.dueLabel}>截止时间</Text>
+        <View style={styles.dueRow}>
           <Text style={[styles.dueTime, isOverdue && styles.overdue]}>
             {dueDate.toLocaleDateString('zh-CN', {
-              year: 'numeric',
               month: 'long',
               day: 'numeric',
-              weekday: 'long',
+              weekday: 'short',
             })}
             {' '}
-            {dueDate.toLocaleTimeString('zh-CN', {
-              hour: '2-digit',
-              minute: '2-digit',
-            })}
+            {dueDate.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}
           </Text>
-          <Text style={[styles.remainingTime, { color: getTimeColor() }]}>
+          <Text style={[styles.remaining, isOverdue && styles.overdue]}>
             {formatRemaining()}
           </Text>
         </View>
 
+        {task.status === 'verified' && (
+          <View style={styles.verifiedBanner}>
+            <Text style={styles.verifiedText}>✓ 信息已验证</Text>
+          </View>
+        )}
+
         {task.description && (
-          <View style={styles.descriptionContainer}>
-            <Text style={styles.descriptionLabel}>详细说明</Text>
+          <View style={styles.descSection}>
+            <Text style={styles.descLabel}>详细说明</Text>
             <Text style={styles.description}>{task.description}</Text>
           </View>
         )}
 
-        <View style={styles.meta}>
-          <Text style={styles.metaText}>
-            由 {task.creator_nickname || '匿名用户'} 创建于{' '}
-            {new Date(task.created_at).toLocaleDateString('zh-CN')}
-          </Text>
-        </View>
+        <Text style={styles.meta}>
+          由 {task.creator_nickname || '匿名用户'} 创建
+        </Text>
       </View>
 
+      {/* Vote Section */}
       <View style={styles.voteSection}>
-        <Text style={styles.voteTitle}>这个DDL信息准确吗？</Text>
+        <Text style={styles.voteQuestion}>这个信息准确吗？</Text>
         <View style={styles.voteButtons}>
           <TouchableOpacity
             style={[styles.voteBtn, task.my_vote === 'upvote' && styles.votedUp]}
@@ -165,7 +139,6 @@ export default function TaskDetailScreen() {
           >
             <Text style={styles.voteEmoji}>👍</Text>
             <Text style={styles.voteCount}>{task.upvotes}</Text>
-            <Text style={styles.voteLabel}>准确</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -174,7 +147,6 @@ export default function TaskDetailScreen() {
           >
             <Text style={styles.voteEmoji}>👎</Text>
             <Text style={styles.voteCount}>{task.downvotes}</Text>
-            <Text style={styles.voteLabel}>有误</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -188,8 +160,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#f8fafc',
   },
   content: {
-    padding: 16,
     paddingTop: Platform.OS === 'ios' ? 60 : 16,
+    paddingBottom: 40,
   },
   loadingContainer: {
     flex: 1,
@@ -211,124 +183,114 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   header: {
+    paddingHorizontal: 16,
     marginBottom: 16,
   },
   backBtn: {
+    padding: 4,
+  },
+  backText: {
     fontSize: 16,
     color: '#2563eb',
   },
-  card: {
+  main: {
     backgroundColor: '#fff',
-    borderRadius: 16,
+    marginHorizontal: 16,
+    borderRadius: 12,
     padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
   },
-  tags: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 12,
-  },
-  courseTag: {
+  courseBadge: {
     backgroundColor: '#e0e7ff',
+    alignSelf: 'flex-start',
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 6,
+    marginBottom: 12,
   },
-  courseTagText: {
+  courseText: {
     color: '#4338ca',
     fontSize: 13,
     fontWeight: '600',
   },
-  verifiedTag: {
-    backgroundColor: '#dcfce7',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  verifiedTagText: {
-    color: '#166534',
-    fontSize: 13,
-    fontWeight: '500',
-  },
   title: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '700',
     color: '#1f2937',
-    marginBottom: 20,
+    marginBottom: 12,
   },
-  dueContainer: {
-    backgroundColor: '#f8fafc',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-  },
-  dueLabel: {
-    fontSize: 12,
-    color: '#6b7280',
-    marginBottom: 4,
+  dueRow: {
+    marginBottom: 12,
   },
   dueTime: {
-    fontSize: 16,
+    fontSize: 15,
+    color: '#4b5563',
+    marginBottom: 4,
+  },
+  remaining: {
+    fontSize: 14,
     fontWeight: '600',
-    color: '#1f2937',
+    color: '#059669',
   },
   overdue: {
     color: '#dc2626',
   },
-  remainingTime: {
-    marginTop: 8,
-    fontSize: 15,
-    fontWeight: '700',
+  verifiedBanner: {
+    backgroundColor: '#dcfce7',
+    padding: 10,
+    borderRadius: 8,
+    marginBottom: 12,
   },
-  descriptionContainer: {
-    marginBottom: 16,
+  verifiedText: {
+    color: '#166534',
+    fontSize: 14,
+    fontWeight: '500',
+    textAlign: 'center',
   },
-  descriptionLabel: {
+  descSection: {
+    borderTopWidth: 1,
+    borderTopColor: '#f3f4f6',
+    paddingTop: 16,
+    marginTop: 4,
+    marginBottom: 12,
+  },
+  descLabel: {
     fontSize: 12,
     color: '#6b7280',
     marginBottom: 8,
   },
   description: {
     fontSize: 15,
-    lineHeight: 24,
+    lineHeight: 22,
     color: '#374151',
   },
   meta: {
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#f3f4f6',
-  },
-  metaText: {
     fontSize: 13,
     color: '#9ca3af',
   },
   voteSection: {
     backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 20,
+    marginHorizontal: 16,
     marginTop: 16,
+    borderRadius: 12,
+    padding: 20,
     alignItems: 'center',
   },
-  voteTitle: {
-    fontSize: 16,
+  voteQuestion: {
+    fontSize: 15,
     fontWeight: '600',
-    color: '#1f2937',
+    color: '#4b5563',
     marginBottom: 16,
   },
   voteButtons: {
     flexDirection: 'row',
-    gap: 16,
+    gap: 20,
   },
   voteBtn: {
     alignItems: 'center',
     padding: 16,
     borderRadius: 12,
     backgroundColor: '#f3f4f6',
-    minWidth: 100,
+    minWidth: 80,
   },
   votedUp: {
     backgroundColor: '#dbeafe',
@@ -337,17 +299,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#fee2e2',
   },
   voteEmoji: {
-    fontSize: 28,
+    fontSize: 24,
     marginBottom: 4,
   },
   voteCount: {
-    fontSize: 20,
-    fontWeight: '700',
+    fontSize: 16,
+    fontWeight: '600',
     color: '#1f2937',
-  },
-  voteLabel: {
-    fontSize: 13,
-    color: '#6b7280',
-    marginTop: 2,
   },
 });

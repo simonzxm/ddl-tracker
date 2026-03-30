@@ -101,11 +101,11 @@ async def list_tasks(
 
 @router.get("/my-deadlines", response_model=list[TaskListResponse])
 async def get_my_deadlines(
-    days: int = Query(7, ge=1, le=30, description="未来天数"),
+    days: int = Query(7, ge=1, le=365, description="未来天数"),
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """获取我关注课程的DDL（本周/指定天数内）"""
+    """获取我关注课程的DDL（包含逾期和未来指定天数内）"""
     now = datetime.utcnow()
     end_time = now + timedelta(days=days)
     
@@ -116,8 +116,7 @@ async def get_my_deadlines(
         .where(
             UserCourse.user_id == user.id,
             Task.status != TaskStatus.HIDDEN,
-            Task.due_time >= now,
-            Task.due_time <= end_time,
+            Task.due_time <= end_time,  # Includes overdue tasks
         )
         .order_by(Task.due_time)
     )

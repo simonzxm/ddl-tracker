@@ -31,6 +31,7 @@ class TaskAuditResponse(BaseModel):
     upvotes: int
     downvotes: int
     is_reported: bool
+    due_time: Optional[datetime] = None
     created_at: datetime
 
 
@@ -115,6 +116,7 @@ async def get_reported_tasks(
             upvotes=task.upvotes,
             downvotes=task.downvotes,
             is_reported=task.is_reported,
+            due_time=task.due_time,
             created_at=task.created_at,
         )
         for task, course_name, nickname in result.all()
@@ -149,6 +151,7 @@ async def get_low_score_tasks(
             upvotes=task.upvotes,
             downvotes=task.downvotes,
             is_reported=task.is_reported,
+            due_time=task.due_time,
             created_at=task.created_at,
         )
         for task, course_name, nickname in result.all()
@@ -205,6 +208,75 @@ async def admin_delete_task(
     
     await db.delete(task)
     return {"message": "任务已删除"}
+
+
+class TaskUpdateRequest(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    due_time: Optional[datetime] = None
+    status: Optional[str] = None
+
+
+@router.put("/tasks/{task_id}")
+async def admin_update_task(
+    task_id: int,
+    data: TaskUpdateRequest,
+    admin: User = Depends(get_current_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """管理员修改任务"""
+    result = await db.execute(select(Task).where(Task.id == task_id))
+    task = result.scalar_one_or_none()
+    
+    if not task:
+        raise HTTPException(status_code=404, detail="任务不存在")
+    
+    if data.title is not None:
+        task.title = data.title
+    if data.description is not None:
+        task.description = data.description
+    if data.due_time is not None:
+        task.due_time = data.due_time
+    if data.status is not None:
+        try:
+            task.status = TaskStatus(data.status.lower())
+        except ValueError:
+            raise HTTPException(status_code=400, detail="无效的状态值")
+    
+    return {"message": "任务已更新"}
+
+
+@router.get("/tasks/{task_id}")
+async def admin_get_task(
+    task_id: int,
+    admin: User = Depends(get_current_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """获取任务详情"""
+    result = await db.execute(
+        select(Task, Course.name)
+        .join(Course, Task.course_id == Course.id)
+        .where(Task.id == task_id)
+    )
+    row = result.first()
+    
+    if not row:
+        raise HTTPException(status_code=404, detail="任务不存在")
+    
+    task, course_name = row
+    return {
+        "id": task.id,
+        "course_id": task.course_id,
+        "course_name": course_name,
+        "title": task.title,
+        "description": task.description,
+        "due_time": task.due_time.isoformat(),
+        "status": task.status.value,
+        "upvotes": task.upvotes,
+        "downvotes": task.downvotes,
+        "is_reported": task.is_reported,
+        "created_at": task.created_at.isoformat(),
+    }
 
 
 @router.post("/tasks/{task_id}/dismiss-report")
@@ -539,6 +611,7 @@ async def list_all_tasks(
             upvotes=task.upvotes,
             downvotes=task.downvotes,
             is_reported=task.is_reported,
+            due_time=task.due_time,
             created_at=task.created_at,
         )
         for task, course_name, nickname in result.all()

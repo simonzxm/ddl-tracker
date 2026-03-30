@@ -31,19 +31,52 @@ const API_BASE = import.meta.env.PUBLIC_API_URL || 'http://localhost:8000';
           <th class="text-left py-3 px-4 text-sm font-medium text-gray-500">ID</th>
           <th class="text-left py-3 px-4 text-sm font-medium text-gray-500">课程</th>
           <th class="text-left py-3 px-4 text-sm font-medium text-gray-500">标题</th>
-          <th class="text-left py-3 px-4 text-sm font-medium text-gray-500">创建者</th>
+          <th class="text-left py-3 px-4 text-sm font-medium text-gray-500">截止时间</th>
           <th class="text-left py-3 px-4 text-sm font-medium text-gray-500">评分</th>
           <th class="text-left py-3 px-4 text-sm font-medium text-gray-500">状态</th>
-          <th class="text-left py-3 px-4 text-sm font-medium text-gray-500">创建时间</th>
           <th class="text-left py-3 px-4 text-sm font-medium text-gray-500">操作</th>
         </tr>
       </thead>
       <tbody id="task-list">
         <tr>
-          <td colspan="8" class="text-center py-8 text-gray-500">加载中...</td>
+          <td colspan="7" class="text-center py-8 text-gray-500">加载中...</td>
         </tr>
       </tbody>
     </table>
+  </div>
+  
+  <!-- Edit Modal -->
+  <div id="edit-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-xl p-6 w-full max-w-lg mx-4">
+      <h3 class="text-lg font-semibold mb-4">编辑任务</h3>
+      <form id="edit-form" class="space-y-4">
+        <input type="hidden" id="edit-id" />
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">标题</label>
+          <input type="text" id="edit-title" class="w-full px-3 py-2 border rounded-lg" required />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">截止时间</label>
+          <input type="datetime-local" id="edit-due-time" class="w-full px-3 py-2 border rounded-lg" required />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">状态</label>
+          <select id="edit-status" class="w-full px-3 py-2 border rounded-lg">
+            <option value="pending">待验证</option>
+            <option value="verified">已验证</option>
+            <option value="hidden">已隐藏</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">详细说明</label>
+          <textarea id="edit-description" class="w-full px-3 py-2 border rounded-lg" rows="3"></textarea>
+        </div>
+        <div class="flex justify-end gap-2 pt-4">
+          <button type="button" onclick="closeEditModal()" class="px-4 py-2 border rounded-lg">取消</button>
+          <button type="submit" class="px-4 py-2 bg-blue-500 text-white rounded-lg">保存</button>
+        </div>
+      </form>
+    </div>
   </div>
 </AdminLayout>
 
@@ -55,6 +88,8 @@ const API_BASE = import.meta.env.PUBLIC_API_URL || 'http://localhost:8000';
   const taskList = document.getElementById('task-list');
   const searchInput = document.getElementById('search');
   const statusFilter = document.getElementById('status-filter');
+  const editModal = document.getElementById('edit-modal');
+  const editForm = document.getElementById('edit-form');
   
   tabAll?.addEventListener('click', () => {
     currentTab = 'all';
@@ -90,14 +125,14 @@ const API_BASE = import.meta.env.PUBLIC_API_URL || 'http://localhost:8000';
       const res = await fetch(`${API_BASE}${endpoint}`, { credentials: 'include' });
       
       if (!res.ok) {
-        taskList.innerHTML = '<tr><td colspan="8" class="text-center py-8 text-red-500">加载失败，请确认管理员登录</td></tr>';
+        taskList.innerHTML = '<tr><td colspan="7" class="text-center py-8 text-red-500">加载失败，请确认管理员登录</td></tr>';
         return;
       }
       
       const tasks = await res.json();
       
       if (tasks.length === 0) {
-        taskList.innerHTML = '<tr><td colspan="8" class="text-center py-8 text-gray-500">暂无数据</td></tr>';
+        taskList.innerHTML = '<tr><td colspan="7" class="text-center py-8 text-gray-500">暂无数据</td></tr>';
         return;
       }
       
@@ -105,8 +140,8 @@ const API_BASE = import.meta.env.PUBLIC_API_URL || 'http://localhost:8000';
         <tr class="border-b border-gray-50 hover:bg-gray-50">
           <td class="py-3 px-4 text-sm text-gray-600">${task.id}</td>
           <td class="py-3 px-4 text-sm text-gray-900">${task.course_name}</td>
-          <td class="py-3 px-4 text-sm text-gray-900">${task.title}</td>
-          <td class="py-3 px-4 text-sm text-gray-600">${task.creator_nickname || '-'}</td>
+          <td class="py-3 px-4 text-sm text-gray-900 max-w-xs truncate">${task.title}</td>
+          <td class="py-3 px-4 text-sm text-gray-600">${task.due_time ? new Date(task.due_time).toLocaleString('zh-CN') : '-'}</td>
           <td class="py-3 px-4 text-sm">
             <span class="text-green-600">+${task.upvotes}</span> / 
             <span class="text-red-600">-${task.downvotes}</span>
@@ -119,9 +154,9 @@ const API_BASE = import.meta.env.PUBLIC_API_URL || 'http://localhost:8000';
             }">${task.status === 'verified' ? '已验证' : task.status === 'hidden' ? '已隐藏' : '待验证'}</span>
             ${task.is_reported ? '<span class="ml-1 px-2 py-1 bg-red-100 text-red-700 rounded text-xs">举报</span>' : ''}
           </td>
-          <td class="py-3 px-4 text-sm text-gray-500">${new Date(task.created_at).toLocaleString('zh-CN')}</td>
           <td class="py-3 px-4 text-sm">
             <div class="flex gap-2">
+              <button onclick="openEditTask(${task.id})" class="text-blue-600 hover:text-blue-800">编辑</button>
               <button onclick="verifyTask(${task.id})" class="text-green-600 hover:text-green-800">验证</button>
               <button onclick="hideTask(${task.id})" class="text-yellow-600 hover:text-yellow-800">隐藏</button>
               <button onclick="deleteTask(${task.id})" class="text-red-600 hover:text-red-800">删除</button>
@@ -131,9 +166,73 @@ const API_BASE = import.meta.env.PUBLIC_API_URL || 'http://localhost:8000';
       `).join('');
     } catch (err) {
       console.error('Load tasks error:', err);
-      taskList.innerHTML = '<tr><td colspan="8" class="text-center py-8 text-red-500">加载失败</td></tr>';
+      taskList.innerHTML = '<tr><td colspan="7" class="text-center py-8 text-red-500">加载失败</td></tr>';
     }
   }
+  
+  window.openEditTask = async (id) => {
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/tasks/${id}`, { credentials: 'include' });
+      if (!res.ok) {
+        alert('获取任务详情失败');
+        return;
+      }
+      const task = await res.json();
+      
+      document.getElementById('edit-id').value = task.id;
+      document.getElementById('edit-title').value = task.title;
+      document.getElementById('edit-description').value = task.description || '';
+      document.getElementById('edit-status').value = task.status;
+      
+      // Format datetime for input
+      const dueTime = new Date(task.due_time);
+      const localDateTime = new Date(dueTime.getTime() - dueTime.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+      document.getElementById('edit-due-time').value = localDateTime;
+      
+      editModal.classList.remove('hidden');
+      editModal.classList.add('flex');
+    } catch (err) {
+      console.error('Load task error:', err);
+      alert('获取任务详情失败');
+    }
+  };
+  
+  window.closeEditModal = () => {
+    editModal.classList.add('hidden');
+    editModal.classList.remove('flex');
+  };
+  
+  editForm?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const id = document.getElementById('edit-id').value;
+    const data = {
+      title: document.getElementById('edit-title').value,
+      description: document.getElementById('edit-description').value || null,
+      due_time: new Date(document.getElementById('edit-due-time').value).toISOString(),
+      status: document.getElementById('edit-status').value,
+    };
+    
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/tasks/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(data),
+      });
+      
+      if (!res.ok) {
+        const err = await res.json();
+        alert(err.detail || '更新失败');
+        return;
+      }
+      
+      closeEditModal();
+      loadTasks();
+    } catch (err) {
+      console.error('Update task error:', err);
+      alert('更新失败');
+    }
+  });
   
   window.verifyTask = async (id) => {
     if (!confirm('确认验证此任务？')) return;

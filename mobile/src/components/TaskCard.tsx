@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Pressable } from 'react-native';
 import { Task } from '../types';
 
 interface TaskCardProps {
@@ -13,198 +13,174 @@ interface TaskCardProps {
 export function TaskCard({ task, onPress, onVote, onComplete, isCompleted }: TaskCardProps) {
   const dueDate = new Date(task.due_time);
   const now = new Date();
-  const isOverdue = dueDate < now;
+  const isOverdue = dueDate < now && !isCompleted;
 
   // Calculate remaining time
   const diffMs = dueDate.getTime() - now.getTime();
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-  const diffHours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-  const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+  const diffDays = Math.floor(Math.abs(diffMs) / (1000 * 60 * 60 * 24));
+  const diffHours = Math.floor((Math.abs(diffMs) % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
 
   const formatRemaining = () => {
+    if (isCompleted) return '已完成';
     if (isOverdue) {
-      const overdueDays = Math.floor(-diffMs / (1000 * 60 * 60 * 24));
-      const overdueHours = Math.floor((-diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-      if (overdueDays > 0) return `已逾期 ${overdueDays}天${overdueHours}小时`;
-      return `已逾期 ${overdueHours}小时`;
+      if (diffDays > 0) return `逾期 ${diffDays}天`;
+      return `逾期 ${diffHours}小时`;
     }
-    if (diffDays > 0) return `剩余 ${diffDays}天${diffHours}小时`;
-    if (diffHours > 0) return `剩余 ${diffHours}小时${diffMins}分钟`;
-    return `剩余 ${diffMins}分钟`;
+    if (diffDays === 0) {
+      if (diffHours <= 1) return '即将截止';
+      return `${diffHours}小时后`;
+    }
+    if (diffDays === 1) return '明天';
+    if (diffDays < 7) return `${diffDays}天后`;
+    return dueDate.toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' });
   };
 
-  // Color based on urgency: green -> yellow -> orange -> red
+  // Color based on urgency
   const getTimeColor = () => {
-    if (isOverdue) return '#dc2626'; // red
-    if (diffDays < 1) return '#ea580c'; // orange - less than 1 day
-    if (diffDays < 3) return '#ca8a04'; // yellow - less than 3 days
-    return '#16a34a'; // green - more than 3 days
-  };
-
-  const formatDueTime = () => {
-    return dueDate.toLocaleDateString('zh-CN', { 
-      month: 'numeric', 
-      day: 'numeric',
-      hour: '2-digit', 
-      minute: '2-digit' 
-    });
+    if (isCompleted) return '#9ca3af';
+    if (isOverdue) return '#dc2626';
+    if (diffDays === 0) return '#ea580c';
+    if (diffDays < 3) return '#d97706';
+    return '#6b7280';
   };
 
   return (
-    <TouchableOpacity 
+    <Pressable 
       style={[styles.card, isCompleted && styles.cardCompleted]} 
-      onPress={onPress} 
-      activeOpacity={0.7}
+      onPress={onPress}
     >
-      <View style={styles.row1}>
-        <View style={styles.courseTag}>
-          <Text style={styles.courseText}>{task.course_name || task.course_abbr}</Text>
+      {/* Checkbox */}
+      <TouchableOpacity 
+        style={[styles.checkbox, isCompleted && styles.checkboxCompleted]}
+        onPress={onComplete}
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+      >
+        {isCompleted && <Text style={styles.checkmark}>✓</Text>}
+      </TouchableOpacity>
+
+      {/* Content */}
+      <View style={styles.content}>
+        <Text 
+          style={[styles.title, isCompleted && styles.titleCompleted]} 
+          numberOfLines={2}
+        >
+          {task.title}
+        </Text>
+        <View style={styles.meta}>
+          <Text style={styles.course}>{task.course_name || task.course_abbr}</Text>
+          <Text style={styles.dot}>·</Text>
+          <Text style={[styles.due, { color: getTimeColor() }]}>
+            {formatRemaining()}
+          </Text>
         </View>
-        <Text style={styles.dueTime}>{formatDueTime()}</Text>
-        {task.status === 'verified' && (
-          <View style={styles.verifiedTag}>
-            <Text style={styles.verifiedText}>✓</Text>
+        
+        {/* Bottom row: votes + verified */}
+        {!isCompleted && (
+          <View style={styles.bottomRow}>
+            <View style={styles.votes}>
+              {task.upvotes > 0 && <Text style={styles.voteUp}>👍{task.upvotes}</Text>}
+              {task.downvotes > 0 && <Text style={styles.voteDown}>👎{task.downvotes}</Text>}
+            </View>
+            {task.status === 'verified' && (
+              <Text style={styles.verified}>✓已验证</Text>
+            )}
           </View>
         )}
-        {onComplete && (
-          <TouchableOpacity 
-            style={[styles.checkBtn, isCompleted && styles.checkBtnCompleted]}
-            onPress={(e) => { e.stopPropagation?.(); onComplete(); }}
-          >
-            <Text style={styles.checkText}>{isCompleted ? '✓' : '○'}</Text>
-          </TouchableOpacity>
-        )}
       </View>
-      
-      <Text style={[styles.title, isCompleted && styles.titleCompleted]} numberOfLines={2}>
-        {task.title}
-      </Text>
-      
-      <View style={styles.row3}>
-        <Text style={[styles.remaining, { color: getTimeColor() }]}>
-          {formatRemaining()}
-        </Text>
-        
-        <View style={styles.votes}>
-          <TouchableOpacity 
-            style={[styles.voteBtn, task.my_vote === 'upvote' && styles.votedUp]}
-            onPress={() => onVote?.('upvote')}
-          >
-            <Text style={styles.voteText}>👍 {task.upvotes}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={[styles.voteBtn, task.my_vote === 'downvote' && styles.votedDown]}
-            onPress={() => onVote?.('downvote')}
-          >
-            <Text style={styles.voteText}>👎 {task.downvotes}</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    </TouchableOpacity>
+    </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
     backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 8,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+    shadowRadius: 2,
+    elevation: 1,
   },
   cardCompleted: {
-    backgroundColor: '#f9fafb',
-    opacity: 0.7,
+    backgroundColor: '#fafafa',
   },
-  row1: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-    gap: 8,
-  },
-  courseTag: {
-    backgroundColor: '#e0e7ff',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  courseText: {
-    color: '#4338ca',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  dueTime: {
-    fontSize: 12,
-    color: '#6b7280',
-    flex: 1,
-  },
-  verifiedTag: {
-    backgroundColor: '#dcfce7',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  verifiedText: {
-    color: '#166534',
-    fontSize: 12,
-  },
-  checkBtn: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
     borderWidth: 2,
     borderColor: '#d1d5db',
+    marginRight: 12,
+    marginTop: 2,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  checkBtnCompleted: {
+  checkboxCompleted: {
     backgroundColor: '#2563eb',
     borderColor: '#2563eb',
   },
-  checkText: {
-    fontSize: 14,
-    color: '#9ca3af',
+  checkmark: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  content: {
+    flex: 1,
   },
   title: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 15,
+    fontWeight: '500',
     color: '#1f2937',
-    marginBottom: 10,
+    marginBottom: 4,
+    lineHeight: 20,
   },
   titleCompleted: {
-    textDecorationLine: 'line-through',
     color: '#9ca3af',
+    textDecorationLine: 'line-through',
   },
-  row3: {
+  meta: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    flexWrap: 'wrap',
   },
-  remaining: {
+  course: {
     fontSize: 13,
-    fontWeight: '600',
+    color: '#6b7280',
+  },
+  dot: {
+    fontSize: 13,
+    color: '#d1d5db',
+    marginHorizontal: 6,
+  },
+  due: {
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  bottomRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 6,
   },
   votes: {
     flexDirection: 'row',
     gap: 8,
   },
-  voteBtn: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 6,
-    backgroundColor: '#f3f4f6',
+  voteUp: {
+    fontSize: 12,
+    color: '#6b7280',
   },
-  votedUp: {
-    backgroundColor: '#dbeafe',
+  voteDown: {
+    fontSize: 12,
+    color: '#6b7280',
   },
-  votedDown: {
-    backgroundColor: '#fee2e2',
-  },
-  voteText: {
-    fontSize: 13,
+  verified: {
+    fontSize: 11,
+    color: '#16a34a',
+    fontWeight: '500',
   },
 });

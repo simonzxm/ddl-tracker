@@ -17,6 +17,9 @@ const API_BASE = import.meta.env.PUBLIC_API_URL || 'http://localhost:8000';
         placeholder="搜索课程..." 
         class="px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
       />
+      <button id="bulk-import-btn" class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600">
+        批量导入
+      </button>
       <button id="add-course-btn" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">
         添加课程
       </button>
@@ -81,6 +84,86 @@ const API_BASE = import.meta.env.PUBLIC_API_URL || 'http://localhost:8000';
   </div>
 </div>
 
+<!-- Bulk Import Modal -->
+<div id="bulk-modal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
+  <div class="bg-white rounded-xl p-6 w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+    <h3 class="text-lg font-semibold mb-4">批量导入课程</h3>
+    
+    <div class="mb-4 p-4 bg-blue-50 rounded-lg text-sm text-blue-800">
+      <p class="font-medium mb-2">支持的格式：</p>
+      <ul class="list-disc list-inside space-y-1">
+        <li><strong>CSV 格式</strong>：课号,课程名,简称,教师,学期（每行一条，简称可留空）</li>
+        <li><strong>JSON 格式</strong>：数组格式，每个对象包含 code, name, name_abbr, teacher, semester</li>
+      </ul>
+      <p class="mt-2 text-blue-600">示例 CSV：</p>
+      <code class="block bg-white p-2 rounded mt-1 text-xs">
+CS101,数据结构,DS,张三,2026-Spring<br/>
+CS102,算法导论,,李四,2026-Spring
+      </code>
+    </div>
+    
+    <div class="mb-4">
+      <label class="block text-sm font-medium text-gray-700 mb-2">选择格式</label>
+      <div class="flex gap-4">
+        <label class="flex items-center gap-2">
+          <input type="radio" name="import-format" value="csv" checked class="text-blue-500" />
+          <span>CSV</span>
+        </label>
+        <label class="flex items-center gap-2">
+          <input type="radio" name="import-format" value="json" class="text-blue-500" />
+          <span>JSON</span>
+        </label>
+      </div>
+    </div>
+    
+    <div class="mb-4">
+      <label class="block text-sm font-medium text-gray-700 mb-2">粘贴数据</label>
+      <textarea 
+        id="bulk-data" 
+        rows="10" 
+        class="w-full px-3 py-2 border rounded-lg font-mono text-sm"
+        placeholder="在此粘贴课程数据..."
+      ></textarea>
+    </div>
+    
+    <div class="mb-4">
+      <label class="flex items-center gap-2">
+        <input type="checkbox" id="skip-duplicates" checked class="text-blue-500" />
+        <span class="text-sm text-gray-700">跳过重复课程（课号+教师+学期相同）</span>
+      </label>
+    </div>
+    
+    <!-- Import Result -->
+    <div id="import-result" class="hidden mb-4 p-4 rounded-lg">
+    </div>
+    
+    <div class="flex gap-2 justify-end">
+      <button type="button" id="bulk-cancel-btn" class="px-4 py-2 bg-gray-100 rounded-lg">取消</button>
+      <button type="button" id="bulk-preview-btn" class="px-4 py-2 bg-yellow-500 text-white rounded-lg">预览</button>
+      <button type="button" id="bulk-submit-btn" class="px-4 py-2 bg-green-500 text-white rounded-lg">导入</button>
+    </div>
+    
+    <!-- Preview Table -->
+    <div id="preview-section" class="hidden mt-4 border-t pt-4">
+      <h4 class="font-medium mb-2">预览（共 <span id="preview-count">0</span> 条）</h4>
+      <div class="max-h-64 overflow-y-auto">
+        <table class="w-full text-sm">
+          <thead class="bg-gray-50">
+            <tr>
+              <th class="text-left py-2 px-2">课号</th>
+              <th class="text-left py-2 px-2">名称</th>
+              <th class="text-left py-2 px-2">简称</th>
+              <th class="text-left py-2 px-2">教师</th>
+              <th class="text-left py-2 px-2">学期</th>
+            </tr>
+          </thead>
+          <tbody id="preview-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script define:vars={{ API_BASE }}>
   const courseList = document.getElementById('course-list');
   const searchInput = document.getElementById('search-input');
@@ -90,7 +173,161 @@ const API_BASE = import.meta.env.PUBLIC_API_URL || 'http://localhost:8000';
   const addBtn = document.getElementById('add-course-btn');
   const cancelBtn = document.getElementById('cancel-btn');
   
+  // Bulk import elements
+  const bulkModal = document.getElementById('bulk-modal');
+  const bulkImportBtn = document.getElementById('bulk-import-btn');
+  const bulkCancelBtn = document.getElementById('bulk-cancel-btn');
+  const bulkPreviewBtn = document.getElementById('bulk-preview-btn');
+  const bulkSubmitBtn = document.getElementById('bulk-submit-btn');
+  const bulkDataInput = document.getElementById('bulk-data');
+  const previewSection = document.getElementById('preview-section');
+  const previewBody = document.getElementById('preview-body');
+  const previewCount = document.getElementById('preview-count');
+  const importResult = document.getElementById('import-result');
+  
   let isEditing = false;
+  let parsedCourses = [];
+  
+  // Bulk import handlers
+  bulkImportBtn?.addEventListener('click', () => {
+    bulkDataInput.value = '';
+    previewSection.classList.add('hidden');
+    importResult.classList.add('hidden');
+    parsedCourses = [];
+    bulkModal.classList.remove('hidden');
+    bulkModal.classList.add('flex');
+  });
+  
+  bulkCancelBtn?.addEventListener('click', () => {
+    bulkModal.classList.add('hidden');
+    bulkModal.classList.remove('flex');
+  });
+  
+  function parseCSV(text) {
+    const lines = text.trim().split('\n').filter(line => line.trim());
+    return lines.map(line => {
+      const parts = line.split(',').map(p => p.trim());
+      if (parts.length < 4) {
+        throw new Error(`格式错误: "${line}" - 至少需要 4 个字段（课号,名称,简称,教师,学期）`);
+      }
+      return {
+        code: parts[0],
+        name: parts[1],
+        name_abbr: parts[2] || null,
+        teacher: parts[3],
+        semester: parts[4] || '',
+      };
+    });
+  }
+  
+  function parseJSON(text) {
+    const data = JSON.parse(text);
+    if (!Array.isArray(data)) {
+      throw new Error('JSON 必须是数组格式');
+    }
+    return data.map((item, i) => {
+      if (!item.code || !item.name || !item.teacher || !item.semester) {
+        throw new Error(`第 ${i+1} 项缺少必要字段 (code, name, teacher, semester)`);
+      }
+      return {
+        code: item.code,
+        name: item.name,
+        name_abbr: item.name_abbr || null,
+        teacher: item.teacher,
+        semester: item.semester,
+      };
+    });
+  }
+  
+  bulkPreviewBtn?.addEventListener('click', () => {
+    const format = document.querySelector('input[name="import-format"]:checked')?.value || 'csv';
+    const text = bulkDataInput.value.trim();
+    
+    if (!text) {
+      alert('请输入数据');
+      return;
+    }
+    
+    try {
+      parsedCourses = format === 'csv' ? parseCSV(text) : parseJSON(text);
+      
+      previewCount.textContent = parsedCourses.length;
+      previewBody.innerHTML = parsedCourses.map(c => `
+        <tr class="border-b">
+          <td class="py-1 px-2">${c.code}</td>
+          <td class="py-1 px-2">${c.name}</td>
+          <td class="py-1 px-2">${c.name_abbr || '-'}</td>
+          <td class="py-1 px-2">${c.teacher}</td>
+          <td class="py-1 px-2">${c.semester}</td>
+        </tr>
+      `).join('');
+      
+      previewSection.classList.remove('hidden');
+      importResult.classList.add('hidden');
+    } catch (err) {
+      alert('解析失败: ' + err.message);
+    }
+  });
+  
+  bulkSubmitBtn?.addEventListener('click', async () => {
+    if (parsedCourses.length === 0) {
+      alert('请先预览数据');
+      return;
+    }
+    
+    const skipDuplicates = document.getElementById('skip-duplicates').checked;
+    
+    bulkSubmitBtn.disabled = true;
+    bulkSubmitBtn.textContent = '导入中...';
+    
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/courses/bulk-import`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          courses: parsedCourses,
+          skip_duplicates: skipDuplicates,
+        }),
+      });
+      
+      const result = await res.json();
+      
+      if (!res.ok) {
+        throw new Error(result.detail || '导入失败');
+      }
+      
+      // Show result
+      let resultClass = 'bg-green-50 text-green-800';
+      if (result.errors.length > 0) {
+        resultClass = 'bg-yellow-50 text-yellow-800';
+      }
+      
+      importResult.className = `mb-4 p-4 rounded-lg ${resultClass}`;
+      importResult.innerHTML = `
+        <p class="font-medium">导入完成</p>
+        <p>总计: ${result.total} 条 | 导入: ${result.imported} 条 | 跳过: ${result.skipped} 条</p>
+        ${result.errors.length > 0 ? `
+          <p class="mt-2 text-red-600">错误:</p>
+          <ul class="list-disc list-inside text-sm">
+            ${result.errors.map(e => `<li>${e}</li>`).join('')}
+          </ul>
+        ` : ''}
+      `;
+      importResult.classList.remove('hidden');
+      
+      if (result.imported > 0) {
+        loadCourses();
+      }
+    } catch (err) {
+      importResult.className = 'mb-4 p-4 rounded-lg bg-red-50 text-red-800';
+      importResult.innerHTML = `<p>导入失败: ${err.message}</p>`;
+      importResult.classList.remove('hidden');
+    } finally {
+      bulkSubmitBtn.disabled = false;
+      bulkSubmitBtn.textContent = '导入';
+    }
+  });
   
   addBtn?.addEventListener('click', () => {
     isEditing = false;

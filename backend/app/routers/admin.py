@@ -577,6 +577,77 @@ async def create_course(
     return {"message": "课程已创建", "id": course.id}
 
 
+class BulkCourseItem(BaseModel):
+    code: str
+    name: str
+    name_abbr: Optional[str] = None
+    teacher: str
+    semester: str
+
+
+class BulkImportRequest(BaseModel):
+    courses: list[BulkCourseItem]
+    skip_duplicates: bool = True  # If true, skip duplicates; if false, fail on duplicate
+
+
+class BulkImportResult(BaseModel):
+    total: int
+    imported: int
+    skipped: int
+    errors: list[str]
+
+
+@router.post("/courses/bulk-import", response_model=BulkImportResult)
+async def bulk_import_courses(
+    data: BulkImportRequest,
+    admin: User = Depends(get_current_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """批量导入课程"""
+    imported = 0
+    skipped = 0
+    errors = []
+    
+    for i, item in enumerate(data.courses):
+        # Check for duplicate
+        exists = await db.execute(
+            select(Course).where(
+                Course.course_code == item.code,
+                Course.teacher == item.teacher,
+                Course.semester == item.semester,
+            )
+        )
+        if exists.scalar_one_or_none():
+            if data.skip_duplicates:
+                skipped += 1
+                continue
+            else:
+                errors.append(f"第 {i+1} 行: 课程已存在（{item.code} - {item.teacher} - {item.semester}）")
+                continue
+        
+        try:
+            course = Course(
+                course_code=item.code,
+                name=item.name,
+                name_abbr=item.name_abbr,
+                teacher=item.teacher,
+                semester=item.semester,
+            )
+            db.add(course)
+            imported += 1
+        except Exception as e:
+            errors.append(f"第 {i+1} 行: {str(e)}")
+    
+    await db.commit()
+    
+    return BulkImportResult(
+        total=len(data.courses),
+        imported=imported,
+        skipped=skipped,
+        errors=errors,
+    )
+
+
 @router.put("/courses/{course_id}")
 async def update_course(
     course_id: int,

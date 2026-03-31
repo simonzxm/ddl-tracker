@@ -15,6 +15,9 @@ export interface Course {
   name_abbr?: string;
   teacher: string;
   semester: string;
+  class_number?: string;
+  campus?: string;
+  time_location?: string;
   followers_count: number;
   is_followed?: boolean;
 }

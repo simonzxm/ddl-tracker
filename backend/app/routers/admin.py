@@ -483,6 +483,9 @@ class CourseListResponse(BaseModel):
     name_abbr: Optional[str]
     teacher: str
     semester: str
+    class_number: Optional[str] = None
+    campus: Optional[str] = None
+    time_location: Optional[str] = None
     follower_count: int = 0
     task_count: int = 0
     created_at: datetime
@@ -494,6 +497,9 @@ class CourseCreateRequest(BaseModel):
     name_abbr: Optional[str] = None
     teacher: str
     semester: str
+    class_number: Optional[str] = None
+    campus: Optional[str] = None
+    time_location: Optional[str] = None
 
 
 class CourseUpdateRequest(BaseModel):
@@ -502,11 +508,15 @@ class CourseUpdateRequest(BaseModel):
     name_abbr: Optional[str] = None
     teacher: Optional[str] = None
     semester: Optional[str] = None
+    class_number: Optional[str] = None
+    campus: Optional[str] = None
+    time_location: Optional[str] = None
 
 
 @router.get("/courses", response_model=list[CourseListResponse])
 async def list_courses(
     q: Optional[str] = Query(None, description="搜索课程名/课号/教师"),
+    semester: Optional[str] = Query(None, description="学期筛选"),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     admin: User = Depends(get_current_admin),
@@ -527,6 +537,9 @@ async def list_courses(
             (Course.teacher.ilike(pattern))
         )
     
+    if semester:
+        query = query.where(Course.semester == semester)
+    
     query = query.order_by(Course.created_at.desc()).offset((page - 1) * page_size).limit(page_size)
     result = await db.execute(query)
     
@@ -538,6 +551,9 @@ async def list_courses(
             name_abbr=course.name_abbr,
             teacher=course.teacher,
             semester=course.semester,
+            class_number=course.class_number,
+            campus=course.campus,
+            time_location=course.time_location,
             follower_count=follower_count or 0,
             task_count=task_count or 0,
             created_at=course.created_at,
@@ -553,16 +569,20 @@ async def create_course(
     db: AsyncSession = Depends(get_db),
 ):
     """创建课程"""
-    # Check for duplicate
-    exists = await db.execute(
-        select(Course).where(
-            Course.course_code == data.code,
-            Course.teacher == data.teacher,
-            Course.semester == data.semester,
-        )
+    # Check for duplicate (include class_number)
+    query = select(Course).where(
+        Course.course_code == data.code,
+        Course.teacher == data.teacher,
+        Course.semester == data.semester,
     )
+    if data.class_number:
+        query = query.where(Course.class_number == data.class_number)
+    else:
+        query = query.where(Course.class_number.is_(None))
+    
+    exists = await db.execute(query)
     if exists.scalar_one_or_none():
-        raise HTTPException(status_code=400, detail="课程已存在（课号+教师+学期重复）")
+        raise HTTPException(status_code=400, detail="课程已存在（课号+教师+学期+班号重复）")
     
     course = Course(
         course_code=data.code,
@@ -570,6 +590,9 @@ async def create_course(
         name_abbr=data.name_abbr,
         teacher=data.teacher,
         semester=data.semester,
+        class_number=data.class_number,
+        campus=data.campus,
+        time_location=data.time_location,
     )
     db.add(course)
     await db.flush()
@@ -583,6 +606,9 @@ class BulkCourseItem(BaseModel):
     name_abbr: Optional[str] = None
     teacher: str
     semester: str
+    class_number: Optional[str] = None
+    campus: Optional[str] = None
+    time_location: Optional[str] = None
 
 
 class BulkImportRequest(BaseModel):
@@ -609,20 +635,24 @@ async def bulk_import_courses(
     errors = []
     
     for i, item in enumerate(data.courses):
-        # Check for duplicate
-        exists = await db.execute(
-            select(Course).where(
-                Course.course_code == item.code,
-                Course.teacher == item.teacher,
-                Course.semester == item.semester,
-            )
+        # Check for duplicate (include class_number)
+        query = select(Course).where(
+            Course.course_code == item.code,
+            Course.teacher == item.teacher,
+            Course.semester == item.semester,
         )
+        if item.class_number:
+            query = query.where(Course.class_number == item.class_number)
+        else:
+            query = query.where(Course.class_number.is_(None))
+        
+        exists = await db.execute(query)
         if exists.scalar_one_or_none():
             if data.skip_duplicates:
                 skipped += 1
                 continue
             else:
-                errors.append(f"第 {i+1} 行: 课程已存在（{item.code} - {item.teacher} - {item.semester}）")
+                errors.append(f"第 {i+1} 行: 课程已存在（{item.code} - {item.teacher} - {item.semester} - {item.class_number or '无班号'}）")
                 continue
         
         try:
@@ -632,6 +662,9 @@ async def bulk_import_courses(
                 name_abbr=item.name_abbr,
                 teacher=item.teacher,
                 semester=item.semester,
+                class_number=item.class_number,
+                campus=item.campus,
+                time_location=item.time_location,
             )
             db.add(course)
             imported += 1
@@ -646,6 +679,36 @@ async def bulk_import_courses(
         skipped=skipped,
         errors=errors,
     )
+
+
+@router.get("/courses/export")
+async def export_courses(
+    semester: Optional[str] = Query(None, description="学期筛选"),
+    admin: User = Depends(get_current_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """导出课程数据（JSON格式）"""
+    query = select(Course)
+    if semester:
+        query = query.where(Course.semester == semester)
+    query = query.order_by(Course.course_code)
+    
+    result = await db.execute(query)
+    courses = result.scalars().all()
+    
+    return [
+        {
+            "code": c.course_code,
+            "name": c.name,
+            "name_abbr": c.name_abbr,
+            "teacher": c.teacher,
+            "semester": c.semester,
+            "class_number": c.class_number,
+            "campus": c.campus,
+            "time_location": c.time_location,
+        }
+        for c in courses
+    ]
 
 
 @router.put("/courses/{course_id}")
@@ -663,9 +726,11 @@ async def update_course(
         raise HTTPException(status_code=404, detail="课程不存在")
     
     update_data = data.model_dump(exclude_unset=True)
+    field_map = {"code": "course_code"}  # Handle field name mapping
     for field, value in update_data.items():
         if value is not None:
-            setattr(course, field, value)
+            db_field = field_map.get(field, field)
+            setattr(course, db_field, value)
     
     return {"message": "课程已更新"}
 

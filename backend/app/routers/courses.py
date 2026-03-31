@@ -1,10 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
-from sqlalchemy import select, func, or_
+from sqlalchemy import select, func, or_, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
+from datetime import datetime
 
 from app.database import get_db
-from app.models import Course, UserCourse, User, Task
+from app.models import Course, UserCourse, User, Task, TaskStatus
 from app.schemas.course import (
     CourseCreate,
     CourseUpdate,
@@ -14,6 +15,20 @@ from app.schemas.course import (
 from app.dependencies import get_current_user, get_current_user_optional, get_current_admin
 
 router = APIRouter()
+
+
+@router.get("/semesters")
+async def list_semesters(
+    db: AsyncSession = Depends(get_db),
+):
+    """获取所有可用学期列表"""
+    result = await db.execute(
+        select(Course.semester)
+        .distinct()
+        .order_by(desc(Course.semester))
+    )
+    semesters = [row[0] for row in result.all()]
+    return semesters
 
 
 @router.get("", response_model=list[CourseListResponse])
@@ -49,14 +64,15 @@ async def list_courses(
                 Course.name.ilike(pattern),
                 Course.course_code.ilike(pattern),
                 Course.teacher.ilike(pattern),
+                Course.name_abbr.ilike(pattern),
             )
         )
     
     if semester:
         query = query.where(Course.semester == semester)
     
-    # Pagination
-    query = query.order_by(Course.course_code).offset((page - 1) * page_size).limit(page_size)
+    # Pagination - order by followers count desc for better relevance
+    query = query.order_by(desc(func.coalesce(followers_subq.c.cnt, 0)), Course.course_code).offset((page - 1) * page_size).limit(page_size)
     
     result = await db.execute(query)
     rows = result.all()
@@ -77,6 +93,8 @@ async def list_courses(
             name_abbr=course.name_abbr,
             teacher=course.teacher,
             semester=course.semester,
+            class_number=course.class_number,
+            campus=course.campus,
             followers_count=followers_count,
             is_followed=course.id in followed_ids,
         )
@@ -118,6 +136,8 @@ async def list_followed_courses(
             name_abbr=course.name_abbr,
             teacher=course.teacher,
             semester=course.semester,
+            class_number=course.class_number,
+            campus=course.campus,
             followers_count=followers_count,
             is_followed=True,
         )
@@ -153,6 +173,17 @@ async def get_course(
     )
     tasks_count = tasks_result.scalar() or 0
     
+    # Check if followed
+    is_followed = False
+    if user:
+        follow_result = await db.execute(
+            select(UserCourse).where(
+                UserCourse.user_id == user.id,
+                UserCourse.course_id == course_id,
+            )
+        )
+        is_followed = follow_result.scalar_one_or_none() is not None
+    
     return CourseResponse(
         id=course.id,
         course_code=course.course_code,
@@ -160,11 +191,54 @@ async def get_course(
         name_abbr=course.name_abbr,
         teacher=course.teacher,
         semester=course.semester,
+        class_number=course.class_number,
+        campus=course.campus,
+        time_location=course.time_location,
         description=course.description,
         followers_count=followers_count,
         tasks_count=tasks_count,
+        is_followed=is_followed,
         created_at=course.created_at,
     )
+
+
+@router.get("/{course_id}/tasks")
+async def get_course_tasks(
+    course_id: int,
+    limit: int = Query(5, ge=1, le=20),
+    user: Optional[User] = Depends(get_current_user_optional),
+    db: AsyncSession = Depends(get_db),
+):
+    """获取课程的DDL列表（用于详情页预览）"""
+    # Check course exists
+    course_result = await db.execute(select(Course).where(Course.id == course_id))
+    if not course_result.scalar_one_or_none():
+        raise HTTPException(status_code=404, detail="课程不存在")
+    
+    now = datetime.utcnow()
+    
+    # Get upcoming tasks
+    result = await db.execute(
+        select(Task)
+        .where(
+            Task.course_id == course_id,
+            Task.status != TaskStatus.HIDDEN,
+            Task.due_time > now,
+        )
+        .order_by(Task.due_time)
+        .limit(limit)
+    )
+    tasks = result.scalars().all()
+    
+    return [
+        {
+            "id": t.id,
+            "title": t.title,
+            "due_time": t.due_time.isoformat(),
+            "status": t.status.value,
+        }
+        for t in tasks
+    ]
 
 
 @router.post("", response_model=CourseResponse, status_code=status.HTTP_201_CREATED)
@@ -174,18 +248,22 @@ async def create_course(
     db: AsyncSession = Depends(get_db),
 ):
     """创建课程（仅管理员）"""
-    # Check duplicate
-    existing = await db.execute(
-        select(Course).where(
-            Course.course_code == data.course_code,
-            Course.teacher == data.teacher,
-            Course.semester == data.semester,
-        )
+    # Check duplicate (include class_number)
+    query = select(Course).where(
+        Course.course_code == data.course_code,
+        Course.teacher == data.teacher,
+        Course.semester == data.semester,
     )
+    if data.class_number:
+        query = query.where(Course.class_number == data.class_number)
+    else:
+        query = query.where(Course.class_number.is_(None))
+    
+    existing = await db.execute(query)
     if existing.scalar_one_or_none():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="该课程已存在（课号+教师+学期重复）",
+            detail="该课程已存在（课号+教师+学期+班号重复）",
         )
     
     course = Course(**data.model_dump())
@@ -200,9 +278,13 @@ async def create_course(
         name_abbr=course.name_abbr,
         teacher=course.teacher,
         semester=course.semester,
+        class_number=course.class_number,
+        campus=course.campus,
+        time_location=course.time_location,
         description=course.description,
         followers_count=0,
         tasks_count=0,
+        is_followed=False,
         created_at=course.created_at,
     )
 
@@ -235,9 +317,13 @@ async def update_course(
         name_abbr=course.name_abbr,
         teacher=course.teacher,
         semester=course.semester,
+        class_number=course.class_number,
+        campus=course.campus,
+        time_location=course.time_location,
         description=course.description,
         followers_count=0,
         tasks_count=0,
+        is_followed=False,
         created_at=course.created_at,
     )
 

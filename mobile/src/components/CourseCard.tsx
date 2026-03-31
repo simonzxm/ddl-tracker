@@ -9,6 +9,16 @@ interface CourseCardProps {
 }
 
 export function CourseCard({ course, onPress, onFollow }: CourseCardProps) {
+  // Build the info line: teacher | class_number | campus
+  const infoItems = [course.teacher];
+  if (course.class_number) {
+    infoItems.push(course.class_number);
+  }
+  if (course.campus) {
+    infoItems.push(course.campus);
+  }
+  const infoLine = infoItems.join(' | ');
+
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.7}>
       <View style={styles.content}>
@@ -18,21 +28,23 @@ export function CourseCard({ course, onPress, onFollow }: CourseCardProps) {
             {course.name}
             {course.name_abbr && <Text style={styles.abbr}> ({course.name_abbr})</Text>}
           </Text>
-          <Text style={styles.teacher}>{course.teacher} · {course.semester}</Text>
+          <Text style={styles.infoLine} numberOfLines={1}>{infoLine}</Text>
         </View>
         
-        <TouchableOpacity 
-          style={[styles.followBtn, course.is_followed && styles.followedBtn]}
-          onPress={onFollow}
-        >
-          <Text style={[styles.followText, course.is_followed && styles.followedText]}>
-            {course.is_followed ? '已关注' : '关注'}
-          </Text>
-        </TouchableOpacity>
-      </View>
-      
-      <View style={styles.footer}>
-        <Text style={styles.followers}>{course.followers_count} 人关注</Text>
+        <View style={styles.rightColumn}>
+          <TouchableOpacity 
+            style={[styles.followBtn, course.is_followed && styles.followedBtn]}
+            onPress={(e) => {
+              e.stopPropagation();
+              onFollow?.();
+            }}
+          >
+            <Text style={[styles.followText, course.is_followed && styles.followedText]}>
+              {course.is_followed ? '已关注' : '关注'}
+            </Text>
+          </TouchableOpacity>
+          <Text style={styles.followers}>{course.followers_count} 人关注</Text>
+        </View>
       </View>
     </TouchableOpacity>
   );
@@ -61,8 +73,8 @@ const styles = StyleSheet.create({
   },
   code: {
     fontSize: 12,
-    color: '#6b7280',
-    marginBottom: 4,
+    color: '#9ca3af',
+    marginBottom: 2,
   },
   name: {
     fontSize: 16,
@@ -72,17 +84,22 @@ const styles = StyleSheet.create({
   },
   abbr: {
     fontWeight: '400',
-    color: '#9ca3af',
+    color: '#6b7280',
+    fontSize: 14,
   },
-  teacher: {
+  infoLine: {
     fontSize: 14,
     color: '#6b7280',
+  },
+  rightColumn: {
+    alignItems: 'flex-end',
   },
   followBtn: {
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 8,
     backgroundColor: '#2563eb',
+    marginBottom: 6,
   },
   followedBtn: {
     backgroundColor: '#e5e7eb',
@@ -95,14 +112,8 @@ const styles = StyleSheet.create({
   followedText: {
     color: '#6b7280',
   },
-  footer: {
-    marginTop: 12,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#f3f4f6',
-  },
   followers: {
-    fontSize: 13,
+    fontSize: 12,
     color: '#9ca3af',
   },
 });

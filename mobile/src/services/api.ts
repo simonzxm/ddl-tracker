@@ -149,6 +149,18 @@ class ApiClient {
     return this.request<any[]>(`/api/courses${query ? `?${query}` : ''}`);
   }
 
+  async getSemesters() {
+    return this.request<string[]>('/api/courses/semesters');
+  }
+
+  async getCourse(courseId: number) {
+    return this.request<any>(`/api/courses/${courseId}`);
+  }
+
+  async getCourseTasks(courseId: number) {
+    return this.request<any[]>(`/api/courses/${courseId}/tasks`);
+  }
+
   async getFollowedCourses() {
     return this.request<any[]>('/api/courses/followed');
   }

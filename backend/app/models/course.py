@@ -14,16 +14,20 @@ class Course(Base):
     name_abbr: Mapped[str | None] = mapped_column(String(50), nullable=True)
     teacher: Mapped[str] = mapped_column(String(100), nullable=False)
     semester: Mapped[str] = mapped_column(String(20), nullable=False)  # e.g., "2025-Spring"
+    class_number: Mapped[str | None] = mapped_column(String(20), nullable=True)  # e.g., "03班"
+    campus: Mapped[str | None] = mapped_column(String(50), nullable=True)  # e.g., "鼓楼校区"
+    time_location: Mapped[str | None] = mapped_column(String(200), nullable=True)  # Time and location mixed
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
     )
     
-    # Composite unique constraint: course_code + teacher + semester
+    # Composite unique constraint: course_code + teacher + semester + class_number
     __table_args__ = (
-        UniqueConstraint("course_code", "teacher", "semester", name="uq_course_teacher_semester"),
+        UniqueConstraint("course_code", "teacher", "semester", "class_number", name="uq_course_teacher_semester_class"),
         Index("ix_course_semester", "semester"),
+        Index("ix_course_name", "name"),
     )
     
     # Relationships

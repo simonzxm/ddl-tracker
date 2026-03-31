@@ -9,12 +9,18 @@ class CourseCreate(BaseModel):
     name_abbr: Optional[str] = Field(None, max_length=50)
     teacher: str = Field(..., min_length=1, max_length=100)
     semester: str = Field(..., min_length=1, max_length=20)
+    class_number: Optional[str] = Field(None, max_length=20)  # e.g., "03班"
+    campus: Optional[str] = Field(None, max_length=50)  # e.g., "鼓楼校区"
+    time_location: Optional[str] = Field(None, max_length=200)  # Time and location
     description: Optional[str] = None
 
 
 class CourseUpdate(BaseModel):
     name: Optional[str] = Field(None, max_length=200)
     name_abbr: Optional[str] = Field(None, max_length=50)
+    class_number: Optional[str] = Field(None, max_length=20)
+    campus: Optional[str] = Field(None, max_length=50)
+    time_location: Optional[str] = Field(None, max_length=200)
     description: Optional[str] = None
 
 
@@ -25,9 +31,13 @@ class CourseResponse(BaseModel):
     name_abbr: Optional[str]
     teacher: str
     semester: str
-    description: Optional[str]
+    class_number: Optional[str] = None
+    campus: Optional[str] = None
+    time_location: Optional[str] = None
+    description: Optional[str] = None
     followers_count: int = 0
     tasks_count: int = 0
+    is_followed: bool = False
     created_at: datetime
     
     class Config:
@@ -41,6 +51,8 @@ class CourseListResponse(BaseModel):
     name_abbr: Optional[str]
     teacher: str
     semester: str
+    class_number: Optional[str] = None
+    campus: Optional[str] = None
     followers_count: int = 0
     is_followed: bool = False
     

@@ -9,6 +9,7 @@ from app.schemas.user import (
     RegisterRequest,
     LoginRequest,
     ChangePasswordRequest,
+    UpdateProfileRequest,
     AuthResponse,
     UserResponse,
     MessageResponse,
@@ -27,8 +28,22 @@ from app.dependencies import (
     require_rate_limit,
 )
 from app.models import User
+from app.config import get_settings
 
 router = APIRouter()
+settings = get_settings()
+
+
+def set_session_cookie(response: Response, session_id: str):
+    """Set session cookie with appropriate security settings"""
+    response.set_cookie(
+        key="session_id",
+        value=session_id,
+        httponly=True,
+        secure=not settings.debug,  # Only secure in production
+        samesite="lax",
+        max_age=86400,
+    )
 
 
 @router.post(
@@ -112,14 +127,7 @@ async def register(
     )
     
     # Set cookie
-    response.set_cookie(
-        key="session_id",
-        value=session_id,
-        httponly=True,
-        secure=True,
-        samesite="lax",
-        max_age=86400,
-    )
+    set_session_cookie(response, session_id)
     
     return AuthResponse(
         message="注册成功",
@@ -157,14 +165,7 @@ async def login(
     )
     
     # Set cookie
-    response.set_cookie(
-        key="session_id",
-        value=session_id,
-        httponly=True,
-        secure=True,
-        samesite="lax",
-        max_age=86400,
-    )
+    set_session_cookie(response, session_id)
     
     return AuthResponse(
         message="登录成功",
@@ -203,6 +204,33 @@ async def get_current_user_info(
         id=user.id,
         email=user.email,
         nickname=user.nickname,
+        avatar_color=user.avatar_color,
+        karma=user.karma,
+        role=user.role.value,
+        created_at=user.created_at,
+    )
+
+
+@router.put("/profile", response_model=UserResponse)
+async def update_profile(
+    data: UpdateProfileRequest,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """更新用户资料（昵称、头像颜色）"""
+    if data.nickname is not None:
+        user.nickname = data.nickname
+    if data.avatar_color is not None:
+        user.avatar_color = data.avatar_color
+    
+    await db.commit()
+    await db.refresh(user)
+    
+    return UserResponse(
+        id=user.id,
+        email=user.email,
+        nickname=user.nickname,
+        avatar_color=user.avatar_color,
         karma=user.karma,
         role=user.role.value,
         created_at=user.created_at,
@@ -223,4 +251,5 @@ async def change_password(
         )
     
     user.password_hash = hash_password(data.new_password)
+    await db.commit()
     return {"message": "密码修改成功"}

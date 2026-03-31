@@ -119,6 +119,20 @@ class ApiClient {
     return this.request<any>('/api/auth/me');
   }
 
+  async updateProfile(data: { nickname?: string; avatar_color?: string }) {
+    return this.request<any>('/api/auth/profile', {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async changePassword(oldPassword: string, newPassword: string) {
+    return this.request<{ message: string }>('/api/auth/password', {
+      method: 'PUT',
+      body: JSON.stringify({ old_password: oldPassword, new_password: newPassword }),
+    });
+  }
+
   // Courses
   async getCourses(params?: { q?: string; semester?: string }) {
     const query = new URLSearchParams(params as any).toString();
@@ -173,6 +187,65 @@ class ApiClient {
 
   async voteTask(taskId: number, voteType: 'upvote' | 'downvote') {
     return this.request<any>(`/api/tasks/${taskId}/vote`, {
+      method: 'POST',
+      body: JSON.stringify({ vote_type: voteType }),
+    });
+  }
+
+  // Task completion
+  async getCompletedTasks() {
+    return this.request<number[]>('/api/tasks/completed/list');
+  }
+
+  async setTaskCompleted(taskId: number, completed: boolean) {
+    if (completed) {
+      return this.request<any>(`/api/tasks/${taskId}/complete`, {
+        method: 'POST',
+      });
+    } else {
+      return this.request<any>(`/api/tasks/${taskId}/complete`, {
+        method: 'DELETE',
+      });
+    }
+  }
+
+  // Task Notes
+  async getTaskNote(taskId: number) {
+    return this.request<{ task_id: number; content: string; updated_at: string }>(
+      `/api/tasks/${taskId}/note`
+    );
+  }
+
+  async saveTaskNote(taskId: number, content: string) {
+    return this.request<{ task_id: number; content: string; updated_at: string }>(
+      `/api/tasks/${taskId}/note`,
+      {
+        method: 'PUT',
+        body: JSON.stringify({ content }),
+      }
+    );
+  }
+
+  async deleteTaskNote(taskId: number) {
+    return this.request<{ message: string }>(`/api/tasks/${taskId}/note`, {
+      method: 'DELETE',
+    });
+  }
+
+  // Edit Proposals
+  async getEditProposals(taskId: number) {
+    return this.request<any[]>(`/api/tasks/${taskId}/proposals`);
+  }
+
+  async createEditProposal(taskId: number, data: { new_description: string; reason?: string }) {
+    return this.request<any>(`/api/tasks/${taskId}/proposals`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async voteProposal(taskId: number, proposalId: number, voteType: 'upvote' | 'downvote') {
+    return this.request<any>(`/api/tasks/${taskId}/proposals/${proposalId}/vote`, {
       method: 'POST',
       body: JSON.stringify({ vote_type: voteType }),
     });

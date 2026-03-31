@@ -10,6 +10,7 @@ import {
   Platform,
   KeyboardAvoidingView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { api } from '../../src/services/api';
 import { Course } from '../../src/types';
@@ -106,156 +107,158 @@ export default function CreateTaskScreen() {
   };
 
   return (
-    <KeyboardAvoidingView 
-      style={styles.container} 
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.cancelBtn}>
-            <Text style={styles.cancelText}>取消</Text>
-          </TouchableOpacity>
-          <Text style={styles.pageTitle}>新建 DDL</Text>
-          <TouchableOpacity 
-            onPress={handleSubmit} 
-            style={[styles.saveBtn, loading && styles.saveBtnDisabled]}
-            disabled={loading}
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <KeyboardAvoidingView 
+        style={styles.flex} 
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
+          <View style={styles.header}>
+            <TouchableOpacity onPress={() => router.back()} style={styles.cancelBtn}>
+              <Text style={styles.cancelText}>取消</Text>
+            </TouchableOpacity>
+            <Text style={styles.pageTitle}>新建 DDL</Text>
+            <TouchableOpacity 
+              onPress={handleSubmit} 
+              style={[styles.saveBtn, loading && styles.saveBtnDisabled]}
+              disabled={loading}
+            >
+              <Text style={styles.saveText}>{loading ? '...' : '保存'}</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Course Selection */}
+          <TouchableOpacity
+            style={styles.courseSelect}
+            onPress={() => setShowCourses(!showCourses)}
           >
-            <Text style={styles.saveText}>{loading ? '...' : '保存'}</Text>
+            <Text style={styles.fieldLabel}>课程</Text>
+            <View style={styles.courseSelectRow}>
+              <Text style={selectedCourse ? styles.courseSelected : styles.coursePlaceholder}>
+                {selectedCourse ? selectedCourse.name : '选择课程...'}
+              </Text>
+              <Text style={styles.arrow}>{showCourses ? '▲' : '▼'}</Text>
+            </View>
           </TouchableOpacity>
-        </View>
+          
+          {showCourses && (
+            <View style={styles.courseList}>
+              {courses.length === 0 ? (
+                <Text style={styles.noCourses}>请先在课程页面关注课程</Text>
+              ) : (
+                courses.map((course) => (
+                  <TouchableOpacity
+                    key={course.id}
+                    style={[
+                      styles.courseItem,
+                      selectedCourse?.id === course.id && styles.courseItemActive,
+                    ]}
+                    onPress={() => {
+                      setSelectedCourse(course);
+                      setShowCourses(false);
+                    }}
+                  >
+                    <Text style={styles.courseName}>{course.name}</Text>
+                    <Text style={styles.courseTeacher}>{course.teacher}</Text>
+                  </TouchableOpacity>
+                ))
+              )}
+            </View>
+          )}
 
-        {/* Course Selection */}
-        <TouchableOpacity
-          style={styles.courseSelect}
-          onPress={() => setShowCourses(!showCourses)}
-        >
-          <Text style={styles.fieldLabel}>课程</Text>
-          <View style={styles.courseSelectRow}>
-            <Text style={selectedCourse ? styles.courseSelected : styles.coursePlaceholder}>
-              {selectedCourse ? selectedCourse.name : '选择课程...'}
-            </Text>
-            <Text style={styles.arrow}>{showCourses ? '▲' : '▼'}</Text>
-          </View>
-        </TouchableOpacity>
-        
-        {showCourses && (
-          <View style={styles.courseList}>
-            {courses.length === 0 ? (
-              <Text style={styles.noCourses}>请先在课程页面关注课程</Text>
-            ) : (
-              courses.map((course) => (
-                <TouchableOpacity
-                  key={course.id}
-                  style={[
-                    styles.courseItem,
-                    selectedCourse?.id === course.id && styles.courseItemActive,
-                  ]}
-                  onPress={() => {
-                    setSelectedCourse(course);
-                    setShowCourses(false);
-                  }}
-                >
-                  <Text style={styles.courseName}>{course.name}</Text>
-                  <Text style={styles.courseTeacher}>{course.teacher}</Text>
-                </TouchableOpacity>
-              ))
-            )}
-          </View>
-        )}
-
-        {/* Title */}
-        <View style={styles.field}>
-          <Text style={styles.fieldLabel}>标题</Text>
-          <TextInput
-            style={styles.titleInput}
-            placeholder="例如：第三次作业"
-            placeholderTextColor="#9ca3af"
-            value={title}
-            onChangeText={setTitle}
-            maxLength={200}
-            autoFocus
-          />
-        </View>
-
-        {/* Due Date - Separate fields */}
-        <View style={styles.field}>
-          <Text style={styles.fieldLabel}>截止日期</Text>
-          <View style={styles.dateRow}>
+          {/* Title */}
+          <View style={styles.field}>
+            <Text style={styles.fieldLabel}>标题</Text>
             <TextInput
-              style={styles.yearInput}
-              placeholder="年"
+              style={styles.titleInput}
+              placeholder="例如：第三次作业"
               placeholderTextColor="#9ca3af"
-              value={year}
-              onChangeText={(t) => setYear(t.replace(/[^0-9]/g, '').slice(0, 4))}
-              keyboardType="number-pad"
-              maxLength={4}
-            />
-            <Text style={styles.dateSep}>-</Text>
-            <TextInput
-              style={styles.mdInput}
-              placeholder="月"
-              placeholderTextColor="#9ca3af"
-              value={month}
-              onChangeText={(t) => setMonth(t.replace(/[^0-9]/g, '').slice(0, 2))}
-              keyboardType="number-pad"
-              maxLength={2}
-            />
-            <Text style={styles.dateSep}>-</Text>
-            <TextInput
-              style={styles.mdInput}
-              placeholder="日"
-              placeholderTextColor="#9ca3af"
-              value={day}
-              onChangeText={(t) => setDay(t.replace(/[^0-9]/g, '').slice(0, 2))}
-              keyboardType="number-pad"
-              maxLength={2}
+              value={title}
+              onChangeText={setTitle}
+              maxLength={200}
+              autoFocus
             />
           </View>
-        </View>
 
-        {/* Due Time */}
-        <View style={styles.field}>
-          <Text style={styles.fieldLabel}>截止时间</Text>
-          <View style={styles.timeRow}>
+          {/* Due Date - Separate fields */}
+          <View style={styles.field}>
+            <Text style={styles.fieldLabel}>截止日期</Text>
+            <View style={styles.dateRow}>
+              <TextInput
+                style={styles.yearInput}
+                placeholder="年"
+                placeholderTextColor="#9ca3af"
+                value={year}
+                onChangeText={(t) => setYear(t.replace(/[^0-9]/g, '').slice(0, 4))}
+                keyboardType="number-pad"
+                maxLength={4}
+              />
+              <Text style={styles.dateSep}>-</Text>
+              <TextInput
+                style={styles.mdInput}
+                placeholder="月"
+                placeholderTextColor="#9ca3af"
+                value={month}
+                onChangeText={(t) => setMonth(t.replace(/[^0-9]/g, '').slice(0, 2))}
+                keyboardType="number-pad"
+                maxLength={2}
+              />
+              <Text style={styles.dateSep}>-</Text>
+              <TextInput
+                style={styles.mdInput}
+                placeholder="日"
+                placeholderTextColor="#9ca3af"
+                value={day}
+                onChangeText={(t) => setDay(t.replace(/[^0-9]/g, '').slice(0, 2))}
+                keyboardType="number-pad"
+                maxLength={2}
+              />
+            </View>
+          </View>
+
+          {/* Due Time */}
+          <View style={styles.field}>
+            <Text style={styles.fieldLabel}>截止时间</Text>
+            <View style={styles.timeRow}>
+              <TextInput
+                style={styles.timeInput}
+                placeholder="时"
+                placeholderTextColor="#9ca3af"
+                value={hour}
+                onChangeText={(t) => setHour(t.replace(/[^0-9]/g, '').slice(0, 2))}
+                keyboardType="number-pad"
+                maxLength={2}
+              />
+              <Text style={styles.timeSep}>:</Text>
+              <TextInput
+                style={styles.timeInput}
+                placeholder="分"
+                placeholderTextColor="#9ca3af"
+                value={minute}
+                onChangeText={(t) => setMinute(t.replace(/[^0-9]/g, '').slice(0, 2))}
+                keyboardType="number-pad"
+                maxLength={2}
+              />
+            </View>
+          </View>
+
+          {/* Description */}
+          <View style={styles.field}>
+            <Text style={styles.fieldLabel}>详细说明（可选，其他用户可见）</Text>
             <TextInput
-              style={styles.timeInput}
-              placeholder="时"
+              style={styles.descInput}
+              placeholder="添加详细说明..."
               placeholderTextColor="#9ca3af"
-              value={hour}
-              onChangeText={(t) => setHour(t.replace(/[^0-9]/g, '').slice(0, 2))}
-              keyboardType="number-pad"
-              maxLength={2}
-            />
-            <Text style={styles.timeSep}>:</Text>
-            <TextInput
-              style={styles.timeInput}
-              placeholder="分"
-              placeholderTextColor="#9ca3af"
-              value={minute}
-              onChangeText={(t) => setMinute(t.replace(/[^0-9]/g, '').slice(0, 2))}
-              keyboardType="number-pad"
-              maxLength={2}
+              value={description}
+              onChangeText={setDescription}
+              multiline
+              numberOfLines={4}
+              textAlignVertical="top"
             />
           </View>
-        </View>
-
-        {/* Description */}
-        <View style={styles.field}>
-          <Text style={styles.fieldLabel}>备注（可选）</Text>
-          <TextInput
-            style={styles.descInput}
-            placeholder="添加详细说明..."
-            placeholderTextColor="#9ca3af"
-            value={description}
-            onChangeText={setDescription}
-            multiline
-            numberOfLines={4}
-            textAlignVertical="top"
-          />
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
@@ -264,11 +267,13 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f8fafc',
   },
+  flex: {
+    flex: 1,
+  },
   scroll: {
     flex: 1,
   },
   content: {
-    paddingTop: Platform.OS === 'ios' ? 60 : 16,
     paddingBottom: 40,
   },
   header: {
@@ -276,7 +281,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    marginBottom: 24,
+    paddingVertical: 12,
+    marginBottom: 12,
   },
   cancelBtn: {
     padding: 8,

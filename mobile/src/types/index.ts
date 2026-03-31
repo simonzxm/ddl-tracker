@@ -2,6 +2,7 @@ export interface User {
   id: number;
   email: string;
   nickname: string;
+  avatar_color?: string;
   karma: number;
   role: 'student' | 'admin';
   created_at: string;
@@ -32,7 +33,29 @@ export interface Task {
   upvotes: number;
   downvotes: number;
   my_vote?: 'upvote' | 'downvote';
+  my_note?: string;
+  pending_proposals_count?: number;
   is_reported?: boolean;
+  created_at: string;
+}
+
+export interface TaskNote {
+  task_id: number;
+  content: string;
+  updated_at: string;
+}
+
+export interface EditProposal {
+  id: number;
+  task_id: number;
+  proposer_id?: number;
+  proposer_nickname?: string;
+  new_description: string;
+  reason?: string;
+  status: 'pending' | 'approved' | 'rejected';
+  upvotes: number;
+  downvotes: number;
+  my_vote?: 'upvote' | 'downvote';
   created_at: string;
 }
 

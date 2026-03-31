@@ -18,6 +18,7 @@ class User(Base):
     email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False, index=True)
     nickname: Mapped[str] = mapped_column(String(50), nullable=False)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    avatar_color: Mapped[str | None] = mapped_column(String(7), nullable=True)  # Hex color like #2563eb
     karma: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     role: Mapped[UserRole] = mapped_column(Enum(UserRole), default=UserRole.STUDENT, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
@@ -34,6 +35,18 @@ class User(Base):
     )
     votes: Mapped[list["TaskVote"]] = relationship(
         "TaskVote", back_populates="user", cascade="all, delete-orphan"
+    )
+    completions: Mapped[list["TaskCompletion"]] = relationship(
+        "TaskCompletion", back_populates="user", cascade="all, delete-orphan"
+    )
+    task_notes: Mapped[list["TaskNote"]] = relationship(
+        "TaskNote", back_populates="user", cascade="all, delete-orphan"
+    )
+    edit_proposals: Mapped[list["TaskEditProposal"]] = relationship(
+        "TaskEditProposal", back_populates="proposer"
+    )
+    proposal_votes: Mapped[list["ProposalVote"]] = relationship(
+        "ProposalVote", back_populates="user", cascade="all, delete-orphan"
     )
     
     def __repr__(self):

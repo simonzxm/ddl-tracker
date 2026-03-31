@@ -6,11 +6,9 @@ import {
   TouchableOpacity,
   StyleSheet,
   RefreshControl,
-  SafeAreaView,
-  SectionList,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useFocusEffect } from 'expo-router';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { api } from '../../src/services/api';
 import { TaskCard } from '../../src/components/TaskCard';
 import { Task, Course } from '../../src/types';
@@ -24,45 +22,17 @@ export default function HomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [completedTasks, setCompletedTasks] = useState<Set<number>>(new Set());
-  const [initialized, setInitialized] = useState(false);
-
-  // Load completed tasks and saved filter on mount
-  useEffect(() => {
-    const init = async () => {
-      try {
-        const [savedCompleted, savedFilter] = await Promise.all([
-          AsyncStorage.getItem('completed_tasks'),
-          AsyncStorage.getItem('ddl_filter'),
-        ]);
-        if (savedCompleted) {
-          setCompletedTasks(new Set(JSON.parse(savedCompleted)));
-        }
-        if (savedFilter) {
-          setFilter(savedFilter);
-        }
-      } catch (e) {
-        console.error('Failed to load saved state:', e);
-      }
-      setInitialized(true);
-    };
-    init();
-  }, []);
-
-  // Save filter when changed (only after init)
-  useEffect(() => {
-    if (initialized) {
-      AsyncStorage.setItem('ddl_filter', filter);
-    }
-  }, [filter, initialized]);
 
   const loadData = async () => {
     try {
-      const [tasksData, coursesData] = await Promise.all([
-        api.getMyDeadlines(90), // Get 90 days of tasks
+      const [tasksData, coursesData, completedData] = await Promise.all([
+        api.getMyDeadlines(90),
         api.getFollowedCourses(),
+        api.getCompletedTasks(),
       ]);
       setAllTasks(tasksData);
       setCourses(coursesData);
+      setCompletedTasks(new Set(completedData));
     } catch (error) {
       console.error('Failed to load data:', error);
     } finally {
@@ -72,10 +42,8 @@ export default function HomeScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      if (initialized) {
-        loadData();
-      }
-    }, [initialized])
+      loadData();
+    }, [])
   );
 
   const onRefresh = async () => {
@@ -95,13 +63,21 @@ export default function HomeScreen() {
 
   const toggleComplete = async (taskId: number) => {
     const newCompleted = new Set(completedTasks);
-    if (newCompleted.has(taskId)) {
-      newCompleted.delete(taskId);
-    } else {
+    const isCompleting = !newCompleted.has(taskId);
+    
+    if (isCompleting) {
       newCompleted.add(taskId);
+    } else {
+      newCompleted.delete(taskId);
     }
     setCompletedTasks(newCompleted);
-    await AsyncStorage.setItem('completed_tasks', JSON.stringify([...newCompleted]));
+    
+    // Sync to server
+    try {
+      await api.setTaskCompleted(taskId, isCompleting);
+    } catch (error) {
+      console.error('Failed to sync completion status:', error);
+    }
   };
 
   // Filter and sort tasks like Microsoft To Do

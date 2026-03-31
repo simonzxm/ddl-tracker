@@ -40,11 +40,17 @@ class ChangePasswordRequest(BaseModel):
     new_password: str = Field(..., min_length=8, max_length=128)
 
 
+class UpdateProfileRequest(BaseModel):
+    nickname: Optional[str] = Field(None, min_length=2, max_length=50)
+    avatar_color: Optional[str] = Field(None, pattern=r'^#[0-9a-fA-F]{6}$')
+
+
 # Response schemas
 class UserResponse(BaseModel):
     id: int
     email: str
     nickname: str
+    avatar_color: Optional[str] = None
     karma: int
     role: str
     created_at: datetime

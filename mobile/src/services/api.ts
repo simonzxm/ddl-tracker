@@ -2,7 +2,17 @@ import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const API_BASE = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000';
+// For web mode, always use localhost to avoid CORS issues
+// For mobile, use the configured API URL (which can be a local network IP)
+const getApiBase = () => {
+  if (Platform.OS === 'web') {
+    // In web mode, API must be same origin or localhost for cookies to work
+    return 'http://localhost:8000';
+  }
+  return process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000';
+};
+
+const API_BASE = getApiBase();
 
 // Web fallback for SecureStore
 const storage = {

@@ -230,11 +230,25 @@ export default function TaskDetailScreen() {
 
         {!task.description && (
           <View style={styles.descSection}>
-            <TouchableOpacity onPress={() => {
-              setNewProposalDesc('');
-              setNewProposalReason('');
-              setShowNewProposal(true);
-            }}>
+            <View style={styles.descHeader}>
+              <Text style={styles.descLabel}>详细说明</Text>
+              {(task.pending_proposals_count || 0) > 0 && (
+                <TouchableOpacity onPress={handleOpenProposals}>
+                  <Text style={styles.proposeLink}>
+                    查看修改建议 ({task.pending_proposals_count})
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
+            <Text style={styles.noDescText}>暂无说明</Text>
+            <TouchableOpacity 
+              style={styles.addDescBtn}
+              onPress={() => {
+                setNewProposalDesc('');
+                setNewProposalReason('');
+                setShowNewProposal(true);
+              }}
+            >
               <Text style={styles.proposeLink}>+ 添加说明</Text>
             </TouchableOpacity>
           </View>
@@ -570,6 +584,14 @@ const styles = StyleSheet.create({
   proposeLink: {
     fontSize: 13,
     color: '#2563eb',
+  },
+  noDescText: {
+    fontSize: 14,
+    color: '#9ca3af',
+    marginBottom: 8,
+  },
+  addDescBtn: {
+    marginTop: 4,
   },
   description: {
     fontSize: 15,

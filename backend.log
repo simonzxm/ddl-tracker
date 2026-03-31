@@ -1,46 +1,6 @@
 INFO:     Will watch for changes in these directories: ['/Users/simonzxm/ddl-tracker/backend']
 INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
-INFO:     Started reloader process [10985] using WatchFiles
-INFO:     Started server process [10987]
+INFO:     Started reloader process [53963] using WatchFiles
+INFO:     Started server process [53965]
 INFO:     Waiting for application startup.
 INFO:     Application startup complete.
-INFO:     127.0.0.1:51836 - "GET /api/health HTTP/1.1" 404 Not Found
-INFO:     10.6.78.192:57454 - "OPTIONS /api/auth/login HTTP/1.1" 200 OK
-2026-03-31 18:38:50,064 INFO sqlalchemy.engine.Engine select pg_catalog.version()
-2026-03-31 18:38:50,064 INFO sqlalchemy.engine.Engine [raw sql] ()
-2026-03-31 18:38:50,068 INFO sqlalchemy.engine.Engine select current_schema()
-2026-03-31 18:38:50,068 INFO sqlalchemy.engine.Engine [raw sql] ()
-2026-03-31 18:38:50,069 INFO sqlalchemy.engine.Engine show standard_conforming_strings
-2026-03-31 18:38:50,069 INFO sqlalchemy.engine.Engine [raw sql] ()
-2026-03-31 18:38:50,071 INFO sqlalchemy.engine.Engine BEGIN (implicit)
-2026-03-31 18:38:50,085 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
-FROM users 
-WHERE users.email = $1::VARCHAR
-2026-03-31 18:38:50,085 INFO sqlalchemy.engine.Engine [generated in 0.00016s] ('ximingzheng@smail.nju.edu.cn',)
-2026-03-31 18:38:50,291 INFO sqlalchemy.engine.Engine COMMIT
-INFO:     10.6.78.192:57455 - "POST /api/auth/login HTTP/1.1" 200 OK
-INFO:     10.6.78.192:57454 - "OPTIONS /api/tasks/my-deadlines?days=90 HTTP/1.1" 200 OK
-INFO:     10.6.78.192:57458 - "OPTIONS /api/courses/followed HTTP/1.1" 200 OK
-INFO:     10.6.78.192:57454 - "OPTIONS /api/tasks/completed/list HTTP/1.1" 200 OK
-INFO:     10.6.78.192:57455 - "GET /api/tasks/my-deadlines?days=90 HTTP/1.1" 401 Unauthorized
-INFO:     10.6.78.192:57459 - "GET /api/courses/followed HTTP/1.1" 401 Unauthorized
-INFO:     10.6.78.192:57460 - "GET /api/tasks/completed/list HTTP/1.1" 401 Unauthorized
-INFO:     10.6.78.192:57454 - "OPTIONS /api/courses HTTP/1.1" 200 OK
-2026-03-31 18:38:51,781 INFO sqlalchemy.engine.Engine BEGIN (implicit)
-2026-03-31 18:38:51,786 INFO sqlalchemy.engine.Engine SELECT courses.id, courses.course_code, courses.name, courses.name_abbr, courses.teacher, courses.semester, courses.description, courses.created_at, courses.updated_at, coalesce(anon_1.cnt, $1::INTEGER) AS followers_count 
-FROM courses LEFT OUTER JOIN (SELECT user_courses.course_id AS course_id, count(*) AS cnt 
-FROM user_courses GROUP BY user_courses.course_id) AS anon_1 ON courses.id = anon_1.course_id ORDER BY courses.course_code 
- LIMIT $2::INTEGER OFFSET $3::INTEGER
-2026-03-31 18:38:51,786 INFO sqlalchemy.engine.Engine [generated in 0.00028s] (0, 20, 0)
-2026-03-31 18:38:51,793 INFO sqlalchemy.engine.Engine COMMIT
-INFO:     10.6.78.192:57460 - "GET /api/courses HTTP/1.1" 200 OK
-INFO:     10.6.78.192:57454 - "OPTIONS /api/courses HTTP/1.1" 200 OK
-2026-03-31 18:38:52,069 INFO sqlalchemy.engine.Engine BEGIN (implicit)
-2026-03-31 18:38:52,070 INFO sqlalchemy.engine.Engine SELECT courses.id, courses.course_code, courses.name, courses.name_abbr, courses.teacher, courses.semester, courses.description, courses.created_at, courses.updated_at, coalesce(anon_1.cnt, $1::INTEGER) AS followers_count 
-FROM courses LEFT OUTER JOIN (SELECT user_courses.course_id AS course_id, count(*) AS cnt 
-FROM user_courses GROUP BY user_courses.course_id) AS anon_1 ON courses.id = anon_1.course_id ORDER BY courses.course_code 
- LIMIT $2::INTEGER OFFSET $3::INTEGER
-2026-03-31 18:38:52,070 INFO sqlalchemy.engine.Engine [cached since 0.2841s ago] (0, 20, 0)
-2026-03-31 18:38:52,072 INFO sqlalchemy.engine.Engine COMMIT
-INFO:     10.6.78.192:57460 - "GET /api/courses HTTP/1.1" 200 OK
-INFO:     127.0.0.1:59796 - "GET /docs HTTP/1.1" 200 OK

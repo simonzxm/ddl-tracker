@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from typing import Optional
 
 from app.database import get_db
-from app.models import User, Course, Task, TaskVote, UserCourse, TaskStatus, UserRole
+from app.models import User, Course, Task, TaskVote, UserCourse, TaskStatus, UserRole, TaskEditProposal, EditProposalStatus
 from app.dependencies import get_current_admin
 
 router = APIRouter()
@@ -621,3 +621,159 @@ async def delete_course(
     
     await db.delete(course)
     return {"message": "课程已删除"}
+
+
+# Proposal management
+class ProposalListResponse(BaseModel):
+    id: int
+    task_id: int
+    task_title: Optional[str] = None
+    proposer_id: Optional[int]
+    proposer_nickname: Optional[str]
+    new_description: str
+    reason: Optional[str]
+    status: str
+    upvotes: int
+    downvotes: int
+    created_at: datetime
+
+
+@router.get("/proposals", response_model=list[ProposalListResponse])
+async def list_proposals(
+    status: Optional[str] = Query(None, description="筛选状态: pending/approved/rejected"),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=100),
+    admin: User = Depends(get_current_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """获取修改建议列表"""
+    query = (
+        select(TaskEditProposal, Task.title, User.nickname)
+        .join(Task, TaskEditProposal.task_id == Task.id)
+        .outerjoin(User, TaskEditProposal.proposer_id == User.id)
+    )
+    
+    if status:
+        try:
+            status_enum = EditProposalStatus(status.upper())
+            query = query.where(TaskEditProposal.status == status_enum)
+        except ValueError:
+            pass
+    
+    query = query.order_by(TaskEditProposal.created_at.desc()).offset((page - 1) * page_size).limit(page_size)
+    result = await db.execute(query)
+    
+    return [
+        ProposalListResponse(
+            id=proposal.id,
+            task_id=proposal.task_id,
+            task_title=task_title,
+            proposer_id=proposal.proposer_id,
+            proposer_nickname=proposer_nickname,
+            new_description=proposal.new_description,
+            reason=proposal.reason,
+            status=proposal.status.value.lower(),
+            upvotes=proposal.upvotes,
+            downvotes=proposal.downvotes,
+            created_at=proposal.created_at,
+        )
+        for proposal, task_title, proposer_nickname in result.all()
+    ]
+
+
+@router.get("/proposals/{proposal_id}")
+async def get_proposal(
+    proposal_id: int,
+    admin: User = Depends(get_current_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """获取修改建议详情"""
+    result = await db.execute(
+        select(TaskEditProposal, User.nickname)
+        .outerjoin(User, TaskEditProposal.proposer_id == User.id)
+        .where(TaskEditProposal.id == proposal_id)
+    )
+    row = result.first()
+    
+    if not row:
+        raise HTTPException(status_code=404, detail="建议不存在")
+    
+    proposal, proposer_nickname = row
+    return {
+        "id": proposal.id,
+        "task_id": proposal.task_id,
+        "proposer_id": proposal.proposer_id,
+        "proposer_nickname": proposer_nickname,
+        "new_description": proposal.new_description,
+        "reason": proposal.reason,
+        "status": proposal.status.value.lower(),
+        "upvotes": proposal.upvotes,
+        "downvotes": proposal.downvotes,
+        "created_at": proposal.created_at.isoformat(),
+        "resolved_at": proposal.resolved_at.isoformat() if proposal.resolved_at else None,
+    }
+
+
+@router.post("/proposals/{proposal_id}/approve")
+async def approve_proposal(
+    proposal_id: int,
+    admin: User = Depends(get_current_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """通过修改建议"""
+    result = await db.execute(
+        select(TaskEditProposal).where(TaskEditProposal.id == proposal_id)
+    )
+    proposal = result.scalar_one_or_none()
+    
+    if not proposal:
+        raise HTTPException(status_code=404, detail="建议不存在")
+    
+    if proposal.status != EditProposalStatus.PENDING:
+        raise HTTPException(status_code=400, detail="该建议已被处理")
+    
+    # Get the task and update its description
+    task_result = await db.execute(select(Task).where(Task.id == proposal.task_id))
+    task = task_result.scalar_one_or_none()
+    
+    if task:
+        task.description = proposal.new_description
+        task.updated_at = datetime.utcnow()
+    
+    proposal.status = EditProposalStatus.APPROVED
+    proposal.resolved_at = datetime.utcnow()
+    
+    # Reward the proposer
+    if proposal.proposer_id:
+        proposer_result = await db.execute(select(User).where(User.id == proposal.proposer_id))
+        proposer = proposer_result.scalar_one_or_none()
+        if proposer:
+            proposer.karma += 5  # Reward for approved proposal
+    
+    await db.commit()
+    return {"message": "建议已通过"}
+
+
+@router.post("/proposals/{proposal_id}/reject")
+async def reject_proposal(
+    proposal_id: int,
+    admin: User = Depends(get_current_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """拒绝修改建议"""
+    result = await db.execute(
+        select(TaskEditProposal).where(TaskEditProposal.id == proposal_id)
+    )
+    proposal = result.scalar_one_or_none()
+    
+    if not proposal:
+        raise HTTPException(status_code=404, detail="建议不存在")
+    
+    if proposal.status != EditProposalStatus.PENDING:
+        raise HTTPException(status_code=400, detail="该建议已被处理")
+    
+    proposal.status = EditProposalStatus.REJECTED
+    proposal.resolved_at = datetime.utcnow()
+    
+    await db.commit()
+    return {"message": "建议已拒绝"}

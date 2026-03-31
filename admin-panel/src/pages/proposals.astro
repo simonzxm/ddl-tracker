@@ -1,0 +1,235 @@
+---
+import AdminLayout from '../layouts/AdminLayout.astro';
+
+const API_BASE = import.meta.env.PUBLIC_API_URL || 'http://localhost:8000';
+---
+
+<AdminLayout title="修改建议审核" currentPage="/proposals">
+  <div class="mb-8 flex justify-between items-center">
+    <div>
+      <h2 class="text-2xl font-bold text-gray-900">修改建议审核</h2>
+      <p class="text-gray-500 mt-1">审核用户提交的 DDL 说明修改建议</p>
+    </div>
+    <div class="flex gap-2">
+      <button id="tab-pending" class="px-4 py-2 bg-yellow-500 text-white rounded-lg">待审核</button>
+      <button id="tab-approved" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg">已通过</button>
+      <button id="tab-rejected" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg">已拒绝</button>
+    </div>
+  </div>
+  
+  <!-- Proposals List -->
+  <div id="proposals-list" class="space-y-4">
+    <div class="text-center py-8 text-gray-500">加载中...</div>
+  </div>
+  
+  <!-- Detail Modal -->
+  <div id="detail-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-xl p-6 w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
+      <h3 class="text-lg font-semibold mb-4">修改建议详情</h3>
+      <div id="detail-content" class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-500 mb-1">任务信息</label>
+          <div id="detail-task" class="p-3 bg-gray-50 rounded-lg"></div>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-500 mb-1">当前说明</label>
+          <div id="detail-current" class="p-3 bg-gray-50 rounded-lg whitespace-pre-wrap"></div>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-500 mb-1">建议修改为</label>
+          <div id="detail-new" class="p-3 bg-blue-50 rounded-lg whitespace-pre-wrap border-2 border-blue-200"></div>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-500 mb-1">修改原因</label>
+          <div id="detail-reason" class="p-3 bg-gray-50 rounded-lg"></div>
+        </div>
+        <div class="flex gap-4 text-sm text-gray-500">
+          <span>提交者: <span id="detail-proposer"></span></span>
+          <span>赞同: <span id="detail-upvotes" class="text-green-600"></span></span>
+          <span>反对: <span id="detail-downvotes" class="text-red-600"></span></span>
+        </div>
+      </div>
+      <div class="flex justify-end gap-2 pt-6 border-t mt-4">
+        <button type="button" onclick="closeDetailModal()" class="px-4 py-2 border rounded-lg">关闭</button>
+        <button type="button" id="btn-reject" onclick="rejectProposal()" class="px-4 py-2 bg-red-500 text-white rounded-lg">拒绝</button>
+        <button type="button" id="btn-approve" onclick="approveProposal()" class="px-4 py-2 bg-green-500 text-white rounded-lg">通过</button>
+      </div>
+    </div>
+  </div>
+</AdminLayout>
+
+<script define:vars={{ API_BASE }}>
+  let currentTab = 'pending';
+  let currentProposalId = null;
+  let currentTaskId = null;
+  
+  const tabPending = document.getElementById('tab-pending');
+  const tabApproved = document.getElementById('tab-approved');
+  const tabRejected = document.getElementById('tab-rejected');
+  const proposalsList = document.getElementById('proposals-list');
+  const detailModal = document.getElementById('detail-modal');
+  
+  function setActiveTab(tab) {
+    currentTab = tab;
+    tabPending.className = tab === 'pending' 
+      ? 'px-4 py-2 bg-yellow-500 text-white rounded-lg' 
+      : 'px-4 py-2 bg-gray-100 text-gray-700 rounded-lg';
+    tabApproved.className = tab === 'approved' 
+      ? 'px-4 py-2 bg-green-500 text-white rounded-lg' 
+      : 'px-4 py-2 bg-gray-100 text-gray-700 rounded-lg';
+    tabRejected.className = tab === 'rejected' 
+      ? 'px-4 py-2 bg-red-500 text-white rounded-lg' 
+      : 'px-4 py-2 bg-gray-100 text-gray-700 rounded-lg';
+    loadProposals();
+  }
+  
+  tabPending?.addEventListener('click', () => setActiveTab('pending'));
+  tabApproved?.addEventListener('click', () => setActiveTab('approved'));
+  tabRejected?.addEventListener('click', () => setActiveTab('rejected'));
+  
+  async function loadProposals() {
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/proposals?status=${currentTab}`, { 
+        credentials: 'include' 
+      });
+      
+      if (!res.ok) {
+        proposalsList.innerHTML = '<div class="text-center py-8 text-red-500">加载失败，请确认管理员登录</div>';
+        return;
+      }
+      
+      const proposals = await res.json();
+      
+      if (proposals.length === 0) {
+        proposalsList.innerHTML = '<div class="text-center py-8 text-gray-500">暂无数据</div>';
+        return;
+      }
+      
+      proposalsList.innerHTML = proposals.map(p => `
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+          <div class="flex justify-between items-start">
+            <div class="flex-1">
+              <div class="flex items-center gap-2 mb-2">
+                <span class="text-sm text-gray-500">#${p.id}</span>
+                <span class="px-2 py-0.5 text-xs rounded ${
+                  p.status === 'approved' ? 'bg-green-100 text-green-700' :
+                  p.status === 'rejected' ? 'bg-red-100 text-red-700' :
+                  'bg-yellow-100 text-yellow-700'
+                }">${p.status === 'approved' ? '已通过' : p.status === 'rejected' ? '已拒绝' : '待审核'}</span>
+              </div>
+              <div class="font-medium text-gray-900 mb-1">任务 #${p.task_id}: ${p.task_title || '未知'}</div>
+              <div class="text-sm text-gray-600 line-clamp-2 mb-2">${p.new_description}</div>
+              <div class="flex gap-4 text-sm text-gray-500">
+                <span>提交者: ${p.proposer_nickname || '匿名'}</span>
+                <span class="text-green-600">👍 ${p.upvotes}</span>
+                <span class="text-red-600">👎 ${p.downvotes}</span>
+                <span>${new Date(p.created_at).toLocaleString('zh-CN')}</span>
+              </div>
+            </div>
+            <button onclick="viewProposal(${p.id}, ${p.task_id})" class="px-3 py-1 bg-blue-100 text-blue-700 rounded text-sm hover:bg-blue-200">
+              查看详情
+            </button>
+          </div>
+        </div>
+      `).join('');
+    } catch (err) {
+      console.error('Load proposals error:', err);
+      proposalsList.innerHTML = '<div class="text-center py-8 text-red-500">加载失败</div>';
+    }
+  }
+  
+  window.viewProposal = async (proposalId, taskId) => {
+    currentProposalId = proposalId;
+    currentTaskId = taskId;
+    
+    try {
+      // Load task and proposal details
+      const [taskRes, proposalRes] = await Promise.all([
+        fetch(`${API_BASE}/api/admin/tasks/${taskId}`, { credentials: 'include' }),
+        fetch(`${API_BASE}/api/admin/proposals/${proposalId}`, { credentials: 'include' })
+      ]);
+      
+      if (!taskRes.ok || !proposalRes.ok) {
+        alert('获取详情失败');
+        return;
+      }
+      
+      const task = await taskRes.json();
+      const proposal = await proposalRes.json();
+      
+      document.getElementById('detail-task').textContent = `${task.course_name} - ${task.title}`;
+      document.getElementById('detail-current').textContent = task.description || '(无说明)';
+      document.getElementById('detail-new').textContent = proposal.new_description;
+      document.getElementById('detail-reason').textContent = proposal.reason || '(未说明)';
+      document.getElementById('detail-proposer').textContent = proposal.proposer_nickname || '匿名';
+      document.getElementById('detail-upvotes').textContent = proposal.upvotes;
+      document.getElementById('detail-downvotes').textContent = proposal.downvotes;
+      
+      // Show/hide action buttons based on status
+      const isPending = proposal.status === 'pending';
+      document.getElementById('btn-approve').style.display = isPending ? 'block' : 'none';
+      document.getElementById('btn-reject').style.display = isPending ? 'block' : 'none';
+      
+      detailModal.classList.remove('hidden');
+      detailModal.classList.add('flex');
+    } catch (err) {
+      console.error('Load proposal error:', err);
+      alert('获取详情失败');
+    }
+  };
+  
+  window.closeDetailModal = () => {
+    detailModal.classList.add('hidden');
+    detailModal.classList.remove('flex');
+    currentProposalId = null;
+    currentTaskId = null;
+  };
+  
+  window.approveProposal = async () => {
+    if (!currentProposalId || !confirm('确认通过此修改建议？')) return;
+    
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/proposals/${currentProposalId}/approve`, {
+        method: 'POST',
+        credentials: 'include'
+      });
+      
+      if (!res.ok) {
+        const err = await res.json();
+        alert(err.detail || '操作失败');
+        return;
+      }
+      
+      closeDetailModal();
+      loadProposals();
+    } catch (err) {
+      console.error('Approve error:', err);
+      alert('操作失败');
+    }
+  };
+  
+  window.rejectProposal = async () => {
+    if (!currentProposalId || !confirm('确认拒绝此修改建议？')) return;
+    
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/proposals/${currentProposalId}/reject`, {
+        method: 'POST',
+        credentials: 'include'
+      });
+      
+      if (!res.ok) {
+        const err = await res.json();
+        alert(err.detail || '操作失败');
+        return;
+      }
+      
+      closeDetailModal();
+      loadProposals();
+    } catch (err) {
+      console.error('Reject error:', err);
+      alert('操作失败');
+    }
+  };
+  
+  loadProposals();
+</script>

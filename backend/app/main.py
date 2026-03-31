@@ -26,16 +26,30 @@ app = FastAPI(
 )
 
 # CORS middleware - when credentials=True, cannot use wildcard "*"
+# For development, allow common localhost ports and private network IPs
+dev_origins = [
+    "http://localhost:8081",
+    "http://localhost:19006", 
+    "http://localhost:3000", 
+    "http://localhost:4321",
+    "http://127.0.0.1:8081",
+    "http://127.0.0.1:19006",
+]
+
+# Also allow the IP address from env if set
+import os
+if settings.debug:
+    # Dynamically add local network origins
+    for port in [8081, 19006, 3000]:
+        dev_origins.append(f"http://100.100.100.103:{port}")
+        dev_origins.append(f"http://192.168.0.1:{port}")  # Common router subnet
+        # Add for any local IP
+        for i in range(100, 105):
+            dev_origins.append(f"http://192.168.1.{i}:{port}")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:8081",
-        "http://localhost:19006", 
-        "http://localhost:3000", 
-        "http://localhost:4321",
-        "http://127.0.0.1:8081",
-        "http://127.0.0.1:19006",
-    ] if settings.debug else [],
+    allow_origins=dev_origins if settings.debug else [],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

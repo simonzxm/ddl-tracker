@@ -1,8 +1,7 @@
 import { Tabs } from 'expo-router';
-import { Text, View, StyleSheet } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Text, View, StyleSheet, Platform } from 'react-native';
 
-function TabIcon({ name, focused }: { name: string; focused: boolean }) {
+function TabIcon({ name }: { name: string }) {
   const icons: Record<string, string> = {
     index: '📋',
     courses: '📚',
@@ -11,13 +10,13 @@ function TabIcon({ name, focused }: { name: string; focused: boolean }) {
   
   return (
     <View style={styles.tabIcon}>
-      <Text style={{ fontSize: 22 }}>{icons[name] || '📄'}</Text>
+      <Text style={styles.iconText}>{icons[name] || '📄'}</Text>
     </View>
   );
 }
 
 export default function TabsLayout() {
-  const insets = useSafeAreaInsets();
+  const bottomPadding = Platform.OS === 'ios' ? 20 : 8;
   
   return (
     <Tabs
@@ -29,18 +28,18 @@ export default function TabsLayout() {
           borderTopWidth: 1,
           borderTopColor: '#f3f4f6',
           paddingTop: 6,
-          paddingBottom: insets.bottom > 0 ? insets.bottom : 6,
-          height: 56 + (insets.bottom > 0 ? insets.bottom : 6),
+          paddingBottom: bottomPadding,
+          height: 56 + bottomPadding,
         },
         tabBarLabelStyle: {
           fontSize: 11,
-          fontWeight: '500',
+          fontWeight: '500' as const,
         },
         headerStyle: {
           backgroundColor: '#fff',
         },
         headerTitleStyle: {
-          fontWeight: '600',
+          fontWeight: '600' as const,
           color: '#1f2937',
         },
         headerShadowVisible: false,
@@ -51,21 +50,21 @@ export default function TabsLayout() {
         options={{
           title: '我的DDL',
           headerShown: false,
-          tabBarIcon: ({ focused }) => <TabIcon name="index" focused={focused} />,
+          tabBarIcon: () => <TabIcon name="index" />,
         }}
       />
       <Tabs.Screen
         name="courses"
         options={{
           title: '课程',
-          tabBarIcon: ({ focused }) => <TabIcon name="courses" focused={focused} />,
+          tabBarIcon: () => <TabIcon name="courses" />,
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
           title: '我的',
-          tabBarIcon: ({ focused }) => <TabIcon name="profile" focused={focused} />,
+          tabBarIcon: () => <TabIcon name="profile" />,
         }}
       />
     </Tabs>
@@ -76,5 +75,8 @@ const styles = StyleSheet.create({
   tabIcon: {
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  iconText: {
+    fontSize: 22,
   },
 });

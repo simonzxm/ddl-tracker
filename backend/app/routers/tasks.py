@@ -41,7 +41,8 @@ def _map_vote_type(vote: TaskVote | None) -> VoteTypeEnum | None:
 
 
 def _map_task_status(status: TaskStatus) -> TaskStatusEnum:
-    return TaskStatusEnum(status.value.lower())
+    # Both enums use lowercase values, direct mapping
+    return TaskStatusEnum(status.value)
 
 
 @router.get("", response_model=list[TaskListResponse])
@@ -66,7 +67,8 @@ async def list_tasks(
         query = query.where(Task.course_id == course_id)
     
     if status_filter:
-        query = query.where(Task.status == TaskStatus(status_filter.value.upper()))
+        # TaskStatusEnum.value is lowercase, same as TaskStatus.value
+        query = query.where(Task.status == TaskStatus(status_filter.value))
     else:
         # Default: exclude hidden tasks
         query = query.where(Task.status != TaskStatus.HIDDEN)
@@ -629,7 +631,8 @@ async def get_task_proposals(
     )
     
     if status_filter:
-        query = query.where(TaskEditProposal.status == EditProposalStatus(status_filter.value.upper()))
+        # EditProposalStatusEnum.value is lowercase, same as EditProposalStatus.value
+        query = query.where(TaskEditProposal.status == EditProposalStatus(status_filter.value))
     else:
         # Default: show pending proposals
         query = query.where(TaskEditProposal.status == EditProposalStatus.PENDING)
@@ -660,7 +663,7 @@ async def get_task_proposals(
             proposer_nickname=nickname,
             new_description=proposal.new_description,
             reason=proposal.reason,
-            status=EditProposalStatusEnum(proposal.status.value.lower()),
+            status=EditProposalStatusEnum(proposal.status.value),
             upvotes=proposal.upvotes,
             downvotes=proposal.downvotes,
             my_vote=VoteTypeEnum(user_votes[proposal.id].value) if proposal.id in user_votes else None,
@@ -710,7 +713,7 @@ async def create_edit_proposal(
         proposer_nickname=user.nickname,
         new_description=proposal.new_description,
         reason=proposal.reason,
-        status=EditProposalStatusEnum(proposal.status.value.lower()),
+        status=EditProposalStatusEnum(proposal.status.value),
         upvotes=proposal.upvotes,
         downvotes=proposal.downvotes,
         my_vote=None,
@@ -798,5 +801,5 @@ async def vote_proposal(
         "message": "投票成功",
         "upvotes": proposal.upvotes,
         "downvotes": proposal.downvotes,
-        "status": EditProposalStatusEnum(proposal.status.value.lower()),
+        "status": EditProposalStatusEnum(proposal.status.value),
     }

@@ -5,21 +5,53 @@ const API_BASE = import.meta.env.PUBLIC_API_URL || 'http://localhost:8000';
 ---
 
 <AdminLayout title="修改建议审核" currentPage="/proposals">
-  <div class="mb-8 flex justify-between items-center">
-    <div>
-      <h2 class="text-2xl font-bold text-gray-900">修改建议审核</h2>
-      <p class="text-gray-500 mt-1">审核用户提交的 DDL 说明修改建议</p>
+  <div class="mb-6">
+    <div class="flex justify-between items-center mb-4">
+      <div>
+        <h2 class="text-2xl font-bold text-gray-900">修改建议审核</h2>
+        <p class="text-gray-500 mt-1">审核用户提交的 DDL 说明修改建议</p>
+      </div>
+      <div class="flex gap-2">
+        <button id="tab-pending" class="px-4 py-2 bg-yellow-500 text-white rounded-lg">待审核</button>
+        <button id="tab-approved" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg">已通过</button>
+        <button id="tab-rejected" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg">已拒绝</button>
+      </div>
     </div>
-    <div class="flex gap-2">
-      <button id="tab-pending" class="px-4 py-2 bg-yellow-500 text-white rounded-lg">待审核</button>
-      <button id="tab-approved" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg">已通过</button>
-      <button id="tab-rejected" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg">已拒绝</button>
+    
+    <!-- Batch Actions -->
+    <div id="batch-actions" class="hidden bg-blue-50 rounded-xl p-4 mb-4 flex items-center justify-between">
+      <span class="text-blue-700">已选择 <span id="selected-count">0</span> 项</span>
+      <div class="flex gap-2">
+        <button id="batch-approve" class="px-3 py-1.5 bg-green-500 text-white rounded-lg text-sm hover:bg-green-600">批量通过</button>
+        <button id="batch-reject" class="px-3 py-1.5 bg-red-500 text-white rounded-lg text-sm hover:bg-red-600">批量拒绝</button>
+        <button id="cancel-selection" class="px-3 py-1.5 bg-gray-200 text-gray-700 rounded-lg text-sm hover:bg-gray-300">取消</button>
+      </div>
     </div>
   </div>
   
-  <!-- Proposals List -->
-  <div id="proposals-list" class="space-y-4">
-    <div class="text-center py-8 text-gray-500">加载中...</div>
+  <!-- Proposals Table -->
+  <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+    <table class="w-full">
+      <thead class="bg-gray-50 border-b border-gray-100">
+        <tr>
+          <th class="py-3 px-4 text-left">
+            <input type="checkbox" id="select-all" class="rounded" />
+          </th>
+          <th class="text-left py-3 px-4 text-sm font-medium text-gray-500">ID</th>
+          <th class="text-left py-3 px-4 text-sm font-medium text-gray-500">任务</th>
+          <th class="text-left py-3 px-4 text-sm font-medium text-gray-500">建议内容</th>
+          <th class="text-left py-3 px-4 text-sm font-medium text-gray-500">提交者</th>
+          <th class="text-left py-3 px-4 text-sm font-medium text-gray-500">评分</th>
+          <th class="text-left py-3 px-4 text-sm font-medium text-gray-500">状态</th>
+          <th class="text-left py-3 px-4 text-sm font-medium text-gray-500">操作</th>
+        </tr>
+      </thead>
+      <tbody id="proposals-list">
+        <tr>
+          <td colspan="8" class="text-center py-8 text-gray-500">加载中...</td>
+        </tr>
+      </tbody>
+    </table>
   </div>
   
   <!-- Detail Modal -->
@@ -62,79 +94,228 @@ const API_BASE = import.meta.env.PUBLIC_API_URL || 'http://localhost:8000';
   let currentTab = 'pending';
   let currentProposalId = null;
   let currentTaskId = null;
+  let allProposals = [];
+  window.selectedIds = new Set();
   
   const tabPending = document.getElementById('tab-pending');
   const tabApproved = document.getElementById('tab-approved');
   const tabRejected = document.getElementById('tab-rejected');
   const proposalsList = document.getElementById('proposals-list');
   const detailModal = document.getElementById('detail-modal');
+  const selectAllCheckbox = document.getElementById('select-all');
+  const batchActions = document.getElementById('batch-actions');
+  const selectedCountSpan = document.getElementById('selected-count');
+  
+  function updateSelection() {
+    const count = window.selectedIds.size;
+    selectedCountSpan.textContent = count;
+    if (count > 0) {
+      batchActions.classList.remove('hidden');
+    } else {
+      batchActions.classList.add('hidden');
+    }
+    
+    const checkboxes = document.querySelectorAll('.proposal-checkbox');
+    const allChecked = checkboxes.length > 0 && [...checkboxes].every(cb => cb.checked);
+    selectAllCheckbox.checked = allChecked;
+  }
+  
+  selectAllCheckbox?.addEventListener('change', (e) => {
+    const checkboxes = document.querySelectorAll('.proposal-checkbox');
+    checkboxes.forEach(cb => {
+      cb.checked = e.target.checked;
+      const id = parseInt(cb.dataset.id);
+      if (e.target.checked) {
+        window.selectedIds.add(id);
+      } else {
+        window.selectedIds.delete(id);
+      }
+    });
+    updateSelection();
+  });
+  
+  document.getElementById('cancel-selection')?.addEventListener('click', () => {
+    window.selectedIds.clear();
+    document.querySelectorAll('.proposal-checkbox').forEach(cb => cb.checked = false);
+    selectAllCheckbox.checked = false;
+    updateSelection();
+  });
+  
+  window.toggleSelect = (id, checked) => {
+    if (checked) {
+      window.selectedIds.add(id);
+    } else {
+      window.selectedIds.delete(id);
+    }
+    updateSelection();
+  };
+  
+  // Batch operations
+  document.getElementById('batch-approve')?.addEventListener('click', async () => {
+    const ids = [...window.selectedIds];
+    if (ids.length === 0) return;
+    if (!confirm(`确认批量通过 ${ids.length} 个修改建议？`)) return;
+    
+    let successCount = 0;
+    for (const id of ids) {
+      try {
+        const res = await fetch(`${API_BASE}/api/admin/proposals/${id}/approve`, { 
+          method: 'POST', 
+          credentials: 'include' 
+        });
+        if (res.ok) successCount++;
+      } catch (e) {
+        console.error('Approve error:', e);
+      }
+    }
+    
+    alert(`批量通过完成：成功 ${successCount} 条，失败 ${ids.length - successCount} 条`);
+    window.selectedIds.clear();
+    updateSelection();
+    loadProposals();
+  });
+  
+  document.getElementById('batch-reject')?.addEventListener('click', async () => {
+    const ids = [...window.selectedIds];
+    if (ids.length === 0) return;
+    if (!confirm(`确认批量拒绝 ${ids.length} 个修改建议？`)) return;
+    
+    let successCount = 0;
+    for (const id of ids) {
+      try {
+        const res = await fetch(`${API_BASE}/api/admin/proposals/${id}/reject`, { 
+          method: 'POST', 
+          credentials: 'include' 
+        });
+        if (res.ok) successCount++;
+      } catch (e) {
+        console.error('Reject error:', e);
+      }
+    }
+    
+    alert(`批量拒绝完成：成功 ${successCount} 条，失败 ${ids.length - successCount} 条`);
+    window.selectedIds.clear();
+    updateSelection();
+    loadProposals();
+  });
   
   function setActiveTab(tab) {
+    console.log('setActiveTab called with:', tab);
     currentTab = tab;
-    tabPending.className = tab === 'pending' 
-      ? 'px-4 py-2 bg-yellow-500 text-white rounded-lg' 
-      : 'px-4 py-2 bg-gray-100 text-gray-700 rounded-lg';
-    tabApproved.className = tab === 'approved' 
-      ? 'px-4 py-2 bg-green-500 text-white rounded-lg' 
-      : 'px-4 py-2 bg-gray-100 text-gray-700 rounded-lg';
-    tabRejected.className = tab === 'rejected' 
-      ? 'px-4 py-2 bg-red-500 text-white rounded-lg' 
-      : 'px-4 py-2 bg-gray-100 text-gray-700 rounded-lg';
+    
+    if (tabPending) {
+      tabPending.className = tab === 'pending' 
+        ? 'px-4 py-2 bg-yellow-500 text-white rounded-lg' 
+        : 'px-4 py-2 bg-gray-100 text-gray-700 rounded-lg';
+    }
+    if (tabApproved) {
+      tabApproved.className = tab === 'approved' 
+        ? 'px-4 py-2 bg-green-500 text-white rounded-lg' 
+        : 'px-4 py-2 bg-gray-100 text-gray-700 rounded-lg';
+    }
+    if (tabRejected) {
+      tabRejected.className = tab === 'rejected' 
+        ? 'px-4 py-2 bg-red-500 text-white rounded-lg' 
+        : 'px-4 py-2 bg-gray-100 text-gray-700 rounded-lg';
+    }
+    
+    // Clear selection when switching tabs
+    window.selectedIds.clear();
+    updateSelection();
+    
     loadProposals();
   }
   
-  tabPending?.addEventListener('click', () => setActiveTab('pending'));
-  tabApproved?.addEventListener('click', () => setActiveTab('approved'));
-  tabRejected?.addEventListener('click', () => setActiveTab('rejected'));
+  console.log('Tab elements:', { tabPending, tabApproved, tabRejected });
+  
+  if (tabPending) {
+    tabPending.addEventListener('click', () => {
+      console.log('Pending tab clicked');
+      setActiveTab('pending');
+    });
+  }
+  if (tabApproved) {
+    tabApproved.addEventListener('click', () => {
+      console.log('Approved tab clicked');
+      setActiveTab('approved');
+    });
+  }
+  if (tabRejected) {
+    tabRejected.addEventListener('click', () => {
+      console.log('Rejected tab clicked');
+      setActiveTab('rejected');
+    });
+  }
   
   async function loadProposals() {
+    console.log('loadProposals called, currentTab:', currentTab);
     try {
-      const res = await fetch(`${API_BASE}/api/admin/proposals?status=${currentTab}`, { 
+      const url = `${API_BASE}/api/admin/proposals?status=${currentTab}`;
+      console.log('Fetching:', url);
+      const res = await fetch(url, { 
         credentials: 'include' 
       });
+      console.log('Response status:', res.status);
       
       if (!res.ok) {
-        proposalsList.innerHTML = '<div class="text-center py-8 text-red-500">加载失败，请确认管理员登录</div>';
+        const errText = await res.text();
+        console.error('Load proposals failed:', errText);
+        proposalsList.innerHTML = '<tr><td colspan="8" class="text-center py-8 text-red-500">加载失败，请确认管理员登录</td></tr>';
         return;
       }
       
       const proposals = await res.json();
+      console.log('Proposals loaded:', proposals.length);
+      allProposals = proposals;
       
       if (proposals.length === 0) {
-        proposalsList.innerHTML = '<div class="text-center py-8 text-gray-500">暂无数据</div>';
+        proposalsList.innerHTML = '<tr><td colspan="8" class="text-center py-8 text-gray-500">暂无数据</td></tr>';
         return;
       }
       
       proposalsList.innerHTML = proposals.map(p => `
-        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
-          <div class="flex justify-between items-start">
-            <div class="flex-1">
-              <div class="flex items-center gap-2 mb-2">
-                <span class="text-sm text-gray-500">#${p.id}</span>
-                <span class="px-2 py-0.5 text-xs rounded ${
-                  p.status === 'approved' ? 'bg-green-100 text-green-700' :
-                  p.status === 'rejected' ? 'bg-red-100 text-red-700' :
-                  'bg-yellow-100 text-yellow-700'
-                }">${p.status === 'approved' ? '已通过' : p.status === 'rejected' ? '已拒绝' : '待审核'}</span>
-              </div>
-              <div class="font-medium text-gray-900 mb-1">任务 #${p.task_id}: ${p.task_title || '未知'}</div>
-              <div class="text-sm text-gray-600 line-clamp-2 mb-2">${p.new_description}</div>
-              <div class="flex gap-4 text-sm text-gray-500">
-                <span>提交者: ${p.proposer_nickname || '匿名'}</span>
-                <span class="text-green-600">👍 ${p.upvotes}</span>
-                <span class="text-red-600">👎 ${p.downvotes}</span>
-                <span>${new Date(p.created_at).toLocaleString('zh-CN')}</span>
-              </div>
+        <tr class="border-b border-gray-50 hover:bg-gray-50">
+          <td class="py-3 px-4">
+            <input type="checkbox" class="proposal-checkbox rounded" data-id="${p.id}" 
+              ${window.selectedIds.has(p.id) ? 'checked' : ''} 
+              onchange="toggleSelect(${p.id}, this.checked)" />
+          </td>
+          <td class="py-3 px-4 text-sm text-gray-600">${p.id}</td>
+          <td class="py-3 px-4 text-sm text-gray-900">
+            <div class="max-w-xs">
+              <div class="font-medium">任务 #${p.task_id}</div>
+              <div class="text-gray-600 truncate">${p.task_title || '未知'}</div>
             </div>
-            <button onclick="viewProposal(${p.id}, ${p.task_id})" class="px-3 py-1 bg-blue-100 text-blue-700 rounded text-sm hover:bg-blue-200">
-              查看详情
-            </button>
-          </div>
-        </div>
+          </td>
+          <td class="py-3 px-4 text-sm text-gray-900 max-w-md">
+            <div class="line-clamp-2">${p.new_description}</div>
+          </td>
+          <td class="py-3 px-4 text-sm text-gray-600">${p.proposer_nickname || '匿名'}</td>
+          <td class="py-3 px-4 text-sm">
+            <span class="text-green-600">+${p.upvotes}</span> / 
+            <span class="text-red-600">-${p.downvotes}</span>
+          </td>
+          <td class="py-3 px-4 text-sm">
+            <span class="px-2 py-1 rounded text-xs ${
+              p.status === 'approved' ? 'bg-green-100 text-green-700' :
+              p.status === 'rejected' ? 'bg-red-100 text-red-700' :
+              'bg-yellow-100 text-yellow-700'
+            }">${p.status === 'approved' ? '已通过' : p.status === 'rejected' ? '已拒绝' : '待审核'}</span>
+          </td>
+          <td class="py-3 px-4 text-sm">
+            <div class="flex gap-2">
+              <button onclick="viewProposal(${p.id}, ${p.task_id})" class="text-blue-600 hover:text-blue-800">查看</button>
+              ${p.status === 'pending' ? `
+                <button onclick="quickApprove(${p.id})" class="text-green-600 hover:text-green-800">通过</button>
+                <button onclick="quickReject(${p.id})" class="text-red-600 hover:text-red-800">拒绝</button>
+              ` : ''}
+            </div>
+          </td>
+        </tr>
       `).join('');
     } catch (err) {
       console.error('Load proposals error:', err);
-      proposalsList.innerHTML = '<div class="text-center py-8 text-red-500">加载失败</div>';
+      proposalsList.innerHTML = '<tr><td colspan="8" class="text-center py-8 text-red-500">加载失败</td></tr>';
     }
   }
   
@@ -229,6 +410,18 @@ const API_BASE = import.meta.env.PUBLIC_API_URL || 'http://localhost:8000';
       console.error('Reject error:', err);
       alert('操作失败');
     }
+  };
+  
+  window.quickApprove = async (id) => {
+    if (!confirm('确认通过此修改建议？')) return;
+    await fetch(`${API_BASE}/api/admin/proposals/${id}/approve`, { method: 'POST', credentials: 'include' });
+    loadProposals();
+  };
+  
+  window.quickReject = async (id) => {
+    if (!confirm('确认拒绝此修改建议？')) return;
+    await fetch(`${API_BASE}/api/admin/proposals/${id}/reject`, { method: 'POST', credentials: 'include' });
+    loadProposals();
   };
   
   loadProposals();

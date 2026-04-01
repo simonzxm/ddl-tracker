@@ -113,9 +113,9 @@ async def list_all_tasks(
         query = query.where(Task.title.ilike(f"%{q}%"))
     
     if status_filter:
-        # TaskStatus enum uses lowercase values: pending, verified, hidden
+        # TaskStatus enum values are already lowercase: pending, verified, hidden
         try:
-            task_status = TaskStatus(status_filter.lower())
+            task_status = TaskStatus(status_filter)
             query = query.where(Task.status == task_status)
         except ValueError:
             pass  # Invalid status, ignore filter
@@ -149,7 +149,7 @@ async def list_all_tasks(
             course_name=course_name,
             title=task.title,
             creator_nickname=nickname,
-            status=task.status.value.lower(),
+            status=task.status.value,
             upvotes=task.upvotes,
             downvotes=task.downvotes,
             is_reported=task.is_reported,
@@ -184,7 +184,7 @@ async def get_reported_tasks(
             course_name=course_name,
             title=task.title,
             creator_nickname=nickname,
-            status=task.status.value.lower(),
+            status=task.status.value,
             upvotes=task.upvotes,
             downvotes=task.downvotes,
             is_reported=task.is_reported,
@@ -219,7 +219,7 @@ async def get_low_score_tasks(
             course_name=course_name,
             title=task.title,
             creator_nickname=nickname,
-            status=task.status.value.lower(),
+            status=task.status.value,
             upvotes=task.upvotes,
             downvotes=task.downvotes,
             is_reported=task.is_reported,
@@ -315,7 +315,7 @@ async def admin_update_task(
         task.due_time = due_time
     if data.status is not None:
         try:
-            task.status = TaskStatus(data.status.lower())
+            task.status = TaskStatus(data.status)
         except ValueError:
             raise HTTPException(status_code=400, detail="无效的状态值")
     
@@ -815,7 +815,8 @@ async def list_proposals(
     
     if status:
         try:
-            status_enum = EditProposalStatus(status.upper())
+            # EditProposalStatus values are lowercase (pending, approved, rejected)
+            status_enum = EditProposalStatus(status)
             query = query.where(TaskEditProposal.status == status_enum)
         except ValueError:
             pass
@@ -832,7 +833,7 @@ async def list_proposals(
             proposer_nickname=proposer_nickname,
             new_description=proposal.new_description,
             reason=proposal.reason,
-            status=proposal.status.value.lower(),
+            status=proposal.status.value,
             upvotes=proposal.upvotes,
             downvotes=proposal.downvotes,
             created_at=proposal.created_at,
@@ -866,7 +867,7 @@ async def get_proposal(
         "proposer_nickname": proposer_nickname,
         "new_description": proposal.new_description,
         "reason": proposal.reason,
-        "status": proposal.status.value.lower(),
+        "status": proposal.status.value,
         "upvotes": proposal.upvotes,
         "downvotes": proposal.downvotes,
         "created_at": proposal.created_at.isoformat(),

@@ -217,18 +217,24 @@ const API_BASE = import.meta.env.PUBLIC_API_URL || 'http://localhost:8000';
     try {
       // Load semesters
       const semRes = await fetch(`${API_BASE}/api/courses/semesters`, { credentials: 'include' });
+      console.log('Semesters response:', semRes.status);
       if (semRes.ok) {
         const semesters = await semRes.json();
+        console.log('Semesters:', semesters);
         semesterFilter.innerHTML = '<option value="">全部学期</option>' + 
           semesters.map(s => `<option value="${s}">${s}</option>`).join('');
       }
       
-      // Load courses
-      const courseRes = await fetch(`${API_BASE}/api/admin/courses?page_size=500`, { credentials: 'include' });
+      // Load courses (use public API with max allowed page_size of 100)
+      const courseRes = await fetch(`${API_BASE}/api/courses?page_size=100`, { credentials: 'include' });
+      console.log('Courses response:', courseRes.status);
       if (courseRes.ok) {
         const courses = await courseRes.json();
+        console.log('Courses count:', courses.length);
         courseFilter.innerHTML = '<option value="">全部课程</option>' + 
           courses.map(c => `<option value="${c.id}">${c.name} (${c.teacher})</option>`).join('');
+      } else {
+        console.error('Courses load failed:', await courseRes.text());
       }
     } catch (err) {
       console.error('Load filter options error:', err);

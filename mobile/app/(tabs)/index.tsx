@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -8,7 +8,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router, useFocusEffect } from 'expo-router';
+import { router } from 'expo-router';
 import { api } from '../../src/services/api';
 import { TaskCard } from '../../src/components/TaskCard';
 import { Task, Course } from '../../src/types';
@@ -22,6 +22,7 @@ export default function HomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [completedTasks, setCompletedTasks] = useState<Set<number>>(new Set());
+  const initialLoadDone = useRef(false);
 
   const loadData = async () => {
     try {
@@ -40,11 +41,13 @@ export default function HomeScreen() {
     }
   };
 
-  useFocusEffect(
-    useCallback(() => {
+  // Only load data once on mount
+  useEffect(() => {
+    if (!initialLoadDone.current) {
+      initialLoadDone.current = true;
       loadData();
-    }, [])
-  );
+    }
+  }, []);
 
   const onRefresh = async () => {
     setRefreshing(true);

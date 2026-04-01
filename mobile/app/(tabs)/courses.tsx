@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -11,7 +11,7 @@ import {
   Modal,
   ScrollView,
 } from 'react-native';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { api } from '../../src/services/api';
 import { CourseCard } from '../../src/components/CourseCard';
 import { Course } from '../../src/types';
@@ -25,6 +25,7 @@ export default function CoursesScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showSemesterModal, setShowSemesterModal] = useState(false);
+  const initialLoadDone = useRef(false);
 
   const loadSemesters = async () => {
     try {
@@ -53,11 +54,13 @@ export default function CoursesScreen() {
     }
   };
 
-  useFocusEffect(
-    useCallback(() => {
+  // Only load semesters once on mount
+  useEffect(() => {
+    if (!initialLoadDone.current) {
+      initialLoadDone.current = true;
       loadSemesters();
-    }, [])
-  );
+    }
+  }, []);
 
   useEffect(() => {
     if (selectedSemester !== undefined) {

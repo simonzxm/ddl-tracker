@@ -1927,3 +1927,1806 @@ WHERE user_courses.user_id = $1::INTEGER
 2026-04-01 00:22:03,149 INFO sqlalchemy.engine.Engine [cached since 507.6s ago] (2,)
 2026-04-01 00:22:03,150 INFO sqlalchemy.engine.Engine COMMIT
 INFO:     127.0.0.1:54144 - "GET /api/courses?semester=2026-Spring HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61950 - "OPTIONS /api/courses/semesters HTTP/1.1" 200 OK
+2026-04-01 00:41:18,998 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:41:18,998 INFO sqlalchemy.engine.Engine SELECT DISTINCT courses.semester 
+FROM courses ORDER BY courses.semester DESC
+2026-04-01 00:41:18,998 INFO sqlalchemy.engine.Engine [cached since 2650s ago] ()
+2026-04-01 00:41:19,003 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:61952 - "GET /api/courses/semesters HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61950 - "OPTIONS /api/courses?semester=2026-Spring HTTP/1.1" 200 OK
+2026-04-01 00:41:19,326 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:41:19,326 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:41:19,327 INFO sqlalchemy.engine.Engine [cached since 1664s ago] (2,)
+2026-04-01 00:41:19,342 INFO sqlalchemy.engine.Engine SELECT courses.id, courses.course_code, courses.name, courses.name_abbr, courses.teacher, courses.semester, courses.class_number, courses.campus, courses.time_location, courses.description, courses.created_at, courses.updated_at, coalesce(anon_1.cnt, $1::INTEGER) AS followers_count 
+FROM courses LEFT OUTER JOIN (SELECT user_courses.course_id AS course_id, count(*) AS cnt 
+FROM user_courses GROUP BY user_courses.course_id) AS anon_1 ON courses.id = anon_1.course_id 
+WHERE courses.semester = $2::VARCHAR ORDER BY coalesce(anon_1.cnt, $3::INTEGER) DESC, courses.course_code 
+ LIMIT $4::INTEGER OFFSET $5::INTEGER
+2026-04-01 00:41:19,342 INFO sqlalchemy.engine.Engine [cached since 1664s ago] (0, '2026-Spring', 0, 20, 0)
+2026-04-01 00:41:19,346 INFO sqlalchemy.engine.Engine SELECT user_courses.course_id 
+FROM user_courses 
+WHERE user_courses.user_id = $1::INTEGER
+2026-04-01 00:41:19,347 INFO sqlalchemy.engine.Engine [cached since 1664s ago] (2,)
+2026-04-01 00:41:19,348 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:61952 - "GET /api/courses?semester=2026-Spring HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61950 - "OPTIONS /api/courses/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61950 - "OPTIONS /api/courses/1/tasks HTTP/1.1" 200 OK
+2026-04-01 00:41:19,979 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:41:19,979 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:41:19,979 INFO sqlalchemy.engine.Engine [cached since 1664s ago] (2,)
+2026-04-01 00:41:19,980 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:41:19,980 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:41:19,980 INFO sqlalchemy.engine.Engine [cached since 1664s ago] (2,)
+2026-04-01 00:41:19,984 INFO sqlalchemy.engine.Engine SELECT courses.id, courses.course_code, courses.name, courses.name_abbr, courses.teacher, courses.semester, courses.class_number, courses.campus, courses.time_location, courses.description, courses.created_at, courses.updated_at 
+FROM courses 
+WHERE courses.id = $1::INTEGER
+2026-04-01 00:41:19,984 INFO sqlalchemy.engine.Engine [cached since 1660s ago] (1,)
+2026-04-01 00:41:19,985 INFO sqlalchemy.engine.Engine SELECT courses.id, courses.course_code, courses.name, courses.name_abbr, courses.teacher, courses.semester, courses.class_number, courses.campus, courses.time_location, courses.description, courses.created_at, courses.updated_at 
+FROM courses 
+WHERE courses.id = $1::INTEGER
+2026-04-01 00:41:19,985 INFO sqlalchemy.engine.Engine [cached since 1660s ago] (1,)
+2026-04-01 00:41:19,986 INFO sqlalchemy.engine.Engine SELECT tasks.id, tasks.course_id, tasks.title, tasks.description, tasks.due_time, tasks.creator_id, tasks.status, tasks.upvotes, tasks.downvotes, tasks.is_reported, tasks.created_at, tasks.updated_at 
+FROM tasks 
+WHERE tasks.course_id = $1::INTEGER AND tasks.status != $2::taskstatus AND tasks.due_time > $3::TIMESTAMP WITHOUT TIME ZONE ORDER BY tasks.due_time 
+ LIMIT $4::INTEGER
+2026-04-01 00:41:19,986 INFO sqlalchemy.engine.Engine [cached since 1660s ago] (1, 'HIDDEN', datetime.datetime(2026, 3, 31, 16, 41, 19, 985917), 5)
+2026-04-01 00:41:19,987 INFO sqlalchemy.engine.Engine SELECT count(*) AS count_1 
+FROM user_courses 
+WHERE user_courses.course_id = $1::INTEGER
+2026-04-01 00:41:19,987 INFO sqlalchemy.engine.Engine [cached since 1660s ago] (1,)
+2026-04-01 00:41:19,988 INFO sqlalchemy.engine.Engine COMMIT
+2026-04-01 00:41:19,989 INFO sqlalchemy.engine.Engine SELECT count(*) AS count_1 
+FROM tasks 
+WHERE tasks.course_id = $1::INTEGER
+2026-04-01 00:41:19,989 INFO sqlalchemy.engine.Engine [cached since 1660s ago] (1,)
+INFO:     127.0.0.1:61962 - "GET /api/courses/1/tasks HTTP/1.1" 200 OK
+2026-04-01 00:41:19,990 INFO sqlalchemy.engine.Engine SELECT user_courses.user_id, user_courses.course_id, user_courses.created_at 
+FROM user_courses 
+WHERE user_courses.user_id = $1::INTEGER AND user_courses.course_id = $2::INTEGER
+2026-04-01 00:41:19,990 INFO sqlalchemy.engine.Engine [cached since 1660s ago] (2, 1)
+2026-04-01 00:41:19,991 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:61952 - "GET /api/courses/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61950 - "OPTIONS /api/tasks/my-deadlines?days=90 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61960 - "OPTIONS /api/courses/followed HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61950 - "OPTIONS /api/tasks/completed/list HTTP/1.1" 200 OK
+2026-04-01 00:41:21,064 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:41:21,065 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:41:21,065 INFO sqlalchemy.engine.Engine [cached since 1666s ago] (2,)
+2026-04-01 00:41:21,065 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:41:21,066 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:41:21,066 INFO sqlalchemy.engine.Engine [cached since 1666s ago] (2,)
+2026-04-01 00:41:21,067 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:41:21,067 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:41:21,067 INFO sqlalchemy.engine.Engine [cached since 1666s ago] (2,)
+2026-04-01 00:41:21,070 INFO sqlalchemy.engine.Engine SELECT courses.id, courses.course_code, courses.name, courses.name_abbr, courses.teacher, courses.semester, courses.class_number, courses.campus, courses.time_location, courses.description, courses.created_at, courses.updated_at, coalesce(anon_1.cnt, $1::INTEGER) AS followers_count 
+FROM courses JOIN user_courses ON courses.id = user_courses.course_id LEFT OUTER JOIN (SELECT user_courses.course_id AS course_id, count(*) AS cnt 
+FROM user_courses GROUP BY user_courses.course_id) AS anon_1 ON courses.id = anon_1.course_id 
+WHERE user_courses.user_id = $2::INTEGER ORDER BY courses.course_code
+2026-04-01 00:41:21,070 INFO sqlalchemy.engine.Engine [cached since 1665s ago] (0, 2)
+2026-04-01 00:41:21,073 INFO sqlalchemy.engine.Engine SELECT tasks.id, tasks.course_id, tasks.title, tasks.description, tasks.due_time, tasks.creator_id, tasks.status, tasks.upvotes, tasks.downvotes, tasks.is_reported, tasks.created_at, tasks.updated_at, courses.name, courses.name_abbr 
+FROM tasks JOIN courses ON tasks.course_id = courses.id JOIN user_courses ON courses.id = user_courses.course_id 
+WHERE user_courses.user_id = $1::INTEGER AND tasks.status != $2::taskstatus AND tasks.due_time <= $3::TIMESTAMP WITHOUT TIME ZONE ORDER BY tasks.due_time
+2026-04-01 00:41:21,073 INFO sqlalchemy.engine.Engine [cached since 1665s ago] (2, 'HIDDEN', datetime.datetime(2026, 6, 29, 16, 41, 21, 72456))
+2026-04-01 00:41:21,073 INFO sqlalchemy.engine.Engine SELECT task_completions.task_id 
+FROM task_completions 
+WHERE task_completions.user_id = $1::INTEGER
+2026-04-01 00:41:21,073 INFO sqlalchemy.engine.Engine [cached since 1665s ago] (2,)
+2026-04-01 00:41:21,074 INFO sqlalchemy.engine.Engine COMMIT
+2026-04-01 00:41:21,074 INFO sqlalchemy.engine.Engine COMMIT
+2026-04-01 00:41:21,076 INFO sqlalchemy.engine.Engine SELECT task_votes.user_id, task_votes.task_id, task_votes.vote_type, task_votes.created_at 
+FROM task_votes 
+WHERE task_votes.user_id = $1::INTEGER AND task_votes.task_id IN ($2::INTEGER, $3::INTEGER, $4::INTEGER, $5::INTEGER, $6::INTEGER, $7::INTEGER, $8::INTEGER, $9::INTEGER)
+2026-04-01 00:41:21,076 INFO sqlalchemy.engine.Engine [cached since 1665s ago] (2, 3, 5, 11, 8, 12, 9, 10, 1)
+INFO:     127.0.0.1:61962 - "GET /api/courses/followed HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61968 - "GET /api/tasks/completed/list HTTP/1.1" 200 OK
+2026-04-01 00:41:21,078 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:61952 - "GET /api/tasks/my-deadlines?days=90 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61950 - "OPTIONS /api/courses/semesters HTTP/1.1" 200 OK
+2026-04-01 00:41:22,307 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:41:22,307 INFO sqlalchemy.engine.Engine SELECT DISTINCT courses.semester 
+FROM courses ORDER BY courses.semester DESC
+2026-04-01 00:41:22,307 INFO sqlalchemy.engine.Engine [cached since 2653s ago] ()
+2026-04-01 00:41:22,309 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:61952 - "GET /api/courses/semesters HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61950 - "OPTIONS /api/courses?semester=2026-Spring HTTP/1.1" 200 OK
+2026-04-01 00:41:22,622 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:41:22,622 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:41:22,622 INFO sqlalchemy.engine.Engine [cached since 1667s ago] (2,)
+2026-04-01 00:41:22,625 INFO sqlalchemy.engine.Engine SELECT courses.id, courses.course_code, courses.name, courses.name_abbr, courses.teacher, courses.semester, courses.class_number, courses.campus, courses.time_location, courses.description, courses.created_at, courses.updated_at, coalesce(anon_1.cnt, $1::INTEGER) AS followers_count 
+FROM courses LEFT OUTER JOIN (SELECT user_courses.course_id AS course_id, count(*) AS cnt 
+FROM user_courses GROUP BY user_courses.course_id) AS anon_1 ON courses.id = anon_1.course_id 
+WHERE courses.semester = $2::VARCHAR ORDER BY coalesce(anon_1.cnt, $3::INTEGER) DESC, courses.course_code 
+ LIMIT $4::INTEGER OFFSET $5::INTEGER
+2026-04-01 00:41:22,626 INFO sqlalchemy.engine.Engine [cached since 1667s ago] (0, '2026-Spring', 0, 20, 0)
+2026-04-01 00:41:22,627 INFO sqlalchemy.engine.Engine SELECT user_courses.course_id 
+FROM user_courses 
+WHERE user_courses.user_id = $1::INTEGER
+2026-04-01 00:41:22,628 INFO sqlalchemy.engine.Engine [cached since 1667s ago] (2,)
+2026-04-01 00:41:22,629 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:61952 - "GET /api/courses?semester=2026-Spring HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61950 - "OPTIONS /api/courses/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61960 - "OPTIONS /api/courses/1/tasks HTTP/1.1" 200 OK
+2026-04-01 00:41:23,805 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:41:23,806 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:41:23,806 INFO sqlalchemy.engine.Engine [cached since 1668s ago] (2,)
+2026-04-01 00:41:23,806 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:41:23,806 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:41:23,806 INFO sqlalchemy.engine.Engine [cached since 1668s ago] (2,)
+2026-04-01 00:41:23,810 INFO sqlalchemy.engine.Engine SELECT courses.id, courses.course_code, courses.name, courses.name_abbr, courses.teacher, courses.semester, courses.class_number, courses.campus, courses.time_location, courses.description, courses.created_at, courses.updated_at 
+FROM courses 
+WHERE courses.id = $1::INTEGER
+2026-04-01 00:41:23,810 INFO sqlalchemy.engine.Engine [cached since 1664s ago] (1,)
+2026-04-01 00:41:23,810 INFO sqlalchemy.engine.Engine SELECT courses.id, courses.course_code, courses.name, courses.name_abbr, courses.teacher, courses.semester, courses.class_number, courses.campus, courses.time_location, courses.description, courses.created_at, courses.updated_at 
+FROM courses 
+WHERE courses.id = $1::INTEGER
+2026-04-01 00:41:23,810 INFO sqlalchemy.engine.Engine [cached since 1664s ago] (1,)
+2026-04-01 00:41:23,813 INFO sqlalchemy.engine.Engine SELECT tasks.id, tasks.course_id, tasks.title, tasks.description, tasks.due_time, tasks.creator_id, tasks.status, tasks.upvotes, tasks.downvotes, tasks.is_reported, tasks.created_at, tasks.updated_at 
+FROM tasks 
+WHERE tasks.course_id = $1::INTEGER AND tasks.status != $2::taskstatus AND tasks.due_time > $3::TIMESTAMP WITHOUT TIME ZONE ORDER BY tasks.due_time 
+ LIMIT $4::INTEGER
+2026-04-01 00:41:23,813 INFO sqlalchemy.engine.Engine [cached since 1664s ago] (1, 'HIDDEN', datetime.datetime(2026, 3, 31, 16, 41, 23, 812868), 5)
+2026-04-01 00:41:23,814 INFO sqlalchemy.engine.Engine SELECT count(*) AS count_1 
+FROM user_courses 
+WHERE user_courses.course_id = $1::INTEGER
+2026-04-01 00:41:23,814 INFO sqlalchemy.engine.Engine [cached since 1664s ago] (1,)
+2026-04-01 00:41:23,815 INFO sqlalchemy.engine.Engine COMMIT
+2026-04-01 00:41:23,816 INFO sqlalchemy.engine.Engine SELECT count(*) AS count_1 
+FROM tasks 
+WHERE tasks.course_id = $1::INTEGER
+2026-04-01 00:41:23,816 INFO sqlalchemy.engine.Engine [cached since 1664s ago] (1,)
+INFO:     127.0.0.1:61968 - "GET /api/courses/1/tasks HTTP/1.1" 200 OK
+2026-04-01 00:41:23,818 INFO sqlalchemy.engine.Engine SELECT user_courses.user_id, user_courses.course_id, user_courses.created_at 
+FROM user_courses 
+WHERE user_courses.user_id = $1::INTEGER AND user_courses.course_id = $2::INTEGER
+2026-04-01 00:41:23,818 INFO sqlalchemy.engine.Engine [cached since 1664s ago] (2, 1)
+2026-04-01 00:41:23,819 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:61952 - "GET /api/courses/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61960 - "OPTIONS /api/tasks/my-deadlines?days=90 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61950 - "OPTIONS /api/courses/followed HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61995 - "OPTIONS /api/tasks/completed/list HTTP/1.1" 200 OK
+2026-04-01 00:41:24,636 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:41:24,636 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:41:24,636 INFO sqlalchemy.engine.Engine [cached since 1669s ago] (2,)
+2026-04-01 00:41:24,637 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:41:24,637 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:41:24,637 INFO sqlalchemy.engine.Engine [cached since 1669s ago] (2,)
+2026-04-01 00:41:24,639 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:41:24,639 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:41:24,639 INFO sqlalchemy.engine.Engine [cached since 1669s ago] (2,)
+2026-04-01 00:41:24,642 INFO sqlalchemy.engine.Engine SELECT courses.id, courses.course_code, courses.name, courses.name_abbr, courses.teacher, courses.semester, courses.class_number, courses.campus, courses.time_location, courses.description, courses.created_at, courses.updated_at, coalesce(anon_1.cnt, $1::INTEGER) AS followers_count 
+FROM courses JOIN user_courses ON courses.id = user_courses.course_id LEFT OUTER JOIN (SELECT user_courses.course_id AS course_id, count(*) AS cnt 
+FROM user_courses GROUP BY user_courses.course_id) AS anon_1 ON courses.id = anon_1.course_id 
+WHERE user_courses.user_id = $2::INTEGER ORDER BY courses.course_code
+2026-04-01 00:41:24,642 INFO sqlalchemy.engine.Engine [cached since 1668s ago] (0, 2)
+2026-04-01 00:41:24,643 INFO sqlalchemy.engine.Engine SELECT tasks.id, tasks.course_id, tasks.title, tasks.description, tasks.due_time, tasks.creator_id, tasks.status, tasks.upvotes, tasks.downvotes, tasks.is_reported, tasks.created_at, tasks.updated_at, courses.name, courses.name_abbr 
+FROM tasks JOIN courses ON tasks.course_id = courses.id JOIN user_courses ON courses.id = user_courses.course_id 
+WHERE user_courses.user_id = $1::INTEGER AND tasks.status != $2::taskstatus AND tasks.due_time <= $3::TIMESTAMP WITHOUT TIME ZONE ORDER BY tasks.due_time
+2026-04-01 00:41:24,643 INFO sqlalchemy.engine.Engine [cached since 1668s ago] (2, 'HIDDEN', datetime.datetime(2026, 6, 29, 16, 41, 24, 642857))
+2026-04-01 00:41:24,644 INFO sqlalchemy.engine.Engine SELECT task_completions.task_id 
+FROM task_completions 
+WHERE task_completions.user_id = $1::INTEGER
+2026-04-01 00:41:24,644 INFO sqlalchemy.engine.Engine [cached since 1668s ago] (2,)
+2026-04-01 00:41:24,646 INFO sqlalchemy.engine.Engine COMMIT
+2026-04-01 00:41:24,647 INFO sqlalchemy.engine.Engine SELECT task_votes.user_id, task_votes.task_id, task_votes.vote_type, task_votes.created_at 
+FROM task_votes 
+WHERE task_votes.user_id = $1::INTEGER AND task_votes.task_id IN ($2::INTEGER, $3::INTEGER, $4::INTEGER, $5::INTEGER, $6::INTEGER, $7::INTEGER, $8::INTEGER, $9::INTEGER)
+2026-04-01 00:41:24,647 INFO sqlalchemy.engine.Engine [cached since 1668s ago] (2, 3, 5, 11, 8, 12, 9, 10, 1)
+2026-04-01 00:41:24,648 INFO sqlalchemy.engine.Engine COMMIT
+2026-04-01 00:41:24,649 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:61968 - "GET /api/courses/followed HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61962 - "GET /api/tasks/completed/list HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61952 - "GET /api/tasks/my-deadlines?days=90 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61995 - "OPTIONS /api/tasks/1 HTTP/1.1" 200 OK
+2026-04-01 00:41:28,948 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:41:28,948 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:41:28,948 INFO sqlalchemy.engine.Engine [cached since 1673s ago] (2,)
+2026-04-01 00:41:28,953 INFO sqlalchemy.engine.Engine SELECT tasks.id, tasks.course_id, tasks.title, tasks.description, tasks.due_time, tasks.creator_id, tasks.status, tasks.upvotes, tasks.downvotes, tasks.is_reported, tasks.created_at, tasks.updated_at, courses.name, courses.name_abbr, users.nickname 
+FROM tasks JOIN courses ON tasks.course_id = courses.id LEFT OUTER JOIN users ON tasks.creator_id = users.id 
+WHERE tasks.id = $1::INTEGER
+2026-04-01 00:41:28,953 INFO sqlalchemy.engine.Engine [cached since 1663s ago] (1,)
+2026-04-01 00:41:28,955 INFO sqlalchemy.engine.Engine SELECT task_votes.user_id, task_votes.task_id, task_votes.vote_type, task_votes.created_at 
+FROM task_votes 
+WHERE task_votes.user_id = $1::INTEGER AND task_votes.task_id = $2::INTEGER
+2026-04-01 00:41:28,955 INFO sqlalchemy.engine.Engine [cached since 1663s ago] (2, 1)
+2026-04-01 00:41:28,957 INFO sqlalchemy.engine.Engine SELECT task_notes.user_id, task_notes.task_id, task_notes.content, task_notes.created_at, task_notes.updated_at 
+FROM task_notes 
+WHERE task_notes.user_id = $1::INTEGER AND task_notes.task_id = $2::INTEGER
+2026-04-01 00:41:28,958 INFO sqlalchemy.engine.Engine [cached since 1663s ago] (2, 1)
+2026-04-01 00:41:28,959 INFO sqlalchemy.engine.Engine SELECT count(task_edit_proposals.id) AS count_1 
+FROM task_edit_proposals 
+WHERE task_edit_proposals.task_id = $1::INTEGER AND task_edit_proposals.status = $2::editproposalstatus
+2026-04-01 00:41:28,959 INFO sqlalchemy.engine.Engine [cached since 1663s ago] (1, 'PENDING')
+2026-04-01 00:41:28,961 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:61952 - "GET /api/tasks/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61995 - "OPTIONS /api/tasks/my-deadlines?days=90 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62029 - "OPTIONS /api/courses/followed HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62029 - "OPTIONS /api/tasks/completed/list HTTP/1.1" 200 OK
+2026-04-01 00:41:30,163 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:41:30,164 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:41:30,164 INFO sqlalchemy.engine.Engine [cached since 1675s ago] (2,)
+2026-04-01 00:41:30,167 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:41:30,167 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:41:30,167 INFO sqlalchemy.engine.Engine [cached since 1675s ago] (2,)
+2026-04-01 00:41:30,167 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:41:30,168 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:41:30,168 INFO sqlalchemy.engine.Engine [cached since 1675s ago] (2,)
+2026-04-01 00:41:30,169 INFO sqlalchemy.engine.Engine SELECT tasks.id, tasks.course_id, tasks.title, tasks.description, tasks.due_time, tasks.creator_id, tasks.status, tasks.upvotes, tasks.downvotes, tasks.is_reported, tasks.created_at, tasks.updated_at, courses.name, courses.name_abbr 
+FROM tasks JOIN courses ON tasks.course_id = courses.id JOIN user_courses ON courses.id = user_courses.course_id 
+WHERE user_courses.user_id = $1::INTEGER AND tasks.status != $2::taskstatus AND tasks.due_time <= $3::TIMESTAMP WITHOUT TIME ZONE ORDER BY tasks.due_time
+2026-04-01 00:41:30,169 INFO sqlalchemy.engine.Engine [cached since 1674s ago] (2, 'HIDDEN', datetime.datetime(2026, 6, 29, 16, 41, 30, 168342))
+2026-04-01 00:41:30,172 INFO sqlalchemy.engine.Engine SELECT task_votes.user_id, task_votes.task_id, task_votes.vote_type, task_votes.created_at 
+FROM task_votes 
+WHERE task_votes.user_id = $1::INTEGER AND task_votes.task_id IN ($2::INTEGER, $3::INTEGER, $4::INTEGER, $5::INTEGER, $6::INTEGER, $7::INTEGER, $8::INTEGER, $9::INTEGER)
+2026-04-01 00:41:30,172 INFO sqlalchemy.engine.Engine [cached since 1674s ago] (2, 3, 5, 11, 8, 12, 9, 10, 1)
+2026-04-01 00:41:30,175 INFO sqlalchemy.engine.Engine SELECT courses.id, courses.course_code, courses.name, courses.name_abbr, courses.teacher, courses.semester, courses.class_number, courses.campus, courses.time_location, courses.description, courses.created_at, courses.updated_at, coalesce(anon_1.cnt, $1::INTEGER) AS followers_count 
+FROM courses JOIN user_courses ON courses.id = user_courses.course_id LEFT OUTER JOIN (SELECT user_courses.course_id AS course_id, count(*) AS cnt 
+FROM user_courses GROUP BY user_courses.course_id) AS anon_1 ON courses.id = anon_1.course_id 
+WHERE user_courses.user_id = $2::INTEGER ORDER BY courses.course_code
+2026-04-01 00:41:30,176 INFO sqlalchemy.engine.Engine [cached since 1674s ago] (0, 2)
+2026-04-01 00:41:30,176 INFO sqlalchemy.engine.Engine COMMIT
+2026-04-01 00:41:30,178 INFO sqlalchemy.engine.Engine COMMIT
+2026-04-01 00:41:30,179 INFO sqlalchemy.engine.Engine SELECT task_completions.task_id 
+FROM task_completions 
+WHERE task_completions.user_id = $1::INTEGER
+2026-04-01 00:41:30,179 INFO sqlalchemy.engine.Engine [cached since 1674s ago] (2,)
+INFO:     127.0.0.1:61952 - "GET /api/tasks/my-deadlines?days=90 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62031 - "GET /api/courses/followed HTTP/1.1" 200 OK
+2026-04-01 00:41:30,180 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:62033 - "GET /api/tasks/completed/list HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62029 - "OPTIONS /api/tasks/11 HTTP/1.1" 200 OK
+2026-04-01 00:41:32,733 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:41:32,733 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:41:32,734 INFO sqlalchemy.engine.Engine [cached since 1677s ago] (2,)
+2026-04-01 00:41:32,738 INFO sqlalchemy.engine.Engine SELECT tasks.id, tasks.course_id, tasks.title, tasks.description, tasks.due_time, tasks.creator_id, tasks.status, tasks.upvotes, tasks.downvotes, tasks.is_reported, tasks.created_at, tasks.updated_at, courses.name, courses.name_abbr, users.nickname 
+FROM tasks JOIN courses ON tasks.course_id = courses.id LEFT OUTER JOIN users ON tasks.creator_id = users.id 
+WHERE tasks.id = $1::INTEGER
+2026-04-01 00:41:32,738 INFO sqlalchemy.engine.Engine [cached since 1666s ago] (11,)
+2026-04-01 00:41:32,741 INFO sqlalchemy.engine.Engine SELECT task_votes.user_id, task_votes.task_id, task_votes.vote_type, task_votes.created_at 
+FROM task_votes 
+WHERE task_votes.user_id = $1::INTEGER AND task_votes.task_id = $2::INTEGER
+2026-04-01 00:41:32,741 INFO sqlalchemy.engine.Engine [cached since 1666s ago] (2, 11)
+2026-04-01 00:41:32,743 INFO sqlalchemy.engine.Engine SELECT task_notes.user_id, task_notes.task_id, task_notes.content, task_notes.created_at, task_notes.updated_at 
+FROM task_notes 
+WHERE task_notes.user_id = $1::INTEGER AND task_notes.task_id = $2::INTEGER
+2026-04-01 00:41:32,743 INFO sqlalchemy.engine.Engine [cached since 1666s ago] (2, 11)
+2026-04-01 00:41:32,745 INFO sqlalchemy.engine.Engine SELECT count(task_edit_proposals.id) AS count_1 
+FROM task_edit_proposals 
+WHERE task_edit_proposals.task_id = $1::INTEGER AND task_edit_proposals.status = $2::editproposalstatus
+2026-04-01 00:41:32,746 INFO sqlalchemy.engine.Engine [cached since 1666s ago] (11, 'PENDING')
+2026-04-01 00:41:32,748 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:62033 - "GET /api/tasks/11 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62029 - "OPTIONS /api/tasks/my-deadlines?days=90 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61995 - "OPTIONS /api/courses/followed HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61995 - "OPTIONS /api/tasks/completed/list HTTP/1.1" 200 OK
+2026-04-01 00:41:33,384 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:41:33,384 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:41:33,384 INFO sqlalchemy.engine.Engine [cached since 1678s ago] (2,)
+2026-04-01 00:41:33,388 INFO sqlalchemy.engine.Engine SELECT tasks.id, tasks.course_id, tasks.title, tasks.description, tasks.due_time, tasks.creator_id, tasks.status, tasks.upvotes, tasks.downvotes, tasks.is_reported, tasks.created_at, tasks.updated_at, courses.name, courses.name_abbr 
+FROM tasks JOIN courses ON tasks.course_id = courses.id JOIN user_courses ON courses.id = user_courses.course_id 
+WHERE user_courses.user_id = $1::INTEGER AND tasks.status != $2::taskstatus AND tasks.due_time <= $3::TIMESTAMP WITHOUT TIME ZONE ORDER BY tasks.due_time
+2026-04-01 00:41:33,388 INFO sqlalchemy.engine.Engine [cached since 1677s ago] (2, 'HIDDEN', datetime.datetime(2026, 6, 29, 16, 41, 33, 388186))
+2026-04-01 00:41:33,389 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:41:33,389 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:41:33,389 INFO sqlalchemy.engine.Engine [cached since 1678s ago] (2,)
+2026-04-01 00:41:33,390 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:41:33,390 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:41:33,390 INFO sqlalchemy.engine.Engine [cached since 1678s ago] (2,)
+2026-04-01 00:41:33,392 INFO sqlalchemy.engine.Engine SELECT task_votes.user_id, task_votes.task_id, task_votes.vote_type, task_votes.created_at 
+FROM task_votes 
+WHERE task_votes.user_id = $1::INTEGER AND task_votes.task_id IN ($2::INTEGER, $3::INTEGER, $4::INTEGER, $5::INTEGER, $6::INTEGER, $7::INTEGER, $8::INTEGER, $9::INTEGER)
+2026-04-01 00:41:33,392 INFO sqlalchemy.engine.Engine [cached since 1677s ago] (2, 3, 5, 11, 8, 12, 9, 10, 1)
+2026-04-01 00:41:33,393 INFO sqlalchemy.engine.Engine COMMIT
+2026-04-01 00:41:33,394 INFO sqlalchemy.engine.Engine SELECT task_completions.task_id 
+FROM task_completions 
+WHERE task_completions.user_id = $1::INTEGER
+2026-04-01 00:41:33,394 INFO sqlalchemy.engine.Engine [cached since 1677s ago] (2,)
+INFO:     127.0.0.1:62033 - "GET /api/tasks/my-deadlines?days=90 HTTP/1.1" 200 OK
+2026-04-01 00:41:33,395 INFO sqlalchemy.engine.Engine COMMIT
+2026-04-01 00:41:33,397 INFO sqlalchemy.engine.Engine SELECT courses.id, courses.course_code, courses.name, courses.name_abbr, courses.teacher, courses.semester, courses.class_number, courses.campus, courses.time_location, courses.description, courses.created_at, courses.updated_at, coalesce(anon_1.cnt, $1::INTEGER) AS followers_count 
+FROM courses JOIN user_courses ON courses.id = user_courses.course_id LEFT OUTER JOIN (SELECT user_courses.course_id AS course_id, count(*) AS cnt 
+FROM user_courses GROUP BY user_courses.course_id) AS anon_1 ON courses.id = anon_1.course_id 
+WHERE user_courses.user_id = $2::INTEGER ORDER BY courses.course_code
+2026-04-01 00:41:33,397 INFO sqlalchemy.engine.Engine [cached since 1677s ago] (0, 2)
+INFO:     127.0.0.1:61952 - "GET /api/tasks/completed/list HTTP/1.1" 200 OK
+2026-04-01 00:41:33,398 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:62031 - "GET /api/courses/followed HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61995 - "OPTIONS /api/courses/semesters HTTP/1.1" 200 OK
+2026-04-01 00:41:35,430 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:41:35,430 INFO sqlalchemy.engine.Engine SELECT DISTINCT courses.semester 
+FROM courses ORDER BY courses.semester DESC
+2026-04-01 00:41:35,430 INFO sqlalchemy.engine.Engine [cached since 2666s ago] ()
+2026-04-01 00:41:35,432 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:62031 - "GET /api/courses/semesters HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61995 - "OPTIONS /api/courses?semester=2026-Spring HTTP/1.1" 200 OK
+2026-04-01 00:41:35,748 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:41:35,749 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:41:35,749 INFO sqlalchemy.engine.Engine [cached since 1680s ago] (2,)
+2026-04-01 00:41:35,753 INFO sqlalchemy.engine.Engine SELECT courses.id, courses.course_code, courses.name, courses.name_abbr, courses.teacher, courses.semester, courses.class_number, courses.campus, courses.time_location, courses.description, courses.created_at, courses.updated_at, coalesce(anon_1.cnt, $1::INTEGER) AS followers_count 
+FROM courses LEFT OUTER JOIN (SELECT user_courses.course_id AS course_id, count(*) AS cnt 
+FROM user_courses GROUP BY user_courses.course_id) AS anon_1 ON courses.id = anon_1.course_id 
+WHERE courses.semester = $2::VARCHAR ORDER BY coalesce(anon_1.cnt, $3::INTEGER) DESC, courses.course_code 
+ LIMIT $4::INTEGER OFFSET $5::INTEGER
+2026-04-01 00:41:35,753 INFO sqlalchemy.engine.Engine [cached since 1680s ago] (0, '2026-Spring', 0, 20, 0)
+2026-04-01 00:41:35,755 INFO sqlalchemy.engine.Engine SELECT user_courses.course_id 
+FROM user_courses 
+WHERE user_courses.user_id = $1::INTEGER
+2026-04-01 00:41:35,755 INFO sqlalchemy.engine.Engine [cached since 1680s ago] (2,)
+2026-04-01 00:41:35,757 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:62031 - "GET /api/courses?semester=2026-Spring HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61995 - "OPTIONS /api/courses/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62029 - "OPTIONS /api/courses/1/tasks HTTP/1.1" 200 OK
+2026-04-01 00:41:36,445 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:41:36,445 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:41:36,445 INFO sqlalchemy.engine.Engine [cached since 1681s ago] (2,)
+2026-04-01 00:41:36,445 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:41:36,445 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:41:36,445 INFO sqlalchemy.engine.Engine [cached since 1681s ago] (2,)
+2026-04-01 00:41:36,451 INFO sqlalchemy.engine.Engine SELECT courses.id, courses.course_code, courses.name, courses.name_abbr, courses.teacher, courses.semester, courses.class_number, courses.campus, courses.time_location, courses.description, courses.created_at, courses.updated_at 
+FROM courses 
+WHERE courses.id = $1::INTEGER
+2026-04-01 00:41:36,451 INFO sqlalchemy.engine.Engine [cached since 1676s ago] (1,)
+2026-04-01 00:41:36,451 INFO sqlalchemy.engine.Engine SELECT courses.id, courses.course_code, courses.name, courses.name_abbr, courses.teacher, courses.semester, courses.class_number, courses.campus, courses.time_location, courses.description, courses.created_at, courses.updated_at 
+FROM courses 
+WHERE courses.id = $1::INTEGER
+2026-04-01 00:41:36,452 INFO sqlalchemy.engine.Engine [cached since 1676s ago] (1,)
+2026-04-01 00:41:36,452 INFO sqlalchemy.engine.Engine SELECT count(*) AS count_1 
+FROM user_courses 
+WHERE user_courses.course_id = $1::INTEGER
+2026-04-01 00:41:36,452 INFO sqlalchemy.engine.Engine [cached since 1676s ago] (1,)
+2026-04-01 00:41:36,453 INFO sqlalchemy.engine.Engine SELECT tasks.id, tasks.course_id, tasks.title, tasks.description, tasks.due_time, tasks.creator_id, tasks.status, tasks.upvotes, tasks.downvotes, tasks.is_reported, tasks.created_at, tasks.updated_at 
+FROM tasks 
+WHERE tasks.course_id = $1::INTEGER AND tasks.status != $2::taskstatus AND tasks.due_time > $3::TIMESTAMP WITHOUT TIME ZONE ORDER BY tasks.due_time 
+ LIMIT $4::INTEGER
+2026-04-01 00:41:36,453 INFO sqlalchemy.engine.Engine [cached since 1676s ago] (1, 'HIDDEN', datetime.datetime(2026, 3, 31, 16, 41, 36, 452988), 5)
+2026-04-01 00:41:36,454 INFO sqlalchemy.engine.Engine SELECT count(*) AS count_1 
+FROM tasks 
+WHERE tasks.course_id = $1::INTEGER
+2026-04-01 00:41:36,454 INFO sqlalchemy.engine.Engine [cached since 1676s ago] (1,)
+2026-04-01 00:41:36,454 INFO sqlalchemy.engine.Engine COMMIT
+2026-04-01 00:41:36,455 INFO sqlalchemy.engine.Engine SELECT user_courses.user_id, user_courses.course_id, user_courses.created_at 
+FROM user_courses 
+WHERE user_courses.user_id = $1::INTEGER AND user_courses.course_id = $2::INTEGER
+2026-04-01 00:41:36,455 INFO sqlalchemy.engine.Engine [cached since 1676s ago] (2, 1)
+INFO:     127.0.0.1:61952 - "GET /api/courses/1/tasks HTTP/1.1" 200 OK
+2026-04-01 00:41:36,456 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:62031 - "GET /api/courses/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62029 - "OPTIONS /api/tasks/my-deadlines?days=90 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61995 - "OPTIONS /api/courses/followed HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61995 - "OPTIONS /api/tasks/completed/list HTTP/1.1" 200 OK
+2026-04-01 00:41:37,332 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:41:37,332 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:41:37,332 INFO sqlalchemy.engine.Engine [cached since 1682s ago] (2,)
+2026-04-01 00:41:37,336 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:41:37,336 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:41:37,336 INFO sqlalchemy.engine.Engine [cached since 1682s ago] (2,)
+2026-04-01 00:41:37,338 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:41:37,339 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:41:37,339 INFO sqlalchemy.engine.Engine [cached since 1682s ago] (2,)
+2026-04-01 00:41:37,341 INFO sqlalchemy.engine.Engine SELECT tasks.id, tasks.course_id, tasks.title, tasks.description, tasks.due_time, tasks.creator_id, tasks.status, tasks.upvotes, tasks.downvotes, tasks.is_reported, tasks.created_at, tasks.updated_at, courses.name, courses.name_abbr 
+FROM tasks JOIN courses ON tasks.course_id = courses.id JOIN user_courses ON courses.id = user_courses.course_id 
+WHERE user_courses.user_id = $1::INTEGER AND tasks.status != $2::taskstatus AND tasks.due_time <= $3::TIMESTAMP WITHOUT TIME ZONE ORDER BY tasks.due_time
+2026-04-01 00:41:37,341 INFO sqlalchemy.engine.Engine [cached since 1681s ago] (2, 'HIDDEN', datetime.datetime(2026, 6, 29, 16, 41, 37, 339967))
+2026-04-01 00:41:37,346 INFO sqlalchemy.engine.Engine SELECT task_votes.user_id, task_votes.task_id, task_votes.vote_type, task_votes.created_at 
+FROM task_votes 
+WHERE task_votes.user_id = $1::INTEGER AND task_votes.task_id IN ($2::INTEGER, $3::INTEGER, $4::INTEGER, $5::INTEGER, $6::INTEGER, $7::INTEGER, $8::INTEGER, $9::INTEGER)
+2026-04-01 00:41:37,346 INFO sqlalchemy.engine.Engine [cached since 1681s ago] (2, 3, 5, 11, 8, 12, 9, 10, 1)
+2026-04-01 00:41:37,349 INFO sqlalchemy.engine.Engine COMMIT
+2026-04-01 00:41:37,349 INFO sqlalchemy.engine.Engine SELECT task_completions.task_id 
+FROM task_completions 
+WHERE task_completions.user_id = $1::INTEGER
+2026-04-01 00:41:37,350 INFO sqlalchemy.engine.Engine [cached since 1681s ago] (2,)
+2026-04-01 00:41:37,352 INFO sqlalchemy.engine.Engine SELECT courses.id, courses.course_code, courses.name, courses.name_abbr, courses.teacher, courses.semester, courses.class_number, courses.campus, courses.time_location, courses.description, courses.created_at, courses.updated_at, coalesce(anon_1.cnt, $1::INTEGER) AS followers_count 
+FROM courses JOIN user_courses ON courses.id = user_courses.course_id LEFT OUTER JOIN (SELECT user_courses.course_id AS course_id, count(*) AS cnt 
+FROM user_courses GROUP BY user_courses.course_id) AS anon_1 ON courses.id = anon_1.course_id 
+WHERE user_courses.user_id = $2::INTEGER ORDER BY courses.course_code
+2026-04-01 00:41:37,352 INFO sqlalchemy.engine.Engine [cached since 1681s ago] (0, 2)
+2026-04-01 00:41:37,352 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:62031 - "GET /api/tasks/my-deadlines?days=90 HTTP/1.1" 200 OK
+2026-04-01 00:41:37,353 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:62033 - "GET /api/tasks/completed/list HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61952 - "GET /api/courses/followed HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61995 - "OPTIONS /api/courses/semesters HTTP/1.1" 200 OK
+2026-04-01 00:41:38,713 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:41:38,714 INFO sqlalchemy.engine.Engine SELECT DISTINCT courses.semester 
+FROM courses ORDER BY courses.semester DESC
+2026-04-01 00:41:38,714 INFO sqlalchemy.engine.Engine [cached since 2669s ago] ()
+2026-04-01 00:41:38,715 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:61952 - "GET /api/courses/semesters HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61995 - "OPTIONS /api/courses?semester=2026-Spring HTTP/1.1" 200 OK
+2026-04-01 00:41:39,032 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:41:39,033 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:41:39,033 INFO sqlalchemy.engine.Engine [cached since 1684s ago] (2,)
+2026-04-01 00:41:39,038 INFO sqlalchemy.engine.Engine SELECT courses.id, courses.course_code, courses.name, courses.name_abbr, courses.teacher, courses.semester, courses.class_number, courses.campus, courses.time_location, courses.description, courses.created_at, courses.updated_at, coalesce(anon_1.cnt, $1::INTEGER) AS followers_count 
+FROM courses LEFT OUTER JOIN (SELECT user_courses.course_id AS course_id, count(*) AS cnt 
+FROM user_courses GROUP BY user_courses.course_id) AS anon_1 ON courses.id = anon_1.course_id 
+WHERE courses.semester = $2::VARCHAR ORDER BY coalesce(anon_1.cnt, $3::INTEGER) DESC, courses.course_code 
+ LIMIT $4::INTEGER OFFSET $5::INTEGER
+2026-04-01 00:41:39,038 INFO sqlalchemy.engine.Engine [cached since 1684s ago] (0, '2026-Spring', 0, 20, 0)
+2026-04-01 00:41:39,041 INFO sqlalchemy.engine.Engine SELECT user_courses.course_id 
+FROM user_courses 
+WHERE user_courses.user_id = $1::INTEGER
+2026-04-01 00:41:39,041 INFO sqlalchemy.engine.Engine [cached since 1684s ago] (2,)
+2026-04-01 00:41:39,043 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:61952 - "GET /api/courses?semester=2026-Spring HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61995 - "OPTIONS /api/courses/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62029 - "OPTIONS /api/courses/1/tasks HTTP/1.1" 200 OK
+2026-04-01 00:41:40,349 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:41:40,350 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:41:40,350 INFO sqlalchemy.engine.Engine [cached since 1685s ago] (2,)
+2026-04-01 00:41:40,350 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:41:40,351 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:41:40,354 INFO sqlalchemy.engine.Engine [cached since 1685s ago] (2,)
+2026-04-01 00:41:40,365 INFO sqlalchemy.engine.Engine SELECT courses.id, courses.course_code, courses.name, courses.name_abbr, courses.teacher, courses.semester, courses.class_number, courses.campus, courses.time_location, courses.description, courses.created_at, courses.updated_at 
+FROM courses 
+WHERE courses.id = $1::INTEGER
+2026-04-01 00:41:40,365 INFO sqlalchemy.engine.Engine [cached since 1680s ago] (1,)
+2026-04-01 00:41:40,367 INFO sqlalchemy.engine.Engine SELECT courses.id, courses.course_code, courses.name, courses.name_abbr, courses.teacher, courses.semester, courses.class_number, courses.campus, courses.time_location, courses.description, courses.created_at, courses.updated_at 
+FROM courses 
+WHERE courses.id = $1::INTEGER
+2026-04-01 00:41:40,367 INFO sqlalchemy.engine.Engine [cached since 1680s ago] (1,)
+2026-04-01 00:41:40,370 INFO sqlalchemy.engine.Engine SELECT tasks.id, tasks.course_id, tasks.title, tasks.description, tasks.due_time, tasks.creator_id, tasks.status, tasks.upvotes, tasks.downvotes, tasks.is_reported, tasks.created_at, tasks.updated_at 
+FROM tasks 
+WHERE tasks.course_id = $1::INTEGER AND tasks.status != $2::taskstatus AND tasks.due_time > $3::TIMESTAMP WITHOUT TIME ZONE ORDER BY tasks.due_time 
+ LIMIT $4::INTEGER
+2026-04-01 00:41:40,370 INFO sqlalchemy.engine.Engine [cached since 1680s ago] (1, 'HIDDEN', datetime.datetime(2026, 3, 31, 16, 41, 40, 369337), 5)
+2026-04-01 00:41:40,372 INFO sqlalchemy.engine.Engine SELECT count(*) AS count_1 
+FROM user_courses 
+WHERE user_courses.course_id = $1::INTEGER
+2026-04-01 00:41:40,372 INFO sqlalchemy.engine.Engine [cached since 1680s ago] (1,)
+2026-04-01 00:41:40,373 INFO sqlalchemy.engine.Engine COMMIT
+2026-04-01 00:41:40,375 INFO sqlalchemy.engine.Engine SELECT count(*) AS count_1 
+FROM tasks 
+WHERE tasks.course_id = $1::INTEGER
+2026-04-01 00:41:40,375 INFO sqlalchemy.engine.Engine [cached since 1680s ago] (1,)
+INFO:     127.0.0.1:62033 - "GET /api/courses/1/tasks HTTP/1.1" 200 OK
+2026-04-01 00:41:40,377 INFO sqlalchemy.engine.Engine SELECT user_courses.user_id, user_courses.course_id, user_courses.created_at 
+FROM user_courses 
+WHERE user_courses.user_id = $1::INTEGER AND user_courses.course_id = $2::INTEGER
+2026-04-01 00:41:40,378 INFO sqlalchemy.engine.Engine [cached since 1680s ago] (2, 1)
+2026-04-01 00:41:40,381 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:61952 - "GET /api/courses/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62029 - "OPTIONS /api/tasks/my-deadlines?days=90 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61995 - "OPTIONS /api/courses/followed HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61995 - "OPTIONS /api/tasks/completed/list HTTP/1.1" 200 OK
+2026-04-01 00:41:41,178 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:41:41,179 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:41:41,179 INFO sqlalchemy.engine.Engine [cached since 1686s ago] (2,)
+2026-04-01 00:41:41,180 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:41:41,181 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:41:41,181 INFO sqlalchemy.engine.Engine [cached since 1686s ago] (2,)
+2026-04-01 00:41:41,182 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:41:41,182 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:41:41,182 INFO sqlalchemy.engine.Engine [cached since 1686s ago] (2,)
+2026-04-01 00:41:41,183 INFO sqlalchemy.engine.Engine SELECT tasks.id, tasks.course_id, tasks.title, tasks.description, tasks.due_time, tasks.creator_id, tasks.status, tasks.upvotes, tasks.downvotes, tasks.is_reported, tasks.created_at, tasks.updated_at, courses.name, courses.name_abbr 
+FROM tasks JOIN courses ON tasks.course_id = courses.id JOIN user_courses ON courses.id = user_courses.course_id 
+WHERE user_courses.user_id = $1::INTEGER AND tasks.status != $2::taskstatus AND tasks.due_time <= $3::TIMESTAMP WITHOUT TIME ZONE ORDER BY tasks.due_time
+2026-04-01 00:41:41,183 INFO sqlalchemy.engine.Engine [cached since 1685s ago] (2, 'HIDDEN', datetime.datetime(2026, 6, 29, 16, 41, 41, 183011))
+2026-04-01 00:41:41,186 INFO sqlalchemy.engine.Engine SELECT task_votes.user_id, task_votes.task_id, task_votes.vote_type, task_votes.created_at 
+FROM task_votes 
+WHERE task_votes.user_id = $1::INTEGER AND task_votes.task_id IN ($2::INTEGER, $3::INTEGER, $4::INTEGER, $5::INTEGER, $6::INTEGER, $7::INTEGER, $8::INTEGER, $9::INTEGER)
+2026-04-01 00:41:41,186 INFO sqlalchemy.engine.Engine [cached since 1685s ago] (2, 3, 5, 11, 8, 12, 9, 10, 1)
+2026-04-01 00:41:41,188 INFO sqlalchemy.engine.Engine SELECT courses.id, courses.course_code, courses.name, courses.name_abbr, courses.teacher, courses.semester, courses.class_number, courses.campus, courses.time_location, courses.description, courses.created_at, courses.updated_at, coalesce(anon_1.cnt, $1::INTEGER) AS followers_count 
+FROM courses JOIN user_courses ON courses.id = user_courses.course_id LEFT OUTER JOIN (SELECT user_courses.course_id AS course_id, count(*) AS cnt 
+FROM user_courses GROUP BY user_courses.course_id) AS anon_1 ON courses.id = anon_1.course_id 
+WHERE user_courses.user_id = $2::INTEGER ORDER BY courses.course_code
+2026-04-01 00:41:41,188 INFO sqlalchemy.engine.Engine [cached since 1685s ago] (0, 2)
+2026-04-01 00:41:41,189 INFO sqlalchemy.engine.Engine COMMIT
+2026-04-01 00:41:41,190 INFO sqlalchemy.engine.Engine COMMIT
+2026-04-01 00:41:41,191 INFO sqlalchemy.engine.Engine SELECT task_completions.task_id 
+FROM task_completions 
+WHERE task_completions.user_id = $1::INTEGER
+2026-04-01 00:41:41,191 INFO sqlalchemy.engine.Engine [cached since 1685s ago] (2,)
+INFO:     127.0.0.1:61952 - "GET /api/tasks/my-deadlines?days=90 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62033 - "GET /api/courses/followed HTTP/1.1" 200 OK
+2026-04-01 00:41:41,193 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:62031 - "GET /api/tasks/completed/list HTTP/1.1" 200 OK
+2026-04-01 00:42:12,541 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:42:12,542 INFO sqlalchemy.engine.Engine SELECT DISTINCT courses.semester 
+FROM courses ORDER BY courses.semester DESC
+2026-04-01 00:42:12,542 INFO sqlalchemy.engine.Engine [cached since 2703s ago] ()
+2026-04-01 00:42:12,544 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     100.100.100.103:62339 - "GET /api/courses/semesters HTTP/1.1" 200 OK
+2026-04-01 00:42:12,916 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:42:12,916 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:42:12,916 INFO sqlalchemy.engine.Engine [cached since 1717s ago] (2,)
+2026-04-01 00:42:12,921 INFO sqlalchemy.engine.Engine SELECT courses.id, courses.course_code, courses.name, courses.name_abbr, courses.teacher, courses.semester, courses.class_number, courses.campus, courses.time_location, courses.description, courses.created_at, courses.updated_at, coalesce(anon_1.cnt, $1::INTEGER) AS followers_count 
+FROM courses LEFT OUTER JOIN (SELECT user_courses.course_id AS course_id, count(*) AS cnt 
+FROM user_courses GROUP BY user_courses.course_id) AS anon_1 ON courses.id = anon_1.course_id 
+WHERE courses.semester = $2::VARCHAR ORDER BY coalesce(anon_1.cnt, $3::INTEGER) DESC, courses.course_code 
+ LIMIT $4::INTEGER OFFSET $5::INTEGER
+2026-04-01 00:42:12,921 INFO sqlalchemy.engine.Engine [cached since 1717s ago] (0, '2026-Spring', 0, 20, 0)
+2026-04-01 00:42:12,923 INFO sqlalchemy.engine.Engine SELECT user_courses.course_id 
+FROM user_courses 
+WHERE user_courses.user_id = $1::INTEGER
+2026-04-01 00:42:12,923 INFO sqlalchemy.engine.Engine [cached since 1717s ago] (2,)
+2026-04-01 00:42:12,923 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     100.100.100.103:62339 - "GET /api/courses?semester=2026-Spring HTTP/1.1" 200 OK
+2026-04-01 00:42:13,630 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:42:13,630 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:42:13,630 INFO sqlalchemy.engine.Engine [cached since 1718s ago] (2,)
+2026-04-01 00:42:13,634 INFO sqlalchemy.engine.Engine SELECT courses.id, courses.course_code, courses.name, courses.name_abbr, courses.teacher, courses.semester, courses.class_number, courses.campus, courses.time_location, courses.description, courses.created_at, courses.updated_at 
+FROM courses 
+WHERE courses.id = $1::INTEGER
+2026-04-01 00:42:13,634 INFO sqlalchemy.engine.Engine [cached since 1713s ago] (1,)
+2026-04-01 00:42:13,636 INFO sqlalchemy.engine.Engine SELECT count(*) AS count_1 
+FROM user_courses 
+WHERE user_courses.course_id = $1::INTEGER
+2026-04-01 00:42:13,636 INFO sqlalchemy.engine.Engine [cached since 1713s ago] (1,)
+2026-04-01 00:42:13,637 INFO sqlalchemy.engine.Engine SELECT count(*) AS count_1 
+FROM tasks 
+WHERE tasks.course_id = $1::INTEGER
+2026-04-01 00:42:13,637 INFO sqlalchemy.engine.Engine [cached since 1713s ago] (1,)
+2026-04-01 00:42:13,639 INFO sqlalchemy.engine.Engine SELECT user_courses.user_id, user_courses.course_id, user_courses.created_at 
+FROM user_courses 
+WHERE user_courses.user_id = $1::INTEGER AND user_courses.course_id = $2::INTEGER
+2026-04-01 00:42:13,639 INFO sqlalchemy.engine.Engine [cached since 1713s ago] (2, 1)
+2026-04-01 00:42:13,641 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     100.100.100.103:62339 - "GET /api/courses/1 HTTP/1.1" 200 OK
+2026-04-01 00:42:13,863 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:42:13,863 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:42:13,864 INFO sqlalchemy.engine.Engine [cached since 1718s ago] (2,)
+2026-04-01 00:42:13,867 INFO sqlalchemy.engine.Engine SELECT courses.id, courses.course_code, courses.name, courses.name_abbr, courses.teacher, courses.semester, courses.class_number, courses.campus, courses.time_location, courses.description, courses.created_at, courses.updated_at 
+FROM courses 
+WHERE courses.id = $1::INTEGER
+2026-04-01 00:42:13,868 INFO sqlalchemy.engine.Engine [cached since 1714s ago] (1,)
+2026-04-01 00:42:13,869 INFO sqlalchemy.engine.Engine SELECT tasks.id, tasks.course_id, tasks.title, tasks.description, tasks.due_time, tasks.creator_id, tasks.status, tasks.upvotes, tasks.downvotes, tasks.is_reported, tasks.created_at, tasks.updated_at 
+FROM tasks 
+WHERE tasks.course_id = $1::INTEGER AND tasks.status != $2::taskstatus AND tasks.due_time > $3::TIMESTAMP WITHOUT TIME ZONE ORDER BY tasks.due_time 
+ LIMIT $4::INTEGER
+2026-04-01 00:42:13,869 INFO sqlalchemy.engine.Engine [cached since 1714s ago] (1, 'HIDDEN', datetime.datetime(2026, 3, 31, 16, 42, 13, 869144), 5)
+2026-04-01 00:42:13,871 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     100.100.100.103:62350 - "GET /api/courses/1/tasks HTTP/1.1" 200 OK
+2026-04-01 00:42:15,398 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:42:15,399 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:42:15,399 INFO sqlalchemy.engine.Engine [cached since 1720s ago] (2,)
+2026-04-01 00:42:15,399 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:42:15,399 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:42:15,399 INFO sqlalchemy.engine.Engine [cached since 1720s ago] (2,)
+2026-04-01 00:42:15,404 INFO sqlalchemy.engine.Engine SELECT tasks.id, tasks.course_id, tasks.title, tasks.description, tasks.due_time, tasks.creator_id, tasks.status, tasks.upvotes, tasks.downvotes, tasks.is_reported, tasks.created_at, tasks.updated_at, courses.name, courses.name_abbr 
+FROM tasks JOIN courses ON tasks.course_id = courses.id JOIN user_courses ON courses.id = user_courses.course_id 
+WHERE user_courses.user_id = $1::INTEGER AND tasks.status != $2::taskstatus AND tasks.due_time <= $3::TIMESTAMP WITHOUT TIME ZONE ORDER BY tasks.due_time
+2026-04-01 00:42:15,404 INFO sqlalchemy.engine.Engine [cached since 1719s ago] (2, 'HIDDEN', datetime.datetime(2026, 6, 29, 16, 42, 15, 403477))
+2026-04-01 00:42:15,406 INFO sqlalchemy.engine.Engine SELECT courses.id, courses.course_code, courses.name, courses.name_abbr, courses.teacher, courses.semester, courses.class_number, courses.campus, courses.time_location, courses.description, courses.created_at, courses.updated_at, coalesce(anon_1.cnt, $1::INTEGER) AS followers_count 
+FROM courses JOIN user_courses ON courses.id = user_courses.course_id LEFT OUTER JOIN (SELECT user_courses.course_id AS course_id, count(*) AS cnt 
+FROM user_courses GROUP BY user_courses.course_id) AS anon_1 ON courses.id = anon_1.course_id 
+WHERE user_courses.user_id = $2::INTEGER ORDER BY courses.course_code
+2026-04-01 00:42:15,406 INFO sqlalchemy.engine.Engine [cached since 1719s ago] (0, 2)
+2026-04-01 00:42:15,408 INFO sqlalchemy.engine.Engine COMMIT
+2026-04-01 00:42:15,409 INFO sqlalchemy.engine.Engine SELECT task_votes.user_id, task_votes.task_id, task_votes.vote_type, task_votes.created_at 
+FROM task_votes 
+WHERE task_votes.user_id = $1::INTEGER AND task_votes.task_id IN ($2::INTEGER, $3::INTEGER, $4::INTEGER, $5::INTEGER, $6::INTEGER, $7::INTEGER, $8::INTEGER, $9::INTEGER)
+2026-04-01 00:42:15,409 INFO sqlalchemy.engine.Engine [cached since 1719s ago] (2, 3, 5, 11, 8, 12, 9, 10, 1)
+INFO:     100.100.100.103:62350 - "GET /api/courses/followed HTTP/1.1" 200 OK
+2026-04-01 00:42:15,411 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     100.100.100.103:62339 - "GET /api/tasks/my-deadlines?days=90 HTTP/1.1" 200 OK
+2026-04-01 00:42:15,431 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:42:15,431 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:42:15,432 INFO sqlalchemy.engine.Engine [cached since 1720s ago] (2,)
+2026-04-01 00:42:15,436 INFO sqlalchemy.engine.Engine SELECT task_completions.task_id 
+FROM task_completions 
+WHERE task_completions.user_id = $1::INTEGER
+2026-04-01 00:42:15,436 INFO sqlalchemy.engine.Engine [cached since 1719s ago] (2,)
+2026-04-01 00:42:15,437 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     100.100.100.103:62368 - "GET /api/tasks/completed/list HTTP/1.1" 200 OK
+2026-04-01 00:42:27,860 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:42:27,861 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:42:27,861 INFO sqlalchemy.engine.Engine [cached since 1732s ago] (2,)
+2026-04-01 00:42:27,863 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     100.100.100.103:62447 - "GET /api/auth/me HTTP/1.1" 200 OK
+2026-04-01 00:42:28,196 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:42:28,197 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:42:28,197 INFO sqlalchemy.engine.Engine [cached since 1733s ago] (2,)
+2026-04-01 00:42:28,202 INFO sqlalchemy.engine.Engine SELECT tasks.id, tasks.course_id, tasks.title, tasks.description, tasks.due_time, tasks.creator_id, tasks.status, tasks.upvotes, tasks.downvotes, tasks.is_reported, tasks.created_at, tasks.updated_at, courses.name, courses.name_abbr 
+FROM tasks JOIN courses ON tasks.course_id = courses.id JOIN user_courses ON courses.id = user_courses.course_id 
+WHERE user_courses.user_id = $1::INTEGER AND tasks.status != $2::taskstatus AND tasks.due_time <= $3::TIMESTAMP WITHOUT TIME ZONE ORDER BY tasks.due_time
+2026-04-01 00:42:28,202 INFO sqlalchemy.engine.Engine [cached since 1732s ago] (2, 'HIDDEN', datetime.datetime(2026, 6, 29, 16, 42, 28, 201299))
+2026-04-01 00:42:28,205 INFO sqlalchemy.engine.Engine SELECT task_votes.user_id, task_votes.task_id, task_votes.vote_type, task_votes.created_at 
+FROM task_votes 
+WHERE task_votes.user_id = $1::INTEGER AND task_votes.task_id IN ($2::INTEGER, $3::INTEGER, $4::INTEGER, $5::INTEGER, $6::INTEGER, $7::INTEGER, $8::INTEGER, $9::INTEGER)
+2026-04-01 00:42:28,205 INFO sqlalchemy.engine.Engine [cached since 1732s ago] (2, 3, 5, 11, 8, 12, 9, 10, 1)
+2026-04-01 00:42:28,208 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     100.100.100.103:62447 - "GET /api/tasks/my-deadlines?days=90 HTTP/1.1" 200 OK
+2026-04-01 00:42:28,231 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:42:28,231 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:42:28,231 INFO sqlalchemy.engine.Engine [cached since 1733s ago] (2,)
+2026-04-01 00:42:28,231 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:42:28,232 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:42:28,232 INFO sqlalchemy.engine.Engine [cached since 1733s ago] (2,)
+2026-04-01 00:42:28,234 INFO sqlalchemy.engine.Engine SELECT courses.id, courses.course_code, courses.name, courses.name_abbr, courses.teacher, courses.semester, courses.class_number, courses.campus, courses.time_location, courses.description, courses.created_at, courses.updated_at, coalesce(anon_1.cnt, $1::INTEGER) AS followers_count 
+FROM courses JOIN user_courses ON courses.id = user_courses.course_id LEFT OUTER JOIN (SELECT user_courses.course_id AS course_id, count(*) AS cnt 
+FROM user_courses GROUP BY user_courses.course_id) AS anon_1 ON courses.id = anon_1.course_id 
+WHERE user_courses.user_id = $2::INTEGER ORDER BY courses.course_code
+2026-04-01 00:42:28,234 INFO sqlalchemy.engine.Engine [cached since 1732s ago] (0, 2)
+2026-04-01 00:42:28,234 INFO sqlalchemy.engine.Engine SELECT task_completions.task_id 
+FROM task_completions 
+WHERE task_completions.user_id = $1::INTEGER
+2026-04-01 00:42:28,234 INFO sqlalchemy.engine.Engine [cached since 1732s ago] (2,)
+2026-04-01 00:42:28,235 INFO sqlalchemy.engine.Engine COMMIT
+2026-04-01 00:42:28,236 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     100.100.100.103:62449 - "GET /api/tasks/completed/list HTTP/1.1" 200 OK
+INFO:     100.100.100.103:62448 - "GET /api/courses/followed HTTP/1.1" 200 OK
+2026-04-01 00:42:30,698 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:42:30,699 INFO sqlalchemy.engine.Engine SELECT DISTINCT courses.semester 
+FROM courses ORDER BY courses.semester DESC
+2026-04-01 00:42:30,699 INFO sqlalchemy.engine.Engine [cached since 2721s ago] ()
+2026-04-01 00:42:30,701 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     100.100.100.103:62447 - "GET /api/courses/semesters HTTP/1.1" 200 OK
+2026-04-01 00:42:31,082 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:42:31,083 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:42:31,083 INFO sqlalchemy.engine.Engine [cached since 1736s ago] (2,)
+2026-04-01 00:42:31,089 INFO sqlalchemy.engine.Engine SELECT courses.id, courses.course_code, courses.name, courses.name_abbr, courses.teacher, courses.semester, courses.class_number, courses.campus, courses.time_location, courses.description, courses.created_at, courses.updated_at, coalesce(anon_1.cnt, $1::INTEGER) AS followers_count 
+FROM courses LEFT OUTER JOIN (SELECT user_courses.course_id AS course_id, count(*) AS cnt 
+FROM user_courses GROUP BY user_courses.course_id) AS anon_1 ON courses.id = anon_1.course_id 
+WHERE courses.semester = $2::VARCHAR ORDER BY coalesce(anon_1.cnt, $3::INTEGER) DESC, courses.course_code 
+ LIMIT $4::INTEGER OFFSET $5::INTEGER
+2026-04-01 00:42:31,089 INFO sqlalchemy.engine.Engine [cached since 1736s ago] (0, '2026-Spring', 0, 20, 0)
+2026-04-01 00:42:31,091 INFO sqlalchemy.engine.Engine SELECT user_courses.course_id 
+FROM user_courses 
+WHERE user_courses.user_id = $1::INTEGER
+2026-04-01 00:42:31,091 INFO sqlalchemy.engine.Engine [cached since 1736s ago] (2,)
+2026-04-01 00:42:31,092 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     100.100.100.103:62447 - "GET /api/courses?semester=2026-Spring HTTP/1.1" 200 OK
+2026-04-01 00:42:31,867 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:42:31,867 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:42:31,867 INFO sqlalchemy.engine.Engine [cached since 1736s ago] (2,)
+2026-04-01 00:42:31,868 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:42:31,868 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:42:31,868 INFO sqlalchemy.engine.Engine [cached since 1736s ago] (2,)
+2026-04-01 00:42:31,871 INFO sqlalchemy.engine.Engine SELECT courses.id, courses.course_code, courses.name, courses.name_abbr, courses.teacher, courses.semester, courses.class_number, courses.campus, courses.time_location, courses.description, courses.created_at, courses.updated_at 
+FROM courses 
+WHERE courses.id = $1::INTEGER
+2026-04-01 00:42:31,871 INFO sqlalchemy.engine.Engine [cached since 1732s ago] (2,)
+2026-04-01 00:42:31,871 INFO sqlalchemy.engine.Engine SELECT courses.id, courses.course_code, courses.name, courses.name_abbr, courses.teacher, courses.semester, courses.class_number, courses.campus, courses.time_location, courses.description, courses.created_at, courses.updated_at 
+FROM courses 
+WHERE courses.id = $1::INTEGER
+2026-04-01 00:42:31,871 INFO sqlalchemy.engine.Engine [cached since 1732s ago] (2,)
+2026-04-01 00:42:31,873 INFO sqlalchemy.engine.Engine SELECT tasks.id, tasks.course_id, tasks.title, tasks.description, tasks.due_time, tasks.creator_id, tasks.status, tasks.upvotes, tasks.downvotes, tasks.is_reported, tasks.created_at, tasks.updated_at 
+FROM tasks 
+WHERE tasks.course_id = $1::INTEGER AND tasks.status != $2::taskstatus AND tasks.due_time > $3::TIMESTAMP WITHOUT TIME ZONE ORDER BY tasks.due_time 
+ LIMIT $4::INTEGER
+2026-04-01 00:42:31,873 INFO sqlalchemy.engine.Engine [cached since 1732s ago] (2, 'HIDDEN', datetime.datetime(2026, 3, 31, 16, 42, 31, 873192), 5)
+2026-04-01 00:42:31,874 INFO sqlalchemy.engine.Engine SELECT count(*) AS count_1 
+FROM user_courses 
+WHERE user_courses.course_id = $1::INTEGER
+2026-04-01 00:42:31,874 INFO sqlalchemy.engine.Engine [cached since 1732s ago] (2,)
+2026-04-01 00:42:31,875 INFO sqlalchemy.engine.Engine SELECT count(*) AS count_1 
+FROM tasks 
+WHERE tasks.course_id = $1::INTEGER
+2026-04-01 00:42:31,875 INFO sqlalchemy.engine.Engine [cached since 1732s ago] (2,)
+2026-04-01 00:42:31,875 INFO sqlalchemy.engine.Engine COMMIT
+2026-04-01 00:42:31,876 INFO sqlalchemy.engine.Engine SELECT user_courses.user_id, user_courses.course_id, user_courses.created_at 
+FROM user_courses 
+WHERE user_courses.user_id = $1::INTEGER AND user_courses.course_id = $2::INTEGER
+2026-04-01 00:42:31,876 INFO sqlalchemy.engine.Engine [cached since 1732s ago] (2, 2)
+INFO:     100.100.100.103:62447 - "GET /api/courses/2/tasks HTTP/1.1" 200 OK
+2026-04-01 00:42:31,877 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     100.100.100.103:62448 - "GET /api/courses/2 HTTP/1.1" 200 OK
+2026-04-01 00:42:33,651 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:42:33,651 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:42:33,651 INFO sqlalchemy.engine.Engine [cached since 1738s ago] (2,)
+2026-04-01 00:42:33,651 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:42:33,652 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:42:33,652 INFO sqlalchemy.engine.Engine [cached since 1738s ago] (2,)
+2026-04-01 00:42:33,655 INFO sqlalchemy.engine.Engine SELECT task_completions.task_id 
+FROM task_completions 
+WHERE task_completions.user_id = $1::INTEGER
+2026-04-01 00:42:33,655 INFO sqlalchemy.engine.Engine [cached since 1737s ago] (2,)
+2026-04-01 00:42:33,656 INFO sqlalchemy.engine.Engine SELECT tasks.id, tasks.course_id, tasks.title, tasks.description, tasks.due_time, tasks.creator_id, tasks.status, tasks.upvotes, tasks.downvotes, tasks.is_reported, tasks.created_at, tasks.updated_at, courses.name, courses.name_abbr 
+FROM tasks JOIN courses ON tasks.course_id = courses.id JOIN user_courses ON courses.id = user_courses.course_id 
+WHERE user_courses.user_id = $1::INTEGER AND tasks.status != $2::taskstatus AND tasks.due_time <= $3::TIMESTAMP WITHOUT TIME ZONE ORDER BY tasks.due_time
+2026-04-01 00:42:33,656 INFO sqlalchemy.engine.Engine [cached since 1737s ago] (2, 'HIDDEN', datetime.datetime(2026, 6, 29, 16, 42, 33, 655730))
+2026-04-01 00:42:33,657 INFO sqlalchemy.engine.Engine COMMIT
+2026-04-01 00:42:33,659 INFO sqlalchemy.engine.Engine SELECT task_votes.user_id, task_votes.task_id, task_votes.vote_type, task_votes.created_at 
+FROM task_votes 
+WHERE task_votes.user_id = $1::INTEGER AND task_votes.task_id IN ($2::INTEGER, $3::INTEGER, $4::INTEGER, $5::INTEGER, $6::INTEGER, $7::INTEGER, $8::INTEGER, $9::INTEGER)
+2026-04-01 00:42:33,659 INFO sqlalchemy.engine.Engine [cached since 1737s ago] (2, 3, 5, 11, 8, 12, 9, 10, 1)
+INFO:     100.100.100.103:62447 - "GET /api/tasks/completed/list HTTP/1.1" 200 OK
+2026-04-01 00:42:33,660 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     100.100.100.103:62448 - "GET /api/tasks/my-deadlines?days=90 HTTP/1.1" 200 OK
+2026-04-01 00:42:33,888 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:42:33,888 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:42:33,888 INFO sqlalchemy.engine.Engine [cached since 1738s ago] (2,)
+2026-04-01 00:42:33,891 INFO sqlalchemy.engine.Engine SELECT courses.id, courses.course_code, courses.name, courses.name_abbr, courses.teacher, courses.semester, courses.class_number, courses.campus, courses.time_location, courses.description, courses.created_at, courses.updated_at, coalesce(anon_1.cnt, $1::INTEGER) AS followers_count 
+FROM courses JOIN user_courses ON courses.id = user_courses.course_id LEFT OUTER JOIN (SELECT user_courses.course_id AS course_id, count(*) AS cnt 
+FROM user_courses GROUP BY user_courses.course_id) AS anon_1 ON courses.id = anon_1.course_id 
+WHERE user_courses.user_id = $2::INTEGER ORDER BY courses.course_code
+2026-04-01 00:42:33,891 INFO sqlalchemy.engine.Engine [cached since 1737s ago] (0, 2)
+2026-04-01 00:42:33,892 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     100.100.100.103:62493 - "GET /api/courses/followed HTTP/1.1" 200 OK
+2026-04-01 00:42:34,837 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:42:34,837 INFO sqlalchemy.engine.Engine SELECT DISTINCT courses.semester 
+FROM courses ORDER BY courses.semester DESC
+2026-04-01 00:42:34,837 INFO sqlalchemy.engine.Engine [cached since 2726s ago] ()
+2026-04-01 00:42:34,839 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     100.100.100.103:62447 - "GET /api/courses/semesters HTTP/1.1" 200 OK
+2026-04-01 00:42:35,213 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:42:35,213 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:42:35,213 INFO sqlalchemy.engine.Engine [cached since 1740s ago] (2,)
+2026-04-01 00:42:35,219 INFO sqlalchemy.engine.Engine SELECT courses.id, courses.course_code, courses.name, courses.name_abbr, courses.teacher, courses.semester, courses.class_number, courses.campus, courses.time_location, courses.description, courses.created_at, courses.updated_at, coalesce(anon_1.cnt, $1::INTEGER) AS followers_count 
+FROM courses LEFT OUTER JOIN (SELECT user_courses.course_id AS course_id, count(*) AS cnt 
+FROM user_courses GROUP BY user_courses.course_id) AS anon_1 ON courses.id = anon_1.course_id 
+WHERE courses.semester = $2::VARCHAR ORDER BY coalesce(anon_1.cnt, $3::INTEGER) DESC, courses.course_code 
+ LIMIT $4::INTEGER OFFSET $5::INTEGER
+2026-04-01 00:42:35,219 INFO sqlalchemy.engine.Engine [cached since 1740s ago] (0, '2026-Spring', 0, 20, 0)
+2026-04-01 00:42:35,221 INFO sqlalchemy.engine.Engine SELECT user_courses.course_id 
+FROM user_courses 
+WHERE user_courses.user_id = $1::INTEGER
+2026-04-01 00:42:35,221 INFO sqlalchemy.engine.Engine [cached since 1740s ago] (2,)
+2026-04-01 00:42:35,222 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     100.100.100.103:62447 - "GET /api/courses?semester=2026-Spring HTTP/1.1" 200 OK
+2026-04-01 00:42:35,952 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:42:35,953 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:42:35,953 INFO sqlalchemy.engine.Engine [cached since 1740s ago] (2,)
+2026-04-01 00:42:35,953 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:42:35,953 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:42:35,953 INFO sqlalchemy.engine.Engine [cached since 1740s ago] (2,)
+2026-04-01 00:42:35,956 INFO sqlalchemy.engine.Engine SELECT courses.id, courses.course_code, courses.name, courses.name_abbr, courses.teacher, courses.semester, courses.class_number, courses.campus, courses.time_location, courses.description, courses.created_at, courses.updated_at 
+FROM courses 
+WHERE courses.id = $1::INTEGER
+2026-04-01 00:42:35,956 INFO sqlalchemy.engine.Engine [cached since 1736s ago] (2,)
+2026-04-01 00:42:35,956 INFO sqlalchemy.engine.Engine SELECT courses.id, courses.course_code, courses.name, courses.name_abbr, courses.teacher, courses.semester, courses.class_number, courses.campus, courses.time_location, courses.description, courses.created_at, courses.updated_at 
+FROM courses 
+WHERE courses.id = $1::INTEGER
+2026-04-01 00:42:35,956 INFO sqlalchemy.engine.Engine [cached since 1736s ago] (2,)
+2026-04-01 00:42:35,958 INFO sqlalchemy.engine.Engine SELECT tasks.id, tasks.course_id, tasks.title, tasks.description, tasks.due_time, tasks.creator_id, tasks.status, tasks.upvotes, tasks.downvotes, tasks.is_reported, tasks.created_at, tasks.updated_at 
+FROM tasks 
+WHERE tasks.course_id = $1::INTEGER AND tasks.status != $2::taskstatus AND tasks.due_time > $3::TIMESTAMP WITHOUT TIME ZONE ORDER BY tasks.due_time 
+ LIMIT $4::INTEGER
+2026-04-01 00:42:35,958 INFO sqlalchemy.engine.Engine [cached since 1736s ago] (2, 'HIDDEN', datetime.datetime(2026, 3, 31, 16, 42, 35, 957994), 5)
+2026-04-01 00:42:35,959 INFO sqlalchemy.engine.Engine SELECT count(*) AS count_1 
+FROM user_courses 
+WHERE user_courses.course_id = $1::INTEGER
+2026-04-01 00:42:35,959 INFO sqlalchemy.engine.Engine [cached since 1736s ago] (2,)
+2026-04-01 00:42:35,960 INFO sqlalchemy.engine.Engine COMMIT
+2026-04-01 00:42:35,960 INFO sqlalchemy.engine.Engine SELECT count(*) AS count_1 
+FROM tasks 
+WHERE tasks.course_id = $1::INTEGER
+2026-04-01 00:42:35,960 INFO sqlalchemy.engine.Engine [cached since 1736s ago] (2,)
+INFO:     100.100.100.103:62447 - "GET /api/courses/2/tasks HTTP/1.1" 200 OK
+2026-04-01 00:42:35,961 INFO sqlalchemy.engine.Engine SELECT user_courses.user_id, user_courses.course_id, user_courses.created_at 
+FROM user_courses 
+WHERE user_courses.user_id = $1::INTEGER AND user_courses.course_id = $2::INTEGER
+2026-04-01 00:42:35,961 INFO sqlalchemy.engine.Engine [cached since 1736s ago] (2, 2)
+2026-04-01 00:42:35,963 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     100.100.100.103:62448 - "GET /api/courses/2 HTTP/1.1" 200 OK
+2026-04-01 00:42:37,284 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:42:37,284 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:42:37,284 INFO sqlalchemy.engine.Engine [cached since 1742s ago] (2,)
+2026-04-01 00:42:37,285 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:42:37,285 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:42:37,285 INFO sqlalchemy.engine.Engine [cached since 1742s ago] (2,)
+2026-04-01 00:42:37,285 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:42:37,285 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:42:37,285 INFO sqlalchemy.engine.Engine [cached since 1742s ago] (2,)
+2026-04-01 00:42:37,289 INFO sqlalchemy.engine.Engine SELECT task_completions.task_id 
+FROM task_completions 
+WHERE task_completions.user_id = $1::INTEGER
+2026-04-01 00:42:37,290 INFO sqlalchemy.engine.Engine [cached since 1741s ago] (2,)
+2026-04-01 00:42:37,291 INFO sqlalchemy.engine.Engine SELECT tasks.id, tasks.course_id, tasks.title, tasks.description, tasks.due_time, tasks.creator_id, tasks.status, tasks.upvotes, tasks.downvotes, tasks.is_reported, tasks.created_at, tasks.updated_at, courses.name, courses.name_abbr 
+FROM tasks JOIN courses ON tasks.course_id = courses.id JOIN user_courses ON courses.id = user_courses.course_id 
+WHERE user_courses.user_id = $1::INTEGER AND tasks.status != $2::taskstatus AND tasks.due_time <= $3::TIMESTAMP WITHOUT TIME ZONE ORDER BY tasks.due_time
+2026-04-01 00:42:37,291 INFO sqlalchemy.engine.Engine [cached since 1741s ago] (2, 'HIDDEN', datetime.datetime(2026, 6, 29, 16, 42, 37, 290404))
+2026-04-01 00:42:37,293 INFO sqlalchemy.engine.Engine SELECT courses.id, courses.course_code, courses.name, courses.name_abbr, courses.teacher, courses.semester, courses.class_number, courses.campus, courses.time_location, courses.description, courses.created_at, courses.updated_at, coalesce(anon_1.cnt, $1::INTEGER) AS followers_count 
+FROM courses JOIN user_courses ON courses.id = user_courses.course_id LEFT OUTER JOIN (SELECT user_courses.course_id AS course_id, count(*) AS cnt 
+FROM user_courses GROUP BY user_courses.course_id) AS anon_1 ON courses.id = anon_1.course_id 
+WHERE user_courses.user_id = $2::INTEGER ORDER BY courses.course_code
+2026-04-01 00:42:37,293 INFO sqlalchemy.engine.Engine [cached since 1741s ago] (0, 2)
+2026-04-01 00:42:37,294 INFO sqlalchemy.engine.Engine COMMIT
+2026-04-01 00:42:37,295 INFO sqlalchemy.engine.Engine COMMIT
+2026-04-01 00:42:37,296 INFO sqlalchemy.engine.Engine SELECT task_votes.user_id, task_votes.task_id, task_votes.vote_type, task_votes.created_at 
+FROM task_votes 
+WHERE task_votes.user_id = $1::INTEGER AND task_votes.task_id IN ($2::INTEGER, $3::INTEGER, $4::INTEGER, $5::INTEGER, $6::INTEGER, $7::INTEGER, $8::INTEGER, $9::INTEGER)
+2026-04-01 00:42:37,296 INFO sqlalchemy.engine.Engine [cached since 1741s ago] (2, 3, 5, 11, 8, 12, 9, 10, 1)
+INFO:     100.100.100.103:62493 - "GET /api/tasks/completed/list HTTP/1.1" 200 OK
+2026-04-01 00:42:37,297 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     100.100.100.103:62448 - "GET /api/courses/followed HTTP/1.1" 200 OK
+INFO:     100.100.100.103:62447 - "GET /api/tasks/my-deadlines?days=90 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63291 - "OPTIONS /api/tasks/my-deadlines?days=90 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63291 - "OPTIONS /api/courses/followed HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63293 - "OPTIONS /api/tasks/completed/list HTTP/1.1" 200 OK
+2026-04-01 00:44:34,845 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:44:34,845 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:44:34,845 INFO sqlalchemy.engine.Engine [cached since 1859s ago] (2,)
+2026-04-01 00:44:34,846 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:44:34,846 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:44:34,846 INFO sqlalchemy.engine.Engine [cached since 1859s ago] (2,)
+2026-04-01 00:44:34,848 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:44:34,848 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:44:34,848 INFO sqlalchemy.engine.Engine [cached since 1859s ago] (2,)
+2026-04-01 00:44:34,851 INFO sqlalchemy.engine.Engine SELECT tasks.id, tasks.course_id, tasks.title, tasks.description, tasks.due_time, tasks.creator_id, tasks.status, tasks.upvotes, tasks.downvotes, tasks.is_reported, tasks.created_at, tasks.updated_at, courses.name, courses.name_abbr 
+FROM tasks JOIN courses ON tasks.course_id = courses.id JOIN user_courses ON courses.id = user_courses.course_id 
+WHERE user_courses.user_id = $1::INTEGER AND tasks.status != $2::taskstatus AND tasks.due_time <= $3::TIMESTAMP WITHOUT TIME ZONE ORDER BY tasks.due_time
+2026-04-01 00:44:34,851 INFO sqlalchemy.engine.Engine [cached since 1858s ago] (2, 'HIDDEN', datetime.datetime(2026, 6, 29, 16, 44, 34, 850537))
+2026-04-01 00:44:34,852 INFO sqlalchemy.engine.Engine SELECT courses.id, courses.course_code, courses.name, courses.name_abbr, courses.teacher, courses.semester, courses.class_number, courses.campus, courses.time_location, courses.description, courses.created_at, courses.updated_at, coalesce(anon_1.cnt, $1::INTEGER) AS followers_count 
+FROM courses JOIN user_courses ON courses.id = user_courses.course_id LEFT OUTER JOIN (SELECT user_courses.course_id AS course_id, count(*) AS cnt 
+FROM user_courses GROUP BY user_courses.course_id) AS anon_1 ON courses.id = anon_1.course_id 
+WHERE user_courses.user_id = $2::INTEGER ORDER BY courses.course_code
+2026-04-01 00:44:34,852 INFO sqlalchemy.engine.Engine [cached since 1858s ago] (0, 2)
+2026-04-01 00:44:34,852 INFO sqlalchemy.engine.Engine SELECT task_completions.task_id 
+FROM task_completions 
+WHERE task_completions.user_id = $1::INTEGER
+2026-04-01 00:44:34,852 INFO sqlalchemy.engine.Engine [cached since 1858s ago] (2,)
+2026-04-01 00:44:34,853 INFO sqlalchemy.engine.Engine SELECT task_votes.user_id, task_votes.task_id, task_votes.vote_type, task_votes.created_at 
+FROM task_votes 
+WHERE task_votes.user_id = $1::INTEGER AND task_votes.task_id IN ($2::INTEGER, $3::INTEGER, $4::INTEGER, $5::INTEGER, $6::INTEGER, $7::INTEGER, $8::INTEGER, $9::INTEGER)
+2026-04-01 00:44:34,854 INFO sqlalchemy.engine.Engine [cached since 1858s ago] (2, 3, 5, 11, 8, 12, 9, 10, 1)
+2026-04-01 00:44:34,855 INFO sqlalchemy.engine.Engine COMMIT
+2026-04-01 00:44:34,855 INFO sqlalchemy.engine.Engine COMMIT
+2026-04-01 00:44:34,855 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:63297 - "GET /api/courses/followed HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63299 - "GET /api/tasks/completed/list HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63295 - "GET /api/tasks/my-deadlines?days=90 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63819 - "OPTIONS /api/auth/login HTTP/1.1" 200 OK
+2026-04-01 00:45:58,286 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:45:58,291 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.email = $1::VARCHAR
+2026-04-01 00:45:58,292 INFO sqlalchemy.engine.Engine [generated in 0.00028s] ('ximingzheng@smail.nju.edu.cn',)
+2026-04-01 00:45:58,492 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:63821 - "POST /api/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63819 - "OPTIONS /api/tasks/my-deadlines?days=90 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63830 - "OPTIONS /api/courses/followed HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63831 - "OPTIONS /api/tasks/completed/list HTTP/1.1" 200 OK
+2026-04-01 00:45:58,542 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:45:58,542 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:45:58,542 INFO sqlalchemy.engine.Engine [cached since 1943s ago] (2,)
+2026-04-01 00:45:58,542 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:45:58,542 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:45:58,542 INFO sqlalchemy.engine.Engine [cached since 1943s ago] (2,)
+2026-04-01 00:45:58,544 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:45:58,544 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:45:58,544 INFO sqlalchemy.engine.Engine [cached since 1943s ago] (2,)
+2026-04-01 00:45:58,544 INFO sqlalchemy.engine.Engine SELECT courses.id, courses.course_code, courses.name, courses.name_abbr, courses.teacher, courses.semester, courses.class_number, courses.campus, courses.time_location, courses.description, courses.created_at, courses.updated_at, coalesce(anon_1.cnt, $1::INTEGER) AS followers_count 
+FROM courses JOIN user_courses ON courses.id = user_courses.course_id LEFT OUTER JOIN (SELECT user_courses.course_id AS course_id, count(*) AS cnt 
+FROM user_courses GROUP BY user_courses.course_id) AS anon_1 ON courses.id = anon_1.course_id 
+WHERE user_courses.user_id = $2::INTEGER ORDER BY courses.course_code
+2026-04-01 00:45:58,544 INFO sqlalchemy.engine.Engine [cached since 1942s ago] (0, 2)
+2026-04-01 00:45:58,545 INFO sqlalchemy.engine.Engine SELECT tasks.id, tasks.course_id, tasks.title, tasks.description, tasks.due_time, tasks.creator_id, tasks.status, tasks.upvotes, tasks.downvotes, tasks.is_reported, tasks.created_at, tasks.updated_at, courses.name, courses.name_abbr 
+FROM tasks JOIN courses ON tasks.course_id = courses.id JOIN user_courses ON courses.id = user_courses.course_id 
+WHERE user_courses.user_id = $1::INTEGER AND tasks.status != $2::taskstatus AND tasks.due_time <= $3::TIMESTAMP WITHOUT TIME ZONE ORDER BY tasks.due_time
+2026-04-01 00:45:58,545 INFO sqlalchemy.engine.Engine [cached since 1942s ago] (2, 'HIDDEN', datetime.datetime(2026, 6, 29, 16, 45, 58, 544993))
+2026-04-01 00:45:58,546 INFO sqlalchemy.engine.Engine COMMIT
+2026-04-01 00:45:58,547 INFO sqlalchemy.engine.Engine SELECT task_votes.user_id, task_votes.task_id, task_votes.vote_type, task_votes.created_at 
+FROM task_votes 
+WHERE task_votes.user_id = $1::INTEGER AND task_votes.task_id IN ($2::INTEGER, $3::INTEGER, $4::INTEGER, $5::INTEGER, $6::INTEGER, $7::INTEGER, $8::INTEGER, $9::INTEGER)
+2026-04-01 00:45:58,547 INFO sqlalchemy.engine.Engine [cached since 1942s ago] (2, 3, 5, 11, 8, 12, 9, 10, 1)
+2026-04-01 00:45:58,552 INFO sqlalchemy.engine.Engine COMMIT
+2026-04-01 00:45:58,553 INFO sqlalchemy.engine.Engine SELECT task_completions.task_id 
+FROM task_completions 
+WHERE task_completions.user_id = $1::INTEGER
+2026-04-01 00:45:58,553 INFO sqlalchemy.engine.Engine [cached since 1942s ago] (2,)
+INFO:     127.0.0.1:63833 - "GET /api/courses/followed HTTP/1.1" 200 OK
+2026-04-01 00:45:58,555 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:63821 - "GET /api/tasks/my-deadlines?days=90 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63835 - "GET /api/tasks/completed/list HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63831 - "OPTIONS /api/courses/semesters HTTP/1.1" 200 OK
+2026-04-01 00:45:59,604 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:45:59,604 INFO sqlalchemy.engine.Engine SELECT DISTINCT courses.semester 
+FROM courses ORDER BY courses.semester DESC
+2026-04-01 00:45:59,604 INFO sqlalchemy.engine.Engine [cached since 2930s ago] ()
+2026-04-01 00:45:59,606 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:63835 - "GET /api/courses/semesters HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63831 - "OPTIONS /api/courses?semester=2026-Spring HTTP/1.1" 200 OK
+2026-04-01 00:45:59,926 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:45:59,926 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:45:59,926 INFO sqlalchemy.engine.Engine [cached since 1944s ago] (2,)
+2026-04-01 00:45:59,930 INFO sqlalchemy.engine.Engine SELECT courses.id, courses.course_code, courses.name, courses.name_abbr, courses.teacher, courses.semester, courses.class_number, courses.campus, courses.time_location, courses.description, courses.created_at, courses.updated_at, coalesce(anon_1.cnt, $1::INTEGER) AS followers_count 
+FROM courses LEFT OUTER JOIN (SELECT user_courses.course_id AS course_id, count(*) AS cnt 
+FROM user_courses GROUP BY user_courses.course_id) AS anon_1 ON courses.id = anon_1.course_id 
+WHERE courses.semester = $2::VARCHAR ORDER BY coalesce(anon_1.cnt, $3::INTEGER) DESC, courses.course_code 
+ LIMIT $4::INTEGER OFFSET $5::INTEGER
+2026-04-01 00:45:59,930 INFO sqlalchemy.engine.Engine [cached since 1944s ago] (0, '2026-Spring', 0, 20, 0)
+2026-04-01 00:45:59,932 INFO sqlalchemy.engine.Engine SELECT user_courses.course_id 
+FROM user_courses 
+WHERE user_courses.user_id = $1::INTEGER
+2026-04-01 00:45:59,932 INFO sqlalchemy.engine.Engine [cached since 1944s ago] (2,)
+2026-04-01 00:45:59,934 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:63835 - "GET /api/courses?semester=2026-Spring HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63831 - "OPTIONS /api/courses/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63831 - "OPTIONS /api/courses/1/tasks HTTP/1.1" 200 OK
+2026-04-01 00:46:02,444 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:46:02,445 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:46:02,445 INFO sqlalchemy.engine.Engine [cached since 1947s ago] (2,)
+2026-04-01 00:46:02,445 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:46:02,445 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:46:02,445 INFO sqlalchemy.engine.Engine [cached since 1947s ago] (2,)
+2026-04-01 00:46:02,451 INFO sqlalchemy.engine.Engine SELECT courses.id, courses.course_code, courses.name, courses.name_abbr, courses.teacher, courses.semester, courses.class_number, courses.campus, courses.time_location, courses.description, courses.created_at, courses.updated_at 
+FROM courses 
+WHERE courses.id = $1::INTEGER
+2026-04-01 00:46:02,451 INFO sqlalchemy.engine.Engine [cached since 1942s ago] (1,)
+2026-04-01 00:46:02,451 INFO sqlalchemy.engine.Engine SELECT courses.id, courses.course_code, courses.name, courses.name_abbr, courses.teacher, courses.semester, courses.class_number, courses.campus, courses.time_location, courses.description, courses.created_at, courses.updated_at 
+FROM courses 
+WHERE courses.id = $1::INTEGER
+2026-04-01 00:46:02,452 INFO sqlalchemy.engine.Engine [cached since 1942s ago] (1,)
+2026-04-01 00:46:02,454 INFO sqlalchemy.engine.Engine SELECT tasks.id, tasks.course_id, tasks.title, tasks.description, tasks.due_time, tasks.creator_id, tasks.status, tasks.upvotes, tasks.downvotes, tasks.is_reported, tasks.created_at, tasks.updated_at 
+FROM tasks 
+WHERE tasks.course_id = $1::INTEGER AND tasks.status != $2::taskstatus AND tasks.due_time > $3::TIMESTAMP WITHOUT TIME ZONE ORDER BY tasks.due_time 
+ LIMIT $4::INTEGER
+2026-04-01 00:46:02,454 INFO sqlalchemy.engine.Engine [cached since 1942s ago] (1, 'HIDDEN', datetime.datetime(2026, 3, 31, 16, 46, 2, 453697), 5)
+2026-04-01 00:46:02,455 INFO sqlalchemy.engine.Engine SELECT count(*) AS count_1 
+FROM user_courses 
+WHERE user_courses.course_id = $1::INTEGER
+2026-04-01 00:46:02,455 INFO sqlalchemy.engine.Engine [cached since 1942s ago] (1,)
+2026-04-01 00:46:02,456 INFO sqlalchemy.engine.Engine COMMIT
+2026-04-01 00:46:02,457 INFO sqlalchemy.engine.Engine SELECT count(*) AS count_1 
+FROM tasks 
+WHERE tasks.course_id = $1::INTEGER
+2026-04-01 00:46:02,457 INFO sqlalchemy.engine.Engine [cached since 1942s ago] (1,)
+INFO:     127.0.0.1:63821 - "GET /api/courses/1/tasks HTTP/1.1" 200 OK
+2026-04-01 00:46:02,458 INFO sqlalchemy.engine.Engine SELECT user_courses.user_id, user_courses.course_id, user_courses.created_at 
+FROM user_courses 
+WHERE user_courses.user_id = $1::INTEGER AND user_courses.course_id = $2::INTEGER
+2026-04-01 00:46:02,458 INFO sqlalchemy.engine.Engine [cached since 1942s ago] (2, 1)
+2026-04-01 00:46:02,460 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:63835 - "GET /api/courses/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63831 - "OPTIONS /api/tasks/my-deadlines?days=90 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63861 - "OPTIONS /api/courses/followed HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63831 - "OPTIONS /api/tasks/completed/list HTTP/1.1" 200 OK
+2026-04-01 00:46:03,976 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:46:03,976 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:46:03,976 INFO sqlalchemy.engine.Engine [cached since 1948s ago] (2,)
+2026-04-01 00:46:03,977 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:46:03,978 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:46:03,978 INFO sqlalchemy.engine.Engine [cached since 1948s ago] (2,)
+2026-04-01 00:46:03,984 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:46:03,985 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:46:03,985 INFO sqlalchemy.engine.Engine [cached since 1948s ago] (2,)
+2026-04-01 00:46:03,993 INFO sqlalchemy.engine.Engine SELECT courses.id, courses.course_code, courses.name, courses.name_abbr, courses.teacher, courses.semester, courses.class_number, courses.campus, courses.time_location, courses.description, courses.created_at, courses.updated_at, coalesce(anon_1.cnt, $1::INTEGER) AS followers_count 
+FROM courses JOIN user_courses ON courses.id = user_courses.course_id LEFT OUTER JOIN (SELECT user_courses.course_id AS course_id, count(*) AS cnt 
+FROM user_courses GROUP BY user_courses.course_id) AS anon_1 ON courses.id = anon_1.course_id 
+WHERE user_courses.user_id = $2::INTEGER ORDER BY courses.course_code
+2026-04-01 00:46:03,993 INFO sqlalchemy.engine.Engine [cached since 1947s ago] (0, 2)
+2026-04-01 00:46:03,996 INFO sqlalchemy.engine.Engine SELECT tasks.id, tasks.course_id, tasks.title, tasks.description, tasks.due_time, tasks.creator_id, tasks.status, tasks.upvotes, tasks.downvotes, tasks.is_reported, tasks.created_at, tasks.updated_at, courses.name, courses.name_abbr 
+FROM tasks JOIN courses ON tasks.course_id = courses.id JOIN user_courses ON courses.id = user_courses.course_id 
+WHERE user_courses.user_id = $1::INTEGER AND tasks.status != $2::taskstatus AND tasks.due_time <= $3::TIMESTAMP WITHOUT TIME ZONE ORDER BY tasks.due_time
+2026-04-01 00:46:03,996 INFO sqlalchemy.engine.Engine [cached since 1948s ago] (2, 'HIDDEN', datetime.datetime(2026, 6, 29, 16, 46, 3, 994069))
+2026-04-01 00:46:04,001 INFO sqlalchemy.engine.Engine COMMIT
+2026-04-01 00:46:04,006 INFO sqlalchemy.engine.Engine SELECT task_votes.user_id, task_votes.task_id, task_votes.vote_type, task_votes.created_at 
+FROM task_votes 
+WHERE task_votes.user_id = $1::INTEGER AND task_votes.task_id IN ($2::INTEGER, $3::INTEGER, $4::INTEGER, $5::INTEGER, $6::INTEGER, $7::INTEGER, $8::INTEGER, $9::INTEGER)
+2026-04-01 00:46:04,006 INFO sqlalchemy.engine.Engine [cached since 1947s ago] (2, 3, 5, 11, 8, 12, 9, 10, 1)
+2026-04-01 00:46:04,007 INFO sqlalchemy.engine.Engine SELECT task_completions.task_id 
+FROM task_completions 
+WHERE task_completions.user_id = $1::INTEGER
+2026-04-01 00:46:04,007 INFO sqlalchemy.engine.Engine [cached since 1947s ago] (2,)
+INFO:     127.0.0.1:63821 - "GET /api/courses/followed HTTP/1.1" 200 OK
+2026-04-01 00:46:04,008 INFO sqlalchemy.engine.Engine COMMIT
+2026-04-01 00:46:04,009 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:63835 - "GET /api/tasks/my-deadlines?days=90 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63865 - "GET /api/tasks/completed/list HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63831 - "OPTIONS /api/courses/semesters HTTP/1.1" 200 OK
+2026-04-01 00:46:05,315 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:46:05,316 INFO sqlalchemy.engine.Engine SELECT DISTINCT courses.semester 
+FROM courses ORDER BY courses.semester DESC
+2026-04-01 00:46:05,316 INFO sqlalchemy.engine.Engine [cached since 2936s ago] ()
+2026-04-01 00:46:05,317 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:63865 - "GET /api/courses/semesters HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63831 - "OPTIONS /api/courses?semester=2026-Spring HTTP/1.1" 200 OK
+2026-04-01 00:46:05,631 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:46:05,631 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:46:05,631 INFO sqlalchemy.engine.Engine [cached since 1950s ago] (2,)
+2026-04-01 00:46:05,634 INFO sqlalchemy.engine.Engine SELECT courses.id, courses.course_code, courses.name, courses.name_abbr, courses.teacher, courses.semester, courses.class_number, courses.campus, courses.time_location, courses.description, courses.created_at, courses.updated_at, coalesce(anon_1.cnt, $1::INTEGER) AS followers_count 
+FROM courses LEFT OUTER JOIN (SELECT user_courses.course_id AS course_id, count(*) AS cnt 
+FROM user_courses GROUP BY user_courses.course_id) AS anon_1 ON courses.id = anon_1.course_id 
+WHERE courses.semester = $2::VARCHAR ORDER BY coalesce(anon_1.cnt, $3::INTEGER) DESC, courses.course_code 
+ LIMIT $4::INTEGER OFFSET $5::INTEGER
+2026-04-01 00:46:05,634 INFO sqlalchemy.engine.Engine [cached since 1950s ago] (0, '2026-Spring', 0, 20, 0)
+2026-04-01 00:46:05,636 INFO sqlalchemy.engine.Engine SELECT user_courses.course_id 
+FROM user_courses 
+WHERE user_courses.user_id = $1::INTEGER
+2026-04-01 00:46:05,636 INFO sqlalchemy.engine.Engine [cached since 1950s ago] (2,)
+2026-04-01 00:46:05,637 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:63865 - "GET /api/courses?semester=2026-Spring HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63831 - "OPTIONS /api/courses/2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63861 - "OPTIONS /api/courses/2/tasks HTTP/1.1" 200 OK
+2026-04-01 00:46:07,460 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:46:07,461 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:46:07,461 INFO sqlalchemy.engine.Engine [cached since 1952s ago] (2,)
+2026-04-01 00:46:07,461 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:46:07,461 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:46:07,461 INFO sqlalchemy.engine.Engine [cached since 1952s ago] (2,)
+2026-04-01 00:46:07,468 INFO sqlalchemy.engine.Engine SELECT courses.id, courses.course_code, courses.name, courses.name_abbr, courses.teacher, courses.semester, courses.class_number, courses.campus, courses.time_location, courses.description, courses.created_at, courses.updated_at 
+FROM courses 
+WHERE courses.id = $1::INTEGER
+2026-04-01 00:46:07,468 INFO sqlalchemy.engine.Engine [cached since 1947s ago] (2,)
+2026-04-01 00:46:07,469 INFO sqlalchemy.engine.Engine SELECT courses.id, courses.course_code, courses.name, courses.name_abbr, courses.teacher, courses.semester, courses.class_number, courses.campus, courses.time_location, courses.description, courses.created_at, courses.updated_at 
+FROM courses 
+WHERE courses.id = $1::INTEGER
+2026-04-01 00:46:07,469 INFO sqlalchemy.engine.Engine [cached since 1947s ago] (2,)
+2026-04-01 00:46:07,470 INFO sqlalchemy.engine.Engine SELECT count(*) AS count_1 
+FROM user_courses 
+WHERE user_courses.course_id = $1::INTEGER
+2026-04-01 00:46:07,470 INFO sqlalchemy.engine.Engine [cached since 1947s ago] (2,)
+2026-04-01 00:46:07,471 INFO sqlalchemy.engine.Engine SELECT tasks.id, tasks.course_id, tasks.title, tasks.description, tasks.due_time, tasks.creator_id, tasks.status, tasks.upvotes, tasks.downvotes, tasks.is_reported, tasks.created_at, tasks.updated_at 
+FROM tasks 
+WHERE tasks.course_id = $1::INTEGER AND tasks.status != $2::taskstatus AND tasks.due_time > $3::TIMESTAMP WITHOUT TIME ZONE ORDER BY tasks.due_time 
+ LIMIT $4::INTEGER
+2026-04-01 00:46:07,471 INFO sqlalchemy.engine.Engine [cached since 1947s ago] (2, 'HIDDEN', datetime.datetime(2026, 3, 31, 16, 46, 7, 470640), 5)
+2026-04-01 00:46:07,471 INFO sqlalchemy.engine.Engine SELECT count(*) AS count_1 
+FROM tasks 
+WHERE tasks.course_id = $1::INTEGER
+2026-04-01 00:46:07,471 INFO sqlalchemy.engine.Engine [cached since 1947s ago] (2,)
+2026-04-01 00:46:07,472 INFO sqlalchemy.engine.Engine COMMIT
+2026-04-01 00:46:07,473 INFO sqlalchemy.engine.Engine SELECT user_courses.user_id, user_courses.course_id, user_courses.created_at 
+FROM user_courses 
+WHERE user_courses.user_id = $1::INTEGER AND user_courses.course_id = $2::INTEGER
+2026-04-01 00:46:07,473 INFO sqlalchemy.engine.Engine [cached since 1947s ago] (2, 2)
+INFO:     127.0.0.1:63865 - "GET /api/courses/2/tasks HTTP/1.1" 200 OK
+2026-04-01 00:46:07,475 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:63835 - "GET /api/courses/2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63861 - "OPTIONS /api/tasks/my-deadlines?days=90 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63831 - "OPTIONS /api/courses/followed HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63863 - "OPTIONS /api/tasks/completed/list HTTP/1.1" 200 OK
+2026-04-01 00:46:10,291 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:46:10,291 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:46:10,291 INFO sqlalchemy.engine.Engine [cached since 1955s ago] (2,)
+2026-04-01 00:46:10,291 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:46:10,292 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:46:10,292 INFO sqlalchemy.engine.Engine [cached since 1955s ago] (2,)
+2026-04-01 00:46:10,292 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:46:10,292 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:46:10,292 INFO sqlalchemy.engine.Engine [cached since 1955s ago] (2,)
+2026-04-01 00:46:10,299 INFO sqlalchemy.engine.Engine SELECT tasks.id, tasks.course_id, tasks.title, tasks.description, tasks.due_time, tasks.creator_id, tasks.status, tasks.upvotes, tasks.downvotes, tasks.is_reported, tasks.created_at, tasks.updated_at, courses.name, courses.name_abbr 
+FROM tasks JOIN courses ON tasks.course_id = courses.id JOIN user_courses ON courses.id = user_courses.course_id 
+WHERE user_courses.user_id = $1::INTEGER AND tasks.status != $2::taskstatus AND tasks.due_time <= $3::TIMESTAMP WITHOUT TIME ZONE ORDER BY tasks.due_time
+2026-04-01 00:46:10,299 INFO sqlalchemy.engine.Engine [cached since 1954s ago] (2, 'HIDDEN', datetime.datetime(2026, 6, 29, 16, 46, 10, 296398))
+2026-04-01 00:46:10,302 INFO sqlalchemy.engine.Engine SELECT courses.id, courses.course_code, courses.name, courses.name_abbr, courses.teacher, courses.semester, courses.class_number, courses.campus, courses.time_location, courses.description, courses.created_at, courses.updated_at, coalesce(anon_1.cnt, $1::INTEGER) AS followers_count 
+FROM courses JOIN user_courses ON courses.id = user_courses.course_id LEFT OUTER JOIN (SELECT user_courses.course_id AS course_id, count(*) AS cnt 
+FROM user_courses GROUP BY user_courses.course_id) AS anon_1 ON courses.id = anon_1.course_id 
+WHERE user_courses.user_id = $2::INTEGER ORDER BY courses.course_code
+2026-04-01 00:46:10,303 INFO sqlalchemy.engine.Engine [cached since 1954s ago] (0, 2)
+2026-04-01 00:46:10,304 INFO sqlalchemy.engine.Engine SELECT task_completions.task_id 
+FROM task_completions 
+WHERE task_completions.user_id = $1::INTEGER
+2026-04-01 00:46:10,304 INFO sqlalchemy.engine.Engine [cached since 1954s ago] (2,)
+2026-04-01 00:46:10,307 INFO sqlalchemy.engine.Engine SELECT task_votes.user_id, task_votes.task_id, task_votes.vote_type, task_votes.created_at 
+FROM task_votes 
+WHERE task_votes.user_id = $1::INTEGER AND task_votes.task_id IN ($2::INTEGER, $3::INTEGER, $4::INTEGER, $5::INTEGER, $6::INTEGER, $7::INTEGER, $8::INTEGER, $9::INTEGER)
+2026-04-01 00:46:10,308 INFO sqlalchemy.engine.Engine [cached since 1954s ago] (2, 3, 5, 11, 8, 12, 9, 10, 1)
+2026-04-01 00:46:10,309 INFO sqlalchemy.engine.Engine COMMIT
+2026-04-01 00:46:10,311 INFO sqlalchemy.engine.Engine COMMIT
+2026-04-01 00:46:10,312 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:63865 - "GET /api/tasks/completed/list HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63920 - "GET /api/courses/followed HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63835 - "GET /api/tasks/my-deadlines?days=90 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63863 - "OPTIONS /api/tasks/12 HTTP/1.1" 200 OK
+2026-04-01 00:46:11,850 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:46:11,850 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:46:11,850 INFO sqlalchemy.engine.Engine [cached since 1956s ago] (2,)
+2026-04-01 00:46:11,855 INFO sqlalchemy.engine.Engine SELECT tasks.id, tasks.course_id, tasks.title, tasks.description, tasks.due_time, tasks.creator_id, tasks.status, tasks.upvotes, tasks.downvotes, tasks.is_reported, tasks.created_at, tasks.updated_at, courses.name, courses.name_abbr, users.nickname 
+FROM tasks JOIN courses ON tasks.course_id = courses.id LEFT OUTER JOIN users ON tasks.creator_id = users.id 
+WHERE tasks.id = $1::INTEGER
+2026-04-01 00:46:11,855 INFO sqlalchemy.engine.Engine [cached since 1946s ago] (12,)
+2026-04-01 00:46:11,858 INFO sqlalchemy.engine.Engine SELECT task_votes.user_id, task_votes.task_id, task_votes.vote_type, task_votes.created_at 
+FROM task_votes 
+WHERE task_votes.user_id = $1::INTEGER AND task_votes.task_id = $2::INTEGER
+2026-04-01 00:46:11,858 INFO sqlalchemy.engine.Engine [cached since 1946s ago] (2, 12)
+2026-04-01 00:46:11,860 INFO sqlalchemy.engine.Engine SELECT task_notes.user_id, task_notes.task_id, task_notes.content, task_notes.created_at, task_notes.updated_at 
+FROM task_notes 
+WHERE task_notes.user_id = $1::INTEGER AND task_notes.task_id = $2::INTEGER
+2026-04-01 00:46:11,861 INFO sqlalchemy.engine.Engine [cached since 1946s ago] (2, 12)
+2026-04-01 00:46:11,864 INFO sqlalchemy.engine.Engine SELECT count(task_edit_proposals.id) AS count_1 
+FROM task_edit_proposals 
+WHERE task_edit_proposals.task_id = $1::INTEGER AND task_edit_proposals.status = $2::editproposalstatus
+2026-04-01 00:46:11,864 INFO sqlalchemy.engine.Engine [cached since 1946s ago] (12, 'PENDING')
+2026-04-01 00:46:11,868 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:63835 - "GET /api/tasks/12 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63863 - "OPTIONS /api/tasks/my-deadlines?days=90 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63831 - "OPTIONS /api/courses/followed HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63861 - "OPTIONS /api/tasks/completed/list HTTP/1.1" 200 OK
+2026-04-01 00:46:13,610 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:46:13,610 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:46:13,611 INFO sqlalchemy.engine.Engine [cached since 1958s ago] (2,)
+2026-04-01 00:46:13,611 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:46:13,611 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:46:13,611 INFO sqlalchemy.engine.Engine [cached since 1958s ago] (2,)
+2026-04-01 00:46:13,611 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:46:13,611 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:46:13,611 INFO sqlalchemy.engine.Engine [cached since 1958s ago] (2,)
+2026-04-01 00:46:13,614 INFO sqlalchemy.engine.Engine SELECT tasks.id, tasks.course_id, tasks.title, tasks.description, tasks.due_time, tasks.creator_id, tasks.status, tasks.upvotes, tasks.downvotes, tasks.is_reported, tasks.created_at, tasks.updated_at, courses.name, courses.name_abbr 
+FROM tasks JOIN courses ON tasks.course_id = courses.id JOIN user_courses ON courses.id = user_courses.course_id 
+WHERE user_courses.user_id = $1::INTEGER AND tasks.status != $2::taskstatus AND tasks.due_time <= $3::TIMESTAMP WITHOUT TIME ZONE ORDER BY tasks.due_time
+2026-04-01 00:46:13,614 INFO sqlalchemy.engine.Engine [cached since 1957s ago] (2, 'HIDDEN', datetime.datetime(2026, 6, 29, 16, 46, 13, 613408))
+2026-04-01 00:46:13,615 INFO sqlalchemy.engine.Engine SELECT courses.id, courses.course_code, courses.name, courses.name_abbr, courses.teacher, courses.semester, courses.class_number, courses.campus, courses.time_location, courses.description, courses.created_at, courses.updated_at, coalesce(anon_1.cnt, $1::INTEGER) AS followers_count 
+FROM courses JOIN user_courses ON courses.id = user_courses.course_id LEFT OUTER JOIN (SELECT user_courses.course_id AS course_id, count(*) AS cnt 
+FROM user_courses GROUP BY user_courses.course_id) AS anon_1 ON courses.id = anon_1.course_id 
+WHERE user_courses.user_id = $2::INTEGER ORDER BY courses.course_code
+2026-04-01 00:46:13,615 INFO sqlalchemy.engine.Engine [cached since 1957s ago] (0, 2)
+2026-04-01 00:46:13,616 INFO sqlalchemy.engine.Engine SELECT task_completions.task_id 
+FROM task_completions 
+WHERE task_completions.user_id = $1::INTEGER
+2026-04-01 00:46:13,616 INFO sqlalchemy.engine.Engine [cached since 1957s ago] (2,)
+2026-04-01 00:46:13,617 INFO sqlalchemy.engine.Engine SELECT task_votes.user_id, task_votes.task_id, task_votes.vote_type, task_votes.created_at 
+FROM task_votes 
+WHERE task_votes.user_id = $1::INTEGER AND task_votes.task_id IN ($2::INTEGER, $3::INTEGER, $4::INTEGER, $5::INTEGER, $6::INTEGER, $7::INTEGER, $8::INTEGER, $9::INTEGER)
+2026-04-01 00:46:13,618 INFO sqlalchemy.engine.Engine [cached since 1957s ago] (2, 3, 5, 11, 8, 12, 9, 10, 1)
+2026-04-01 00:46:13,620 INFO sqlalchemy.engine.Engine COMMIT
+2026-04-01 00:46:13,621 INFO sqlalchemy.engine.Engine COMMIT
+2026-04-01 00:46:13,622 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:63865 - "GET /api/tasks/completed/list HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63920 - "GET /api/courses/followed HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63835 - "GET /api/tasks/my-deadlines?days=90 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63861 - "OPTIONS /api/tasks/3 HTTP/1.1" 200 OK
+2026-04-01 00:46:15,302 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:46:15,303 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:46:15,303 INFO sqlalchemy.engine.Engine [cached since 1960s ago] (2,)
+2026-04-01 00:46:15,306 INFO sqlalchemy.engine.Engine SELECT tasks.id, tasks.course_id, tasks.title, tasks.description, tasks.due_time, tasks.creator_id, tasks.status, tasks.upvotes, tasks.downvotes, tasks.is_reported, tasks.created_at, tasks.updated_at, courses.name, courses.name_abbr, users.nickname 
+FROM tasks JOIN courses ON tasks.course_id = courses.id LEFT OUTER JOIN users ON tasks.creator_id = users.id 
+WHERE tasks.id = $1::INTEGER
+2026-04-01 00:46:15,306 INFO sqlalchemy.engine.Engine [cached since 1949s ago] (3,)
+2026-04-01 00:46:15,308 INFO sqlalchemy.engine.Engine SELECT task_votes.user_id, task_votes.task_id, task_votes.vote_type, task_votes.created_at 
+FROM task_votes 
+WHERE task_votes.user_id = $1::INTEGER AND task_votes.task_id = $2::INTEGER
+2026-04-01 00:46:15,308 INFO sqlalchemy.engine.Engine [cached since 1949s ago] (2, 3)
+2026-04-01 00:46:15,310 INFO sqlalchemy.engine.Engine SELECT task_notes.user_id, task_notes.task_id, task_notes.content, task_notes.created_at, task_notes.updated_at 
+FROM task_notes 
+WHERE task_notes.user_id = $1::INTEGER AND task_notes.task_id = $2::INTEGER
+2026-04-01 00:46:15,310 INFO sqlalchemy.engine.Engine [cached since 1949s ago] (2, 3)
+2026-04-01 00:46:15,312 INFO sqlalchemy.engine.Engine SELECT count(task_edit_proposals.id) AS count_1 
+FROM task_edit_proposals 
+WHERE task_edit_proposals.task_id = $1::INTEGER AND task_edit_proposals.status = $2::editproposalstatus
+2026-04-01 00:46:15,312 INFO sqlalchemy.engine.Engine [cached since 1949s ago] (3, 'PENDING')
+2026-04-01 00:46:15,314 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:63835 - "GET /api/tasks/3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63861 - "OPTIONS /api/tasks/my-deadlines?days=90 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63831 - "OPTIONS /api/courses/followed HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63863 - "OPTIONS /api/tasks/completed/list HTTP/1.1" 200 OK
+2026-04-01 00:46:16,195 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:46:16,196 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:46:16,196 INFO sqlalchemy.engine.Engine [cached since 1961s ago] (2,)
+2026-04-01 00:46:16,196 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:46:16,196 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:46:16,196 INFO sqlalchemy.engine.Engine [cached since 1961s ago] (2,)
+2026-04-01 00:46:16,197 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:46:16,197 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:46:16,197 INFO sqlalchemy.engine.Engine [cached since 1961s ago] (2,)
+2026-04-01 00:46:16,204 INFO sqlalchemy.engine.Engine SELECT courses.id, courses.course_code, courses.name, courses.name_abbr, courses.teacher, courses.semester, courses.class_number, courses.campus, courses.time_location, courses.description, courses.created_at, courses.updated_at, coalesce(anon_1.cnt, $1::INTEGER) AS followers_count 
+FROM courses JOIN user_courses ON courses.id = user_courses.course_id LEFT OUTER JOIN (SELECT user_courses.course_id AS course_id, count(*) AS cnt 
+FROM user_courses GROUP BY user_courses.course_id) AS anon_1 ON courses.id = anon_1.course_id 
+WHERE user_courses.user_id = $2::INTEGER ORDER BY courses.course_code
+2026-04-01 00:46:16,205 INFO sqlalchemy.engine.Engine [cached since 1960s ago] (0, 2)
+2026-04-01 00:46:16,206 INFO sqlalchemy.engine.Engine SELECT tasks.id, tasks.course_id, tasks.title, tasks.description, tasks.due_time, tasks.creator_id, tasks.status, tasks.upvotes, tasks.downvotes, tasks.is_reported, tasks.created_at, tasks.updated_at, courses.name, courses.name_abbr 
+FROM tasks JOIN courses ON tasks.course_id = courses.id JOIN user_courses ON courses.id = user_courses.course_id 
+WHERE user_courses.user_id = $1::INTEGER AND tasks.status != $2::taskstatus AND tasks.due_time <= $3::TIMESTAMP WITHOUT TIME ZONE ORDER BY tasks.due_time
+2026-04-01 00:46:16,206 INFO sqlalchemy.engine.Engine [cached since 1960s ago] (2, 'HIDDEN', datetime.datetime(2026, 6, 29, 16, 46, 16, 205741))
+2026-04-01 00:46:16,216 INFO sqlalchemy.engine.Engine SELECT task_votes.user_id, task_votes.task_id, task_votes.vote_type, task_votes.created_at 
+FROM task_votes 
+WHERE task_votes.user_id = $1::INTEGER AND task_votes.task_id IN ($2::INTEGER, $3::INTEGER, $4::INTEGER, $5::INTEGER, $6::INTEGER, $7::INTEGER, $8::INTEGER, $9::INTEGER)
+2026-04-01 00:46:16,216 INFO sqlalchemy.engine.Engine [cached since 1960s ago] (2, 3, 5, 11, 8, 12, 9, 10, 1)
+2026-04-01 00:46:16,218 INFO sqlalchemy.engine.Engine COMMIT
+2026-04-01 00:46:16,219 INFO sqlalchemy.engine.Engine SELECT task_completions.task_id 
+FROM task_completions 
+WHERE task_completions.user_id = $1::INTEGER
+2026-04-01 00:46:16,219 INFO sqlalchemy.engine.Engine [cached since 1960s ago] (2,)
+2026-04-01 00:46:16,220 INFO sqlalchemy.engine.Engine COMMIT
+2026-04-01 00:46:16,221 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:63920 - "GET /api/courses/followed HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63835 - "GET /api/tasks/my-deadlines?days=90 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63865 - "GET /api/tasks/completed/list HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63863 - "OPTIONS /api/courses/semesters HTTP/1.1" 200 OK
+2026-04-01 00:46:18,878 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:46:18,879 INFO sqlalchemy.engine.Engine SELECT DISTINCT courses.semester 
+FROM courses ORDER BY courses.semester DESC
+2026-04-01 00:46:18,879 INFO sqlalchemy.engine.Engine [cached since 2950s ago] ()
+2026-04-01 00:46:18,880 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:63865 - "GET /api/courses/semesters HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63863 - "OPTIONS /api/courses?semester=2026-Spring HTTP/1.1" 200 OK
+2026-04-01 00:46:19,197 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:46:19,197 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:46:19,197 INFO sqlalchemy.engine.Engine [cached since 1964s ago] (2,)
+2026-04-01 00:46:19,200 INFO sqlalchemy.engine.Engine SELECT courses.id, courses.course_code, courses.name, courses.name_abbr, courses.teacher, courses.semester, courses.class_number, courses.campus, courses.time_location, courses.description, courses.created_at, courses.updated_at, coalesce(anon_1.cnt, $1::INTEGER) AS followers_count 
+FROM courses LEFT OUTER JOIN (SELECT user_courses.course_id AS course_id, count(*) AS cnt 
+FROM user_courses GROUP BY user_courses.course_id) AS anon_1 ON courses.id = anon_1.course_id 
+WHERE courses.semester = $2::VARCHAR ORDER BY coalesce(anon_1.cnt, $3::INTEGER) DESC, courses.course_code 
+ LIMIT $4::INTEGER OFFSET $5::INTEGER
+2026-04-01 00:46:19,200 INFO sqlalchemy.engine.Engine [cached since 1964s ago] (0, '2026-Spring', 0, 20, 0)
+2026-04-01 00:46:19,202 INFO sqlalchemy.engine.Engine SELECT user_courses.course_id 
+FROM user_courses 
+WHERE user_courses.user_id = $1::INTEGER
+2026-04-01 00:46:19,202 INFO sqlalchemy.engine.Engine [cached since 1964s ago] (2,)
+2026-04-01 00:46:19,203 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:63865 - "GET /api/courses?semester=2026-Spring HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63863 - "OPTIONS /api/courses?q=%E7%A6%BB%E6%95%A3&semester=2026-Spring HTTP/1.1" 200 OK
+2026-04-01 00:46:21,816 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:46:21,817 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:46:21,817 INFO sqlalchemy.engine.Engine [cached since 1966s ago] (2,)
+2026-04-01 00:46:21,821 INFO sqlalchemy.engine.Engine SELECT courses.id, courses.course_code, courses.name, courses.name_abbr, courses.teacher, courses.semester, courses.class_number, courses.campus, courses.time_location, courses.description, courses.created_at, courses.updated_at, coalesce(anon_1.cnt, $1::INTEGER) AS followers_count 
+FROM courses LEFT OUTER JOIN (SELECT user_courses.course_id AS course_id, count(*) AS cnt 
+FROM user_courses GROUP BY user_courses.course_id) AS anon_1 ON courses.id = anon_1.course_id 
+WHERE (courses.name ILIKE $2::VARCHAR OR courses.course_code ILIKE $3::VARCHAR OR courses.teacher ILIKE $4::VARCHAR OR courses.name_abbr ILIKE $5::VARCHAR) AND courses.semester = $6::VARCHAR ORDER BY coalesce(anon_1.cnt, $7::INTEGER) DESC, courses.course_code 
+ LIMIT $8::INTEGER OFFSET $9::INTEGER
+2026-04-01 00:46:21,821 INFO sqlalchemy.engine.Engine [generated in 0.00021s] (0, '%离散%', '%离散%', '%离散%', '%离散%', '2026-Spring', 0, 20, 0)
+2026-04-01 00:46:21,825 INFO sqlalchemy.engine.Engine SELECT user_courses.course_id 
+FROM user_courses 
+WHERE user_courses.user_id = $1::INTEGER
+2026-04-01 00:46:21,825 INFO sqlalchemy.engine.Engine [cached since 1966s ago] (2,)
+2026-04-01 00:46:21,826 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:63865 - "GET /api/courses?q=%E7%A6%BB%E6%95%A3&semester=2026-Spring HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63863 - "OPTIONS /api/courses/2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63863 - "OPTIONS /api/courses/2/tasks HTTP/1.1" 200 OK
+2026-04-01 00:46:22,976 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:46:22,977 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:46:22,977 INFO sqlalchemy.engine.Engine [cached since 1967s ago] (2,)
+2026-04-01 00:46:22,978 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:46:22,978 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:46:22,978 INFO sqlalchemy.engine.Engine [cached since 1967s ago] (2,)
+2026-04-01 00:46:22,983 INFO sqlalchemy.engine.Engine SELECT courses.id, courses.course_code, courses.name, courses.name_abbr, courses.teacher, courses.semester, courses.class_number, courses.campus, courses.time_location, courses.description, courses.created_at, courses.updated_at 
+FROM courses 
+WHERE courses.id = $1::INTEGER
+2026-04-01 00:46:22,983 INFO sqlalchemy.engine.Engine [cached since 1963s ago] (2,)
+2026-04-01 00:46:22,984 INFO sqlalchemy.engine.Engine SELECT courses.id, courses.course_code, courses.name, courses.name_abbr, courses.teacher, courses.semester, courses.class_number, courses.campus, courses.time_location, courses.description, courses.created_at, courses.updated_at 
+FROM courses 
+WHERE courses.id = $1::INTEGER
+2026-04-01 00:46:22,984 INFO sqlalchemy.engine.Engine [cached since 1963s ago] (2,)
+2026-04-01 00:46:22,986 INFO sqlalchemy.engine.Engine SELECT tasks.id, tasks.course_id, tasks.title, tasks.description, tasks.due_time, tasks.creator_id, tasks.status, tasks.upvotes, tasks.downvotes, tasks.is_reported, tasks.created_at, tasks.updated_at 
+FROM tasks 
+WHERE tasks.course_id = $1::INTEGER AND tasks.status != $2::taskstatus AND tasks.due_time > $3::TIMESTAMP WITHOUT TIME ZONE ORDER BY tasks.due_time 
+ LIMIT $4::INTEGER
+2026-04-01 00:46:22,986 INFO sqlalchemy.engine.Engine [cached since 1963s ago] (2, 'HIDDEN', datetime.datetime(2026, 3, 31, 16, 46, 22, 985289), 5)
+2026-04-01 00:46:22,986 INFO sqlalchemy.engine.Engine SELECT count(*) AS count_1 
+FROM user_courses 
+WHERE user_courses.course_id = $1::INTEGER
+2026-04-01 00:46:22,987 INFO sqlalchemy.engine.Engine [cached since 1963s ago] (2,)
+2026-04-01 00:46:22,987 INFO sqlalchemy.engine.Engine COMMIT
+2026-04-01 00:46:22,988 INFO sqlalchemy.engine.Engine SELECT count(*) AS count_1 
+FROM tasks 
+WHERE tasks.course_id = $1::INTEGER
+2026-04-01 00:46:22,988 INFO sqlalchemy.engine.Engine [cached since 1963s ago] (2,)
+INFO:     127.0.0.1:64010 - "GET /api/courses/2/tasks HTTP/1.1" 200 OK
+2026-04-01 00:46:22,990 INFO sqlalchemy.engine.Engine SELECT user_courses.user_id, user_courses.course_id, user_courses.created_at 
+FROM user_courses 
+WHERE user_courses.user_id = $1::INTEGER AND user_courses.course_id = $2::INTEGER
+2026-04-01 00:46:22,990 INFO sqlalchemy.engine.Engine [cached since 1963s ago] (2, 2)
+2026-04-01 00:46:22,991 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:63865 - "GET /api/courses/2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63863 - "OPTIONS /api/tasks/my-deadlines?days=90 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64008 - "OPTIONS /api/courses/followed HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63863 - "OPTIONS /api/tasks/completed/list HTTP/1.1" 200 OK
+2026-04-01 00:46:23,798 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:46:23,798 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:46:23,798 INFO sqlalchemy.engine.Engine [cached since 1968s ago] (2,)
+2026-04-01 00:46:23,798 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:46:23,798 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:46:23,798 INFO sqlalchemy.engine.Engine [cached since 1968s ago] (2,)
+2026-04-01 00:46:23,798 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:46:23,799 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:46:23,799 INFO sqlalchemy.engine.Engine [cached since 1968s ago] (2,)
+2026-04-01 00:46:23,805 INFO sqlalchemy.engine.Engine SELECT courses.id, courses.course_code, courses.name, courses.name_abbr, courses.teacher, courses.semester, courses.class_number, courses.campus, courses.time_location, courses.description, courses.created_at, courses.updated_at, coalesce(anon_1.cnt, $1::INTEGER) AS followers_count 
+FROM courses JOIN user_courses ON courses.id = user_courses.course_id LEFT OUTER JOIN (SELECT user_courses.course_id AS course_id, count(*) AS cnt 
+FROM user_courses GROUP BY user_courses.course_id) AS anon_1 ON courses.id = anon_1.course_id 
+WHERE user_courses.user_id = $2::INTEGER ORDER BY courses.course_code
+2026-04-01 00:46:23,805 INFO sqlalchemy.engine.Engine [cached since 1967s ago] (0, 2)
+2026-04-01 00:46:23,807 INFO sqlalchemy.engine.Engine SELECT task_completions.task_id 
+FROM task_completions 
+WHERE task_completions.user_id = $1::INTEGER
+2026-04-01 00:46:23,807 INFO sqlalchemy.engine.Engine [cached since 1967s ago] (2,)
+2026-04-01 00:46:23,810 INFO sqlalchemy.engine.Engine SELECT tasks.id, tasks.course_id, tasks.title, tasks.description, tasks.due_time, tasks.creator_id, tasks.status, tasks.upvotes, tasks.downvotes, tasks.is_reported, tasks.created_at, tasks.updated_at, courses.name, courses.name_abbr 
+FROM tasks JOIN courses ON tasks.course_id = courses.id JOIN user_courses ON courses.id = user_courses.course_id 
+WHERE user_courses.user_id = $1::INTEGER AND tasks.status != $2::taskstatus AND tasks.due_time <= $3::TIMESTAMP WITHOUT TIME ZONE ORDER BY tasks.due_time
+2026-04-01 00:46:23,810 INFO sqlalchemy.engine.Engine [cached since 1967s ago] (2, 'HIDDEN', datetime.datetime(2026, 6, 29, 16, 46, 23, 808514))
+2026-04-01 00:46:23,811 INFO sqlalchemy.engine.Engine COMMIT
+2026-04-01 00:46:23,812 INFO sqlalchemy.engine.Engine COMMIT
+2026-04-01 00:46:23,813 INFO sqlalchemy.engine.Engine SELECT task_votes.user_id, task_votes.task_id, task_votes.vote_type, task_votes.created_at 
+FROM task_votes 
+WHERE task_votes.user_id = $1::INTEGER AND task_votes.task_id IN ($2::INTEGER, $3::INTEGER, $4::INTEGER, $5::INTEGER, $6::INTEGER, $7::INTEGER, $8::INTEGER, $9::INTEGER)
+2026-04-01 00:46:23,814 INFO sqlalchemy.engine.Engine [cached since 1967s ago] (2, 3, 5, 11, 8, 12, 9, 10, 1)
+INFO:     127.0.0.1:64010 - "GET /api/courses/followed HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64022 - "GET /api/tasks/completed/list HTTP/1.1" 200 OK
+2026-04-01 00:46:23,816 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:63865 - "GET /api/tasks/my-deadlines?days=90 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63863 - "OPTIONS /api/courses/semesters HTTP/1.1" 200 OK
+2026-04-01 00:46:24,815 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:46:24,815 INFO sqlalchemy.engine.Engine SELECT DISTINCT courses.semester 
+FROM courses ORDER BY courses.semester DESC
+2026-04-01 00:46:24,816 INFO sqlalchemy.engine.Engine [cached since 2955s ago] ()
+2026-04-01 00:46:24,818 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:63865 - "GET /api/courses/semesters HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63863 - "OPTIONS /api/courses?semester=2026-Spring HTTP/1.1" 200 OK
+2026-04-01 00:46:25,134 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:46:25,134 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:46:25,134 INFO sqlalchemy.engine.Engine [cached since 1970s ago] (2,)
+2026-04-01 00:46:25,137 INFO sqlalchemy.engine.Engine SELECT courses.id, courses.course_code, courses.name, courses.name_abbr, courses.teacher, courses.semester, courses.class_number, courses.campus, courses.time_location, courses.description, courses.created_at, courses.updated_at, coalesce(anon_1.cnt, $1::INTEGER) AS followers_count 
+FROM courses LEFT OUTER JOIN (SELECT user_courses.course_id AS course_id, count(*) AS cnt 
+FROM user_courses GROUP BY user_courses.course_id) AS anon_1 ON courses.id = anon_1.course_id 
+WHERE courses.semester = $2::VARCHAR ORDER BY coalesce(anon_1.cnt, $3::INTEGER) DESC, courses.course_code 
+ LIMIT $4::INTEGER OFFSET $5::INTEGER
+2026-04-01 00:46:25,138 INFO sqlalchemy.engine.Engine [cached since 1970s ago] (0, '2026-Spring', 0, 20, 0)
+2026-04-01 00:46:25,139 INFO sqlalchemy.engine.Engine SELECT user_courses.course_id 
+FROM user_courses 
+WHERE user_courses.user_id = $1::INTEGER
+2026-04-01 00:46:25,139 INFO sqlalchemy.engine.Engine [cached since 1970s ago] (2,)
+2026-04-01 00:46:25,140 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:63865 - "GET /api/courses?semester=2026-Spring HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64020 - "OPTIONS /api/courses/semesters HTTP/1.1" 200 OK
+2026-04-01 00:46:39,919 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:46:39,919 INFO sqlalchemy.engine.Engine SELECT DISTINCT courses.semester 
+FROM courses ORDER BY courses.semester DESC
+2026-04-01 00:46:39,919 INFO sqlalchemy.engine.Engine [cached since 2971s ago] ()
+2026-04-01 00:46:39,922 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:64128 - "GET /api/courses/semesters HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64020 - "OPTIONS /api/courses?semester=2026-Spring HTTP/1.1" 200 OK
+2026-04-01 00:46:40,238 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:46:40,239 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:46:40,239 INFO sqlalchemy.engine.Engine [cached since 1985s ago] (2,)
+2026-04-01 00:46:40,242 INFO sqlalchemy.engine.Engine SELECT courses.id, courses.course_code, courses.name, courses.name_abbr, courses.teacher, courses.semester, courses.class_number, courses.campus, courses.time_location, courses.description, courses.created_at, courses.updated_at, coalesce(anon_1.cnt, $1::INTEGER) AS followers_count 
+FROM courses LEFT OUTER JOIN (SELECT user_courses.course_id AS course_id, count(*) AS cnt 
+FROM user_courses GROUP BY user_courses.course_id) AS anon_1 ON courses.id = anon_1.course_id 
+WHERE courses.semester = $2::VARCHAR ORDER BY coalesce(anon_1.cnt, $3::INTEGER) DESC, courses.course_code 
+ LIMIT $4::INTEGER OFFSET $5::INTEGER
+2026-04-01 00:46:40,242 INFO sqlalchemy.engine.Engine [cached since 1985s ago] (0, '2026-Spring', 0, 20, 0)
+2026-04-01 00:46:40,244 INFO sqlalchemy.engine.Engine SELECT user_courses.course_id 
+FROM user_courses 
+WHERE user_courses.user_id = $1::INTEGER
+2026-04-01 00:46:40,244 INFO sqlalchemy.engine.Engine [cached since 1985s ago] (2,)
+2026-04-01 00:46:40,245 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:64128 - "GET /api/courses?semester=2026-Spring HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64020 - "OPTIONS /api/courses/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64140 - "OPTIONS /api/courses/1/tasks HTTP/1.1" 200 OK
+2026-04-01 00:46:41,084 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:46:41,085 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:46:41,085 INFO sqlalchemy.engine.Engine [cached since 1986s ago] (2,)
+2026-04-01 00:46:41,086 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:46:41,087 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:46:41,087 INFO sqlalchemy.engine.Engine [cached since 1986s ago] (2,)
+2026-04-01 00:46:41,091 INFO sqlalchemy.engine.Engine SELECT courses.id, courses.course_code, courses.name, courses.name_abbr, courses.teacher, courses.semester, courses.class_number, courses.campus, courses.time_location, courses.description, courses.created_at, courses.updated_at 
+FROM courses 
+WHERE courses.id = $1::INTEGER
+2026-04-01 00:46:41,092 INFO sqlalchemy.engine.Engine [cached since 1981s ago] (1,)
+2026-04-01 00:46:41,092 INFO sqlalchemy.engine.Engine SELECT courses.id, courses.course_code, courses.name, courses.name_abbr, courses.teacher, courses.semester, courses.class_number, courses.campus, courses.time_location, courses.description, courses.created_at, courses.updated_at 
+FROM courses 
+WHERE courses.id = $1::INTEGER
+2026-04-01 00:46:41,093 INFO sqlalchemy.engine.Engine [cached since 1981s ago] (1,)
+2026-04-01 00:46:41,095 INFO sqlalchemy.engine.Engine SELECT tasks.id, tasks.course_id, tasks.title, tasks.description, tasks.due_time, tasks.creator_id, tasks.status, tasks.upvotes, tasks.downvotes, tasks.is_reported, tasks.created_at, tasks.updated_at 
+FROM tasks 
+WHERE tasks.course_id = $1::INTEGER AND tasks.status != $2::taskstatus AND tasks.due_time > $3::TIMESTAMP WITHOUT TIME ZONE ORDER BY tasks.due_time 
+ LIMIT $4::INTEGER
+2026-04-01 00:46:41,095 INFO sqlalchemy.engine.Engine [cached since 1981s ago] (1, 'HIDDEN', datetime.datetime(2026, 3, 31, 16, 46, 41, 94994), 5)
+2026-04-01 00:46:41,096 INFO sqlalchemy.engine.Engine SELECT count(*) AS count_1 
+FROM user_courses 
+WHERE user_courses.course_id = $1::INTEGER
+2026-04-01 00:46:41,096 INFO sqlalchemy.engine.Engine [cached since 1981s ago] (1,)
+2026-04-01 00:46:41,098 INFO sqlalchemy.engine.Engine SELECT count(*) AS count_1 
+FROM tasks 
+WHERE tasks.course_id = $1::INTEGER
+2026-04-01 00:46:41,099 INFO sqlalchemy.engine.Engine [cached since 1981s ago] (1,)
+2026-04-01 00:46:41,099 INFO sqlalchemy.engine.Engine COMMIT
+2026-04-01 00:46:41,102 INFO sqlalchemy.engine.Engine SELECT user_courses.user_id, user_courses.course_id, user_courses.created_at 
+FROM user_courses 
+WHERE user_courses.user_id = $1::INTEGER AND user_courses.course_id = $2::INTEGER
+2026-04-01 00:46:41,102 INFO sqlalchemy.engine.Engine [cached since 1981s ago] (2, 1)
+INFO:     127.0.0.1:64142 - "GET /api/courses/1/tasks HTTP/1.1" 200 OK
+2026-04-01 00:46:41,107 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:64128 - "GET /api/courses/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64140 - "OPTIONS /api/tasks/my-deadlines?days=90 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64020 - "OPTIONS /api/courses/followed HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64140 - "OPTIONS /api/tasks/completed/list HTTP/1.1" 200 OK
+2026-04-01 00:46:42,308 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:46:42,309 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:46:42,309 INFO sqlalchemy.engine.Engine [cached since 1987s ago] (2,)
+2026-04-01 00:46:42,310 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:46:42,310 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:46:42,311 INFO sqlalchemy.engine.Engine [cached since 1987s ago] (2,)
+2026-04-01 00:46:42,313 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:46:42,313 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:46:42,313 INFO sqlalchemy.engine.Engine [cached since 1987s ago] (2,)
+2026-04-01 00:46:42,354 INFO sqlalchemy.engine.Engine SELECT courses.id, courses.course_code, courses.name, courses.name_abbr, courses.teacher, courses.semester, courses.class_number, courses.campus, courses.time_location, courses.description, courses.created_at, courses.updated_at, coalesce(anon_1.cnt, $1::INTEGER) AS followers_count 
+FROM courses JOIN user_courses ON courses.id = user_courses.course_id LEFT OUTER JOIN (SELECT user_courses.course_id AS course_id, count(*) AS cnt 
+FROM user_courses GROUP BY user_courses.course_id) AS anon_1 ON courses.id = anon_1.course_id 
+WHERE user_courses.user_id = $2::INTEGER ORDER BY courses.course_code
+2026-04-01 00:46:42,354 INFO sqlalchemy.engine.Engine [cached since 1986s ago] (0, 2)
+2026-04-01 00:46:42,354 INFO sqlalchemy.engine.Engine SELECT tasks.id, tasks.course_id, tasks.title, tasks.description, tasks.due_time, tasks.creator_id, tasks.status, tasks.upvotes, tasks.downvotes, tasks.is_reported, tasks.created_at, tasks.updated_at, courses.name, courses.name_abbr 
+FROM tasks JOIN courses ON tasks.course_id = courses.id JOIN user_courses ON courses.id = user_courses.course_id 
+WHERE user_courses.user_id = $1::INTEGER AND tasks.status != $2::taskstatus AND tasks.due_time <= $3::TIMESTAMP WITHOUT TIME ZONE ORDER BY tasks.due_time
+2026-04-01 00:46:42,354 INFO sqlalchemy.engine.Engine [cached since 1986s ago] (2, 'HIDDEN', datetime.datetime(2026, 6, 29, 16, 46, 42, 354455))
+2026-04-01 00:46:42,355 INFO sqlalchemy.engine.Engine SELECT task_completions.task_id 
+FROM task_completions 
+WHERE task_completions.user_id = $1::INTEGER
+2026-04-01 00:46:42,355 INFO sqlalchemy.engine.Engine [cached since 1986s ago] (2,)
+2026-04-01 00:46:42,356 INFO sqlalchemy.engine.Engine SELECT task_votes.user_id, task_votes.task_id, task_votes.vote_type, task_votes.created_at 
+FROM task_votes 
+WHERE task_votes.user_id = $1::INTEGER AND task_votes.task_id IN ($2::INTEGER, $3::INTEGER, $4::INTEGER, $5::INTEGER, $6::INTEGER, $7::INTEGER, $8::INTEGER, $9::INTEGER)
+2026-04-01 00:46:42,356 INFO sqlalchemy.engine.Engine [cached since 1986s ago] (2, 3, 5, 11, 8, 12, 9, 10, 1)
+2026-04-01 00:46:42,356 INFO sqlalchemy.engine.Engine COMMIT
+2026-04-01 00:46:42,356 INFO sqlalchemy.engine.Engine COMMIT
+2026-04-01 00:46:42,357 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:64142 - "GET /api/courses/followed HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64167 - "GET /api/tasks/completed/list HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64128 - "GET /api/tasks/my-deadlines?days=90 HTTP/1.1" 200 OK
+2026-04-01 00:46:46,233 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:46:46,234 INFO sqlalchemy.engine.Engine SELECT DISTINCT courses.semester 
+FROM courses ORDER BY courses.semester DESC
+2026-04-01 00:46:46,234 INFO sqlalchemy.engine.Engine [cached since 2977s ago] ()
+2026-04-01 00:46:46,236 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     100.100.100.103:64188 - "GET /api/courses/semesters HTTP/1.1" 200 OK
+2026-04-01 00:46:46,610 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:46:46,610 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:46:46,610 INFO sqlalchemy.engine.Engine [cached since 1991s ago] (2,)
+2026-04-01 00:46:46,614 INFO sqlalchemy.engine.Engine SELECT courses.id, courses.course_code, courses.name, courses.name_abbr, courses.teacher, courses.semester, courses.class_number, courses.campus, courses.time_location, courses.description, courses.created_at, courses.updated_at, coalesce(anon_1.cnt, $1::INTEGER) AS followers_count 
+FROM courses LEFT OUTER JOIN (SELECT user_courses.course_id AS course_id, count(*) AS cnt 
+FROM user_courses GROUP BY user_courses.course_id) AS anon_1 ON courses.id = anon_1.course_id 
+WHERE courses.semester = $2::VARCHAR ORDER BY coalesce(anon_1.cnt, $3::INTEGER) DESC, courses.course_code 
+ LIMIT $4::INTEGER OFFSET $5::INTEGER
+2026-04-01 00:46:46,614 INFO sqlalchemy.engine.Engine [cached since 1991s ago] (0, '2026-Spring', 0, 20, 0)
+2026-04-01 00:46:46,615 INFO sqlalchemy.engine.Engine SELECT user_courses.course_id 
+FROM user_courses 
+WHERE user_courses.user_id = $1::INTEGER
+2026-04-01 00:46:46,615 INFO sqlalchemy.engine.Engine [cached since 1991s ago] (2,)
+2026-04-01 00:46:46,616 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     100.100.100.103:64188 - "GET /api/courses?semester=2026-Spring HTTP/1.1" 200 OK
+2026-04-01 00:46:54,156 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:46:54,156 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:46:54,157 INFO sqlalchemy.engine.Engine [cached since 1999s ago] (2,)
+2026-04-01 00:46:54,161 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     100.100.100.103:64244 - "GET /api/auth/me HTTP/1.1" 200 OK
+2026-04-01 00:46:54,422 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:46:54,422 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:46:54,423 INFO sqlalchemy.engine.Engine [cached since 1999s ago] (2,)
+2026-04-01 00:46:54,427 INFO sqlalchemy.engine.Engine SELECT tasks.id, tasks.course_id, tasks.title, tasks.description, tasks.due_time, tasks.creator_id, tasks.status, tasks.upvotes, tasks.downvotes, tasks.is_reported, tasks.created_at, tasks.updated_at, courses.name, courses.name_abbr 
+FROM tasks JOIN courses ON tasks.course_id = courses.id JOIN user_courses ON courses.id = user_courses.course_id 
+WHERE user_courses.user_id = $1::INTEGER AND tasks.status != $2::taskstatus AND tasks.due_time <= $3::TIMESTAMP WITHOUT TIME ZONE ORDER BY tasks.due_time
+2026-04-01 00:46:54,427 INFO sqlalchemy.engine.Engine [cached since 1998s ago] (2, 'HIDDEN', datetime.datetime(2026, 6, 29, 16, 46, 54, 426207))
+2026-04-01 00:46:54,429 INFO sqlalchemy.engine.Engine SELECT task_votes.user_id, task_votes.task_id, task_votes.vote_type, task_votes.created_at 
+FROM task_votes 
+WHERE task_votes.user_id = $1::INTEGER AND task_votes.task_id IN ($2::INTEGER, $3::INTEGER, $4::INTEGER, $5::INTEGER, $6::INTEGER, $7::INTEGER, $8::INTEGER, $9::INTEGER)
+2026-04-01 00:46:54,429 INFO sqlalchemy.engine.Engine [cached since 1998s ago] (2, 3, 5, 11, 8, 12, 9, 10, 1)
+2026-04-01 00:46:54,431 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     100.100.100.103:64244 - "GET /api/tasks/my-deadlines?days=90 HTTP/1.1" 200 OK
+2026-04-01 00:46:54,665 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:46:54,666 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:46:54,666 INFO sqlalchemy.engine.Engine [cached since 1999s ago] (2,)
+2026-04-01 00:46:54,666 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:46:54,666 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:46:54,666 INFO sqlalchemy.engine.Engine [cached since 1999s ago] (2,)
+2026-04-01 00:46:54,672 INFO sqlalchemy.engine.Engine SELECT courses.id, courses.course_code, courses.name, courses.name_abbr, courses.teacher, courses.semester, courses.class_number, courses.campus, courses.time_location, courses.description, courses.created_at, courses.updated_at, coalesce(anon_1.cnt, $1::INTEGER) AS followers_count 
+FROM courses JOIN user_courses ON courses.id = user_courses.course_id LEFT OUTER JOIN (SELECT user_courses.course_id AS course_id, count(*) AS cnt 
+FROM user_courses GROUP BY user_courses.course_id) AS anon_1 ON courses.id = anon_1.course_id 
+WHERE user_courses.user_id = $2::INTEGER ORDER BY courses.course_code
+2026-04-01 00:46:54,672 INFO sqlalchemy.engine.Engine [cached since 1998s ago] (0, 2)
+2026-04-01 00:46:54,673 INFO sqlalchemy.engine.Engine SELECT task_completions.task_id 
+FROM task_completions 
+WHERE task_completions.user_id = $1::INTEGER
+2026-04-01 00:46:54,673 INFO sqlalchemy.engine.Engine [cached since 1998s ago] (2,)
+2026-04-01 00:46:54,675 INFO sqlalchemy.engine.Engine COMMIT
+2026-04-01 00:46:54,676 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     100.100.100.103:64250 - "GET /api/tasks/completed/list HTTP/1.1" 200 OK
+INFO:     100.100.100.103:64249 - "GET /api/courses/followed HTTP/1.1" 200 OK
+2026-04-01 00:46:55,790 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:46:55,791 INFO sqlalchemy.engine.Engine SELECT DISTINCT courses.semester 
+FROM courses ORDER BY courses.semester DESC
+2026-04-01 00:46:55,791 INFO sqlalchemy.engine.Engine [cached since 2986s ago] ()
+2026-04-01 00:46:55,793 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     100.100.100.103:64244 - "GET /api/courses/semesters HTTP/1.1" 200 OK
+2026-04-01 00:46:56,200 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:46:56,200 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:46:56,200 INFO sqlalchemy.engine.Engine [cached since 2001s ago] (2,)
+2026-04-01 00:46:56,207 INFO sqlalchemy.engine.Engine SELECT courses.id, courses.course_code, courses.name, courses.name_abbr, courses.teacher, courses.semester, courses.class_number, courses.campus, courses.time_location, courses.description, courses.created_at, courses.updated_at, coalesce(anon_1.cnt, $1::INTEGER) AS followers_count 
+FROM courses LEFT OUTER JOIN (SELECT user_courses.course_id AS course_id, count(*) AS cnt 
+FROM user_courses GROUP BY user_courses.course_id) AS anon_1 ON courses.id = anon_1.course_id 
+WHERE courses.semester = $2::VARCHAR ORDER BY coalesce(anon_1.cnt, $3::INTEGER) DESC, courses.course_code 
+ LIMIT $4::INTEGER OFFSET $5::INTEGER
+2026-04-01 00:46:56,207 INFO sqlalchemy.engine.Engine [cached since 2001s ago] (0, '2026-Spring', 0, 20, 0)
+2026-04-01 00:46:56,209 INFO sqlalchemy.engine.Engine SELECT user_courses.course_id 
+FROM user_courses 
+WHERE user_courses.user_id = $1::INTEGER
+2026-04-01 00:46:56,209 INFO sqlalchemy.engine.Engine [cached since 2001s ago] (2,)
+2026-04-01 00:46:56,210 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     100.100.100.103:64244 - "GET /api/courses?semester=2026-Spring HTTP/1.1" 200 OK
+2026-04-01 00:46:56,851 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:46:56,852 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:46:56,852 INFO sqlalchemy.engine.Engine [cached since 2001s ago] (2,)
+2026-04-01 00:46:56,856 INFO sqlalchemy.engine.Engine SELECT courses.id, courses.course_code, courses.name, courses.name_abbr, courses.teacher, courses.semester, courses.class_number, courses.campus, courses.time_location, courses.description, courses.created_at, courses.updated_at 
+FROM courses 
+WHERE courses.id = $1::INTEGER
+2026-04-01 00:46:56,856 INFO sqlalchemy.engine.Engine [cached since 1997s ago] (2,)
+2026-04-01 00:46:56,857 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:46:56,857 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:46:56,857 INFO sqlalchemy.engine.Engine [cached since 2001s ago] (2,)
+2026-04-01 00:46:56,858 INFO sqlalchemy.engine.Engine SELECT tasks.id, tasks.course_id, tasks.title, tasks.description, tasks.due_time, tasks.creator_id, tasks.status, tasks.upvotes, tasks.downvotes, tasks.is_reported, tasks.created_at, tasks.updated_at 
+FROM tasks 
+WHERE tasks.course_id = $1::INTEGER AND tasks.status != $2::taskstatus AND tasks.due_time > $3::TIMESTAMP WITHOUT TIME ZONE ORDER BY tasks.due_time 
+ LIMIT $4::INTEGER
+2026-04-01 00:46:56,858 INFO sqlalchemy.engine.Engine [cached since 1997s ago] (2, 'HIDDEN', datetime.datetime(2026, 3, 31, 16, 46, 56, 858164), 5)
+2026-04-01 00:46:56,860 INFO sqlalchemy.engine.Engine COMMIT
+2026-04-01 00:46:56,862 INFO sqlalchemy.engine.Engine SELECT courses.id, courses.course_code, courses.name, courses.name_abbr, courses.teacher, courses.semester, courses.class_number, courses.campus, courses.time_location, courses.description, courses.created_at, courses.updated_at 
+FROM courses 
+WHERE courses.id = $1::INTEGER
+2026-04-01 00:46:56,863 INFO sqlalchemy.engine.Engine [cached since 1997s ago] (2,)
+INFO:     100.100.100.103:64244 - "GET /api/courses/2/tasks HTTP/1.1" 200 OK
+2026-04-01 00:46:56,865 INFO sqlalchemy.engine.Engine SELECT count(*) AS count_1 
+FROM user_courses 
+WHERE user_courses.course_id = $1::INTEGER
+2026-04-01 00:46:56,865 INFO sqlalchemy.engine.Engine [cached since 1997s ago] (2,)
+2026-04-01 00:46:56,867 INFO sqlalchemy.engine.Engine SELECT count(*) AS count_1 
+FROM tasks 
+WHERE tasks.course_id = $1::INTEGER
+2026-04-01 00:46:56,867 INFO sqlalchemy.engine.Engine [cached since 1997s ago] (2,)
+2026-04-01 00:46:56,868 INFO sqlalchemy.engine.Engine SELECT user_courses.user_id, user_courses.course_id, user_courses.created_at 
+FROM user_courses 
+WHERE user_courses.user_id = $1::INTEGER AND user_courses.course_id = $2::INTEGER
+2026-04-01 00:46:56,868 INFO sqlalchemy.engine.Engine [cached since 1997s ago] (2, 2)
+2026-04-01 00:46:56,870 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     100.100.100.103:64249 - "GET /api/courses/2 HTTP/1.1" 200 OK
+2026-04-01 00:46:58,274 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:46:58,275 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:46:58,275 INFO sqlalchemy.engine.Engine [cached since 2003s ago] (2,)
+2026-04-01 00:46:58,275 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:46:58,275 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:46:58,275 INFO sqlalchemy.engine.Engine [cached since 2003s ago] (2,)
+2026-04-01 00:46:58,276 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:46:58,276 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:46:58,276 INFO sqlalchemy.engine.Engine [cached since 2003s ago] (2,)
+2026-04-01 00:46:58,280 INFO sqlalchemy.engine.Engine SELECT courses.id, courses.course_code, courses.name, courses.name_abbr, courses.teacher, courses.semester, courses.class_number, courses.campus, courses.time_location, courses.description, courses.created_at, courses.updated_at, coalesce(anon_1.cnt, $1::INTEGER) AS followers_count 
+FROM courses JOIN user_courses ON courses.id = user_courses.course_id LEFT OUTER JOIN (SELECT user_courses.course_id AS course_id, count(*) AS cnt 
+FROM user_courses GROUP BY user_courses.course_id) AS anon_1 ON courses.id = anon_1.course_id 
+WHERE user_courses.user_id = $2::INTEGER ORDER BY courses.course_code
+2026-04-01 00:46:58,280 INFO sqlalchemy.engine.Engine [cached since 2002s ago] (0, 2)
+2026-04-01 00:46:58,281 INFO sqlalchemy.engine.Engine SELECT tasks.id, tasks.course_id, tasks.title, tasks.description, tasks.due_time, tasks.creator_id, tasks.status, tasks.upvotes, tasks.downvotes, tasks.is_reported, tasks.created_at, tasks.updated_at, courses.name, courses.name_abbr 
+FROM tasks JOIN courses ON tasks.course_id = courses.id JOIN user_courses ON courses.id = user_courses.course_id 
+WHERE user_courses.user_id = $1::INTEGER AND tasks.status != $2::taskstatus AND tasks.due_time <= $3::TIMESTAMP WITHOUT TIME ZONE ORDER BY tasks.due_time
+2026-04-01 00:46:58,281 INFO sqlalchemy.engine.Engine [cached since 2002s ago] (2, 'HIDDEN', datetime.datetime(2026, 6, 29, 16, 46, 58, 281237))
+2026-04-01 00:46:58,282 INFO sqlalchemy.engine.Engine SELECT task_completions.task_id 
+FROM task_completions 
+WHERE task_completions.user_id = $1::INTEGER
+2026-04-01 00:46:58,282 INFO sqlalchemy.engine.Engine [cached since 2002s ago] (2,)
+2026-04-01 00:46:58,283 INFO sqlalchemy.engine.Engine COMMIT
+2026-04-01 00:46:58,283 INFO sqlalchemy.engine.Engine COMMIT
+2026-04-01 00:46:58,284 INFO sqlalchemy.engine.Engine SELECT task_votes.user_id, task_votes.task_id, task_votes.vote_type, task_votes.created_at 
+FROM task_votes 
+WHERE task_votes.user_id = $1::INTEGER AND task_votes.task_id IN ($2::INTEGER, $3::INTEGER, $4::INTEGER, $5::INTEGER, $6::INTEGER, $7::INTEGER, $8::INTEGER, $9::INTEGER)
+2026-04-01 00:46:58,284 INFO sqlalchemy.engine.Engine [cached since 2002s ago] (2, 3, 5, 11, 8, 12, 9, 10, 1)
+INFO:     100.100.100.103:64244 - "GET /api/courses/followed HTTP/1.1" 200 OK
+2026-04-01 00:46:58,286 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     100.100.100.103:64249 - "GET /api/tasks/completed/list HTTP/1.1" 200 OK
+INFO:     100.100.100.103:64250 - "GET /api/tasks/my-deadlines?days=90 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64681 - "OPTIONS /api/tasks/my-deadlines?days=90 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64683 - "OPTIONS /api/courses/followed HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64685 - "OPTIONS /api/tasks/completed/list HTTP/1.1" 200 OK
+2026-04-01 00:48:01,807 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:48:01,808 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:48:01,809 INFO sqlalchemy.engine.Engine [cached since 2066s ago] (2,)
+2026-04-01 00:48:01,809 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:48:01,809 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:48:01,809 INFO sqlalchemy.engine.Engine [cached since 2066s ago] (2,)
+2026-04-01 00:48:01,816 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-04-01 00:48:01,816 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.nickname, users.password_hash, users.avatar_color, users.karma, users.role, users.created_at, users.updated_at 
+FROM users 
+WHERE users.id = $1::INTEGER
+2026-04-01 00:48:01,816 INFO sqlalchemy.engine.Engine [cached since 2066s ago] (2,)
+2026-04-01 00:48:01,819 INFO sqlalchemy.engine.Engine SELECT tasks.id, tasks.course_id, tasks.title, tasks.description, tasks.due_time, tasks.creator_id, tasks.status, tasks.upvotes, tasks.downvotes, tasks.is_reported, tasks.created_at, tasks.updated_at, courses.name, courses.name_abbr 
+FROM tasks JOIN courses ON tasks.course_id = courses.id JOIN user_courses ON courses.id = user_courses.course_id 
+WHERE user_courses.user_id = $1::INTEGER AND tasks.status != $2::taskstatus AND tasks.due_time <= $3::TIMESTAMP WITHOUT TIME ZONE ORDER BY tasks.due_time
+2026-04-01 00:48:01,819 INFO sqlalchemy.engine.Engine [cached since 2065s ago] (2, 'HIDDEN', datetime.datetime(2026, 6, 29, 16, 48, 1, 819367))
+2026-04-01 00:48:01,820 INFO sqlalchemy.engine.Engine SELECT courses.id, courses.course_code, courses.name, courses.name_abbr, courses.teacher, courses.semester, courses.class_number, courses.campus, courses.time_location, courses.description, courses.created_at, courses.updated_at, coalesce(anon_1.cnt, $1::INTEGER) AS followers_count 
+FROM courses JOIN user_courses ON courses.id = user_courses.course_id LEFT OUTER JOIN (SELECT user_courses.course_id AS course_id, count(*) AS cnt 
+FROM user_courses GROUP BY user_courses.course_id) AS anon_1 ON courses.id = anon_1.course_id 
+WHERE user_courses.user_id = $2::INTEGER ORDER BY courses.course_code
+2026-04-01 00:48:01,820 INFO sqlalchemy.engine.Engine [cached since 2065s ago] (0, 2)
+2026-04-01 00:48:01,820 INFO sqlalchemy.engine.Engine SELECT task_votes.user_id, task_votes.task_id, task_votes.vote_type, task_votes.created_at 
+FROM task_votes 
+WHERE task_votes.user_id = $1::INTEGER AND task_votes.task_id IN ($2::INTEGER, $3::INTEGER, $4::INTEGER, $5::INTEGER, $6::INTEGER, $7::INTEGER, $8::INTEGER, $9::INTEGER)
+2026-04-01 00:48:01,820 INFO sqlalchemy.engine.Engine [cached since 2065s ago] (2, 3, 5, 11, 8, 12, 9, 10, 1)
+2026-04-01 00:48:01,821 INFO sqlalchemy.engine.Engine COMMIT
+2026-04-01 00:48:01,821 INFO sqlalchemy.engine.Engine COMMIT
+2026-04-01 00:48:01,821 INFO sqlalchemy.engine.Engine SELECT task_completions.task_id 
+FROM task_completions 
+WHERE task_completions.user_id = $1::INTEGER
+2026-04-01 00:48:01,821 INFO sqlalchemy.engine.Engine [cached since 2065s ago] (2,)
+INFO:     127.0.0.1:64689 - "GET /api/courses/followed HTTP/1.1" 200 OK
+2026-04-01 00:48:01,822 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:64687 - "GET /api/tasks/my-deadlines?days=90 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64692 - "GET /api/tasks/completed/list HTTP/1.1" 200 OK

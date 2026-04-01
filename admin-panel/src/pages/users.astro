@@ -5,21 +5,62 @@ const API_BASE = import.meta.env.PUBLIC_API_URL || 'http://localhost:8000';
 ---
 
 <AdminLayout title="用户管理" currentPage="/users">
-  <div class="mb-8 flex justify-between items-center">
-    <div>
-      <h2 class="text-2xl font-bold text-gray-900">用户管理</h2>
-      <p class="text-gray-500 mt-1">查看和管理所有用户</p>
+  <div class="mb-6">
+    <div class="flex justify-between items-center mb-4">
+      <div>
+        <h2 class="text-2xl font-bold text-gray-900">用户管理</h2>
+        <p class="text-gray-500 mt-1">查看和管理所有用户</p>
+      </div>
     </div>
-    <div class="flex gap-2">
-      <input 
-        type="text" 
-        id="search-input"
-        placeholder="搜索邮箱或昵称..." 
-        class="px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-      />
-      <button id="search-btn" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">
-        搜索
-      </button>
+    
+    <!-- Filters -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-4">
+      <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <div>
+          <label class="block text-xs font-medium text-gray-500 mb-1">搜索</label>
+          <input type="text" id="search-input" placeholder="邮箱/昵称..." class="w-full px-3 py-2 border rounded-lg text-sm" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-500 mb-1">角色</label>
+          <select id="role-filter" class="w-full px-3 py-2 border rounded-lg text-sm">
+            <option value="">全部角色</option>
+            <option value="admin">管理员</option>
+            <option value="student">学生</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-500 mb-1">Karma 范围</label>
+          <select id="karma-filter" class="w-full px-3 py-2 border rounded-lg text-sm">
+            <option value="">全部</option>
+            <option value="high">高信誉 (≥50)</option>
+            <option value="normal">正常 (0-49)</option>
+            <option value="low">低信誉 (<0)</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-500 mb-1">排序</label>
+          <select id="sort-filter" class="w-full px-3 py-2 border rounded-lg text-sm">
+            <option value="created_at_desc">注册时间 ↓</option>
+            <option value="created_at_asc">注册时间 ↑</option>
+            <option value="karma_desc">Karma ↓</option>
+            <option value="karma_asc">Karma ↑</option>
+          </select>
+        </div>
+        <div class="flex items-end">
+          <button id="clear-filters" class="px-4 py-2 text-sm text-gray-500 hover:text-gray-700 border rounded-lg">清除筛选</button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Batch Actions -->
+    <div id="batch-actions" class="hidden bg-blue-50 rounded-xl p-4 mb-4 flex items-center justify-between">
+      <span class="text-blue-700">已选择 <span id="selected-count">0</span> 个用户</span>
+      <div class="flex gap-2">
+        <button id="batch-set-admin" class="px-3 py-1.5 bg-green-500 text-white rounded-lg text-sm hover:bg-green-600">批量升权</button>
+        <button id="batch-remove-admin" class="px-3 py-1.5 bg-yellow-500 text-white rounded-lg text-sm hover:bg-yellow-600">批量降权</button>
+        <button id="batch-delete" class="px-3 py-1.5 bg-red-500 text-white rounded-lg text-sm hover:bg-red-600">批量删除</button>
+        <button id="cancel-selection" class="px-3 py-1.5 bg-gray-200 text-gray-700 rounded-lg text-sm hover:bg-gray-300">取消</button>
+      </div>
     </div>
   </div>
   
@@ -28,6 +69,9 @@ const API_BASE = import.meta.env.PUBLIC_API_URL || 'http://localhost:8000';
     <table class="w-full">
       <thead class="bg-gray-50 border-b border-gray-100">
         <tr>
+          <th class="py-3 px-4 text-left">
+            <input type="checkbox" id="select-all" class="rounded" />
+          </th>
           <th class="text-left py-3 px-4 text-sm font-medium text-gray-500">ID</th>
           <th class="text-left py-3 px-4 text-sm font-medium text-gray-500">邮箱</th>
           <th class="text-left py-3 px-4 text-sm font-medium text-gray-500">昵称</th>
@@ -39,7 +83,7 @@ const API_BASE = import.meta.env.PUBLIC_API_URL || 'http://localhost:8000';
       </thead>
       <tbody id="user-list">
         <tr>
-          <td colspan="7" class="text-center py-8 text-gray-500">加载中...</td>
+          <td colspan="8" class="text-center py-8 text-gray-500">加载中...</td>
         </tr>
       </tbody>
     </table>
@@ -47,9 +91,21 @@ const API_BASE = import.meta.env.PUBLIC_API_URL || 'http://localhost:8000';
   
   <!-- Pagination -->
   <div class="mt-4 flex justify-between items-center">
-    <button id="prev-page" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg disabled:opacity-50">上一页</button>
-    <span id="page-info" class="text-gray-600">第 1 页</span>
-    <button id="next-page" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg">下一页</button>
+    <div class="flex items-center gap-2">
+      <span class="text-sm text-gray-500">每页</span>
+      <select id="page-size" class="px-2 py-1 border rounded text-sm">
+        <option value="20">20</option>
+        <option value="50">50</option>
+        <option value="100">100</option>
+      </select>
+      <span class="text-sm text-gray-500">条</span>
+      <span id="result-count" class="ml-4 text-sm text-gray-500"></span>
+    </div>
+    <div class="flex items-center gap-2">
+      <button id="prev-page" class="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg text-sm disabled:opacity-50">上一页</button>
+      <span id="page-info" class="text-sm text-gray-600">第 1 页</span>
+      <button id="next-page" class="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg text-sm">下一页</button>
+    </div>
   </div>
   
   <!-- Edit Modal -->
@@ -77,30 +133,137 @@ const API_BASE = import.meta.env.PUBLIC_API_URL || 'http://localhost:8000';
 
 <script define:vars={{ API_BASE }}>
   let currentPage = 1;
-  let searchQuery = '';
+  window.selectedIds = new Set();
   
   const userList = document.getElementById('user-list');
   const searchInput = document.getElementById('search-input');
-  const searchBtn = document.getElementById('search-btn');
+  const roleFilter = document.getElementById('role-filter');
+  const karmaFilter = document.getElementById('karma-filter');
+  const sortFilter = document.getElementById('sort-filter');
+  const clearFiltersBtn = document.getElementById('clear-filters');
+  const selectAllCheckbox = document.getElementById('select-all');
+  const batchActions = document.getElementById('batch-actions');
+  const selectedCountSpan = document.getElementById('selected-count');
+  const batchSetAdminBtn = document.getElementById('batch-set-admin');
+  const batchRemoveAdminBtn = document.getElementById('batch-remove-admin');
+  const batchDeleteBtn = document.getElementById('batch-delete');
+  const cancelSelectionBtn = document.getElementById('cancel-selection');
+  const pageSizeSelect = document.getElementById('page-size');
   const prevPage = document.getElementById('prev-page');
   const nextPage = document.getElementById('next-page');
   const pageInfo = document.getElementById('page-info');
+  const resultCount = document.getElementById('result-count');
   const editModal = document.getElementById('edit-modal');
   const editForm = document.getElementById('edit-form');
   const cancelEdit = document.getElementById('cancel-edit');
   
-  searchBtn?.addEventListener('click', () => {
-    searchQuery = searchInput?.value || '';
-    currentPage = 1;
+  // Selection handling
+  function updateSelection() {
+    const count = window.selectedIds.size;
+    selectedCountSpan.textContent = count;
+    if (count > 0) {
+      batchActions.classList.remove('hidden');
+    } else {
+      batchActions.classList.add('hidden');
+    }
+    
+    const checkboxes = document.querySelectorAll('.user-checkbox');
+    const allChecked = checkboxes.length > 0 && [...checkboxes].every(cb => cb.checked);
+    selectAllCheckbox.checked = allChecked;
+  }
+  
+  selectAllCheckbox?.addEventListener('change', (e) => {
+    const checkboxes = document.querySelectorAll('.user-checkbox');
+    checkboxes.forEach(cb => {
+      cb.checked = e.target.checked;
+      const id = parseInt(cb.dataset.id);
+      if (e.target.checked) {
+        window.selectedIds.add(id);
+      } else {
+        window.selectedIds.delete(id);
+      }
+    });
+    updateSelection();
+  });
+  
+  cancelSelectionBtn?.addEventListener('click', () => {
+    window.selectedIds.clear();
+    document.querySelectorAll('.user-checkbox').forEach(cb => cb.checked = false);
+    selectAllCheckbox.checked = false;
+    updateSelection();
+  });
+  
+  window.toggleSelect = (id, checked) => {
+    if (checked) {
+      window.selectedIds.add(id);
+    } else {
+      window.selectedIds.delete(id);
+    }
+    updateSelection();
+  };
+  
+  // Batch operations
+  batchSetAdminBtn?.addEventListener('click', async () => {
+    const ids = [...window.selectedIds];
+    if (ids.length === 0) return;
+    if (!confirm(`确认将选中的 ${ids.length} 个用户设为管理员？`)) return;
+    
+    for (const id of ids) {
+      await fetch(`${API_BASE}/api/admin/users/${id}/set-admin`, { method: 'POST', credentials: 'include' });
+    }
+    
+    window.selectedIds.clear();
+    updateSelection();
     loadUsers();
   });
   
-  searchInput?.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') {
-      searchQuery = searchInput?.value || '';
-      currentPage = 1;
-      loadUsers();
+  batchRemoveAdminBtn?.addEventListener('click', async () => {
+    const ids = [...window.selectedIds];
+    if (ids.length === 0) return;
+    if (!confirm(`确认取消选中的 ${ids.length} 个用户的管理员权限？`)) return;
+    
+    for (const id of ids) {
+      await fetch(`${API_BASE}/api/admin/users/${id}/remove-admin`, { method: 'POST', credentials: 'include' });
     }
+    
+    window.selectedIds.clear();
+    updateSelection();
+    loadUsers();
+  });
+  
+  batchDeleteBtn?.addEventListener('click', async () => {
+    const ids = [...window.selectedIds];
+    if (ids.length === 0) return;
+    if (!confirm(`确认删除选中的 ${ids.length} 个用户？此操作不可恢复！`)) return;
+    
+    for (const id of ids) {
+      await fetch(`${API_BASE}/api/admin/users/${id}`, { method: 'DELETE', credentials: 'include' });
+    }
+    
+    window.selectedIds.clear();
+    updateSelection();
+    loadUsers();
+  });
+  
+  // Filter handlers
+  let searchTimeout;
+  searchInput?.addEventListener('input', () => {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => { currentPage = 1; loadUsers(); }, 300);
+  });
+  
+  roleFilter?.addEventListener('change', () => { currentPage = 1; loadUsers(); });
+  karmaFilter?.addEventListener('change', () => { currentPage = 1; loadUsers(); });
+  sortFilter?.addEventListener('change', () => { currentPage = 1; loadUsers(); });
+  pageSizeSelect?.addEventListener('change', () => { currentPage = 1; loadUsers(); });
+  
+  clearFiltersBtn?.addEventListener('click', () => {
+    searchInput.value = '';
+    roleFilter.value = '';
+    karmaFilter.value = '';
+    sortFilter.value = 'created_at_desc';
+    currentPage = 1;
+    loadUsers();
   });
   
   prevPage?.addEventListener('click', () => {
@@ -137,8 +300,15 @@ const API_BASE = import.meta.env.PUBLIC_API_URL || 'http://localhost:8000';
   });
   
   async function loadUsers() {
-    const params = new URLSearchParams({ page: currentPage.toString(), page_size: '20' });
-    if (searchQuery) params.set('q', searchQuery);
+    const q = searchInput?.value || '';
+    const role = roleFilter?.value || '';
+    const karma = karmaFilter?.value || '';
+    const sort = sortFilter?.value || 'created_at_desc';
+    const pageSize = parseInt(pageSizeSelect?.value || '20');
+    
+    const params = new URLSearchParams({ page: currentPage.toString(), page_size: pageSize.toString() });
+    if (q) params.set('q', q);
+    if (role) params.set('role', role);
     
     try {
       const res = await fetch(`${API_BASE}/api/admin/users?${params}`, {
@@ -146,24 +316,56 @@ const API_BASE = import.meta.env.PUBLIC_API_URL || 'http://localhost:8000';
       });
       
       if (!res.ok) {
-        userList.innerHTML = '<tr><td colspan="7" class="text-center py-8 text-red-500">加载失败，请确认管理员登录</td></tr>';
+        userList.innerHTML = '<tr><td colspan="8" class="text-center py-8 text-red-500">加载失败，请确认管理员登录</td></tr>';
         return;
       }
       
-      const users = await res.json();
+      let users = await res.json();
+      
+      // Client-side karma filter
+      if (karma === 'high') {
+        users = users.filter(u => u.karma >= 50);
+      } else if (karma === 'normal') {
+        users = users.filter(u => u.karma >= 0 && u.karma < 50);
+      } else if (karma === 'low') {
+        users = users.filter(u => u.karma < 0);
+      }
+      
+      // Client-side sort
+      const [field, dir] = sort.split('_');
+      if (field === 'karma') {
+        users.sort((a, b) => dir === 'desc' ? b.karma - a.karma : a.karma - b.karma);
+      } else if (field === 'created') {
+        users.sort((a, b) => {
+          const dateA = new Date(a.created_at).getTime();
+          const dateB = new Date(b.created_at).getTime();
+          return dir === 'desc' ? dateB - dateA : dateA - dateB;
+        });
+      }
+      
+      // Update pagination
+      pageInfo.textContent = `第 ${currentPage} 页`;
+      resultCount.textContent = `显示 ${users.length} 条`;
+      prevPage.disabled = currentPage <= 1;
+      nextPage.disabled = users.length < pageSize;
       
       if (users.length === 0) {
-        userList.innerHTML = '<tr><td colspan="7" class="text-center py-8 text-gray-500">暂无数据</td></tr>';
+        userList.innerHTML = '<tr><td colspan="8" class="text-center py-8 text-gray-500">暂无数据</td></tr>';
         return;
       }
       
       userList.innerHTML = users.map(user => `
         <tr class="border-b border-gray-50 hover:bg-gray-50">
+          <td class="py-3 px-4">
+            <input type="checkbox" class="user-checkbox rounded" data-id="${user.id}" 
+              ${window.selectedIds.has(user.id) ? 'checked' : ''} 
+              onchange="toggleSelect(${user.id}, this.checked)" />
+          </td>
           <td class="py-3 px-4 text-sm text-gray-600">${user.id}</td>
           <td class="py-3 px-4 text-sm text-gray-900">${user.email}</td>
           <td class="py-3 px-4 text-sm text-gray-900">${user.nickname}</td>
           <td class="py-3 px-4 text-sm">
-            <span class="${user.karma >= 50 ? 'text-green-600' : user.karma < 0 ? 'text-red-600' : 'text-gray-600'}">
+            <span class="${user.karma >= 50 ? 'text-green-600 font-medium' : user.karma < 0 ? 'text-red-600' : 'text-gray-600'}">
               ${user.karma}
             </span>
           </td>
@@ -175,7 +377,7 @@ const API_BASE = import.meta.env.PUBLIC_API_URL || 'http://localhost:8000';
           <td class="py-3 px-4 text-sm text-gray-600">${new Date(user.created_at).toLocaleDateString('zh-CN')}</td>
           <td class="py-3 px-4 text-sm">
             <div class="flex gap-2">
-              <button onclick="openEdit(${user.id}, '${user.nickname}', ${user.karma})" class="text-blue-600 hover:text-blue-800">编辑</button>
+              <button onclick="openEdit(${user.id}, '${user.nickname.replace(/'/g, "\\'")}', ${user.karma})" class="text-blue-600 hover:text-blue-800">编辑</button>
               ${user.role === 'admin' 
                 ? `<button onclick="removeAdmin(${user.id})" class="text-yellow-600 hover:text-yellow-800">降权</button>`
                 : `<button onclick="setAdmin(${user.id})" class="text-green-600 hover:text-green-800">升权</button>`
@@ -185,12 +387,9 @@ const API_BASE = import.meta.env.PUBLIC_API_URL || 'http://localhost:8000';
           </td>
         </tr>
       `).join('');
-      
-      pageInfo.textContent = `第 ${currentPage} 页`;
-      prevPage.disabled = currentPage === 1;
     } catch (err) {
       console.error('Load users error:', err);
-      userList.innerHTML = '<tr><td colspan="7" class="text-center py-8 text-red-500">加载失败</td></tr>';
+      userList.innerHTML = '<tr><td colspan="8" class="text-center py-8 text-red-500">加载失败</td></tr>';
     }
   }
   

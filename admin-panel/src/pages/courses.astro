@@ -5,27 +5,57 @@ const API_BASE = import.meta.env.PUBLIC_API_URL || 'http://localhost:8000';
 ---
 
 <AdminLayout title="课程管理" currentPage="/courses">
-  <div class="mb-8 flex justify-between items-center">
-    <div>
-      <h2 class="text-2xl font-bold text-gray-900">课程管理</h2>
-      <p class="text-gray-500 mt-1">管理课程底库</p>
+  <div class="mb-6">
+    <div class="flex justify-between items-center mb-4">
+      <div>
+        <h2 class="text-2xl font-bold text-gray-900">课程管理</h2>
+        <p class="text-gray-500 mt-1">管理课程底库</p>
+      </div>
+      <div class="flex gap-2">
+        <button id="export-btn" class="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600">
+          导出
+        </button>
+        <button id="bulk-import-btn" class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600">
+          批量导入
+        </button>
+        <button id="add-course-btn" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">
+          添加课程
+        </button>
+      </div>
     </div>
-    <div class="flex gap-2">
-      <input 
-        type="text" 
-        id="search-input"
-        placeholder="搜索课程..." 
-        class="px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-      />
-      <button id="export-btn" class="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600">
-        导出
-      </button>
-      <button id="bulk-import-btn" class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600">
-        批量导入
-      </button>
-      <button id="add-course-btn" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">
-        添加课程
-      </button>
+    
+    <!-- Filters -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-4">
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div>
+          <label class="block text-xs font-medium text-gray-500 mb-1">搜索</label>
+          <input type="text" id="search-input" placeholder="课名/课号/教师..." class="w-full px-3 py-2 border rounded-lg text-sm" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-500 mb-1">学期</label>
+          <select id="semester-filter" class="w-full px-3 py-2 border rounded-lg text-sm">
+            <option value="">全部学期</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-500 mb-1">校区</label>
+          <select id="campus-filter" class="w-full px-3 py-2 border rounded-lg text-sm">
+            <option value="">全部校区</option>
+          </select>
+        </div>
+        <div class="flex items-end">
+          <button id="clear-filters" class="px-4 py-2 text-sm text-gray-500 hover:text-gray-700 border rounded-lg">清除筛选</button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Batch Actions -->
+    <div id="batch-actions" class="hidden bg-blue-50 rounded-xl p-4 mb-4 flex items-center justify-between">
+      <span class="text-blue-700">已选择 <span id="selected-count">0</span> 项</span>
+      <div class="flex gap-2">
+        <button id="batch-delete" class="px-3 py-1.5 bg-red-500 text-white rounded-lg text-sm hover:bg-red-600">批量删除</button>
+        <button id="cancel-selection" class="px-3 py-1.5 bg-gray-200 text-gray-700 rounded-lg text-sm hover:bg-gray-300">取消</button>
+      </div>
     </div>
   </div>
   
@@ -34,6 +64,9 @@ const API_BASE = import.meta.env.PUBLIC_API_URL || 'http://localhost:8000';
     <table class="w-full">
       <thead class="bg-gray-50 border-b border-gray-100">
         <tr>
+          <th class="py-3 px-4 text-left">
+            <input type="checkbox" id="select-all" class="rounded" />
+          </th>
           <th class="text-left py-3 px-4 text-sm font-medium text-gray-500">ID</th>
           <th class="text-left py-3 px-4 text-sm font-medium text-gray-500">课号</th>
           <th class="text-left py-3 px-4 text-sm font-medium text-gray-500">名称</th>
@@ -47,10 +80,29 @@ const API_BASE = import.meta.env.PUBLIC_API_URL || 'http://localhost:8000';
       </thead>
       <tbody id="course-list">
         <tr>
-          <td colspan="9" class="text-center py-8 text-gray-500">加载中...</td>
+          <td colspan="10" class="text-center py-8 text-gray-500">加载中...</td>
         </tr>
       </tbody>
     </table>
+  </div>
+  
+  <!-- Pagination -->
+  <div class="mt-4 flex justify-between items-center">
+    <div class="flex items-center gap-2">
+      <span class="text-sm text-gray-500">每页</span>
+      <select id="page-size" class="px-2 py-1 border rounded text-sm">
+        <option value="20">20</option>
+        <option value="50">50</option>
+        <option value="100">100</option>
+      </select>
+      <span class="text-sm text-gray-500">条</span>
+      <span id="result-count" class="ml-4 text-sm text-gray-500"></span>
+    </div>
+    <div class="flex items-center gap-2">
+      <button id="prev-page" class="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg text-sm disabled:opacity-50">上一页</button>
+      <span id="page-info" class="text-sm text-gray-600">第 1 页</span>
+      <button id="next-page" class="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg text-sm">下一页</button>
+    </div>
   </div>
 </AdminLayout>
 
@@ -190,12 +242,25 @@ const API_BASE = import.meta.env.PUBLIC_API_URL || 'http://localhost:8000';
 <script define:vars={{ API_BASE }}>
   const courseList = document.getElementById('course-list');
   const searchInput = document.getElementById('search-input');
+  const semesterFilter = document.getElementById('semester-filter');
+  const campusFilter = document.getElementById('campus-filter');
+  const clearFiltersBtn = document.getElementById('clear-filters');
   const courseModal = document.getElementById('course-modal');
   const courseForm = document.getElementById('course-form');
   const modalTitle = document.getElementById('modal-title');
   const addBtn = document.getElementById('add-course-btn');
   const cancelBtn = document.getElementById('cancel-btn');
   const exportBtn = document.getElementById('export-btn');
+  const selectAllCheckbox = document.getElementById('select-all');
+  const batchActions = document.getElementById('batch-actions');
+  const selectedCountSpan = document.getElementById('selected-count');
+  const batchDeleteBtn = document.getElementById('batch-delete');
+  const cancelSelectionBtn = document.getElementById('cancel-selection');
+  const pageSizeSelect = document.getElementById('page-size');
+  const prevPageBtn = document.getElementById('prev-page');
+  const nextPageBtn = document.getElementById('next-page');
+  const pageInfo = document.getElementById('page-info');
+  const resultCount = document.getElementById('result-count');
   
   // Bulk import elements
   const bulkModal = document.getElementById('bulk-modal');
@@ -211,6 +276,95 @@ const API_BASE = import.meta.env.PUBLIC_API_URL || 'http://localhost:8000';
   
   let isEditing = false;
   let parsedCourses = [];
+  let currentPage = 1;
+  window.allCourses = [];
+  window.selectedIds = new Set();
+  
+  // Load filter options
+  async function loadFilterOptions() {
+    try {
+      const res = await fetch(`${API_BASE}/api/courses/semesters`, { credentials: 'include' });
+      if (res.ok) {
+        const semesters = await res.json();
+        semesterFilter.innerHTML = '<option value="">全部学期</option>' + 
+          semesters.map(s => `<option value="${s}">${s}</option>`).join('');
+      }
+    } catch (e) { console.error(e); }
+    
+    // Populate campus options from existing data
+    const campuses = new Set();
+    window.allCourses.forEach(c => { if (c.campus) campuses.add(c.campus); });
+    campusFilter.innerHTML = '<option value="">全部校区</option>' + 
+      [...campuses].map(c => `<option value="${c}">${c}</option>`).join('');
+  }
+  
+  // Selection handling
+  function updateSelection() {
+    const count = window.selectedIds.size;
+    selectedCountSpan.textContent = count;
+    if (count > 0) {
+      batchActions.classList.remove('hidden');
+    } else {
+      batchActions.classList.add('hidden');
+    }
+    
+    // Update select all checkbox
+    const checkboxes = document.querySelectorAll('.course-checkbox');
+    const allChecked = checkboxes.length > 0 && [...checkboxes].every(cb => cb.checked);
+    selectAllCheckbox.checked = allChecked;
+  }
+  
+  selectAllCheckbox?.addEventListener('change', (e) => {
+    const checkboxes = document.querySelectorAll('.course-checkbox');
+    checkboxes.forEach(cb => {
+      cb.checked = e.target.checked;
+      const id = parseInt(cb.dataset.id);
+      if (e.target.checked) {
+        window.selectedIds.add(id);
+      } else {
+        window.selectedIds.delete(id);
+      }
+    });
+    updateSelection();
+  });
+  
+  cancelSelectionBtn?.addEventListener('click', () => {
+    window.selectedIds.clear();
+    document.querySelectorAll('.course-checkbox').forEach(cb => cb.checked = false);
+    selectAllCheckbox.checked = false;
+    updateSelection();
+  });
+  
+  batchDeleteBtn?.addEventListener('click', async () => {
+    const ids = [...window.selectedIds];
+    if (ids.length === 0) return;
+    
+    if (!confirm(`确认删除选中的 ${ids.length} 门课程？如果课程下有任务，则无法删除。`)) return;
+    
+    let successCount = 0;
+    let failCount = 0;
+    
+    for (const id of ids) {
+      try {
+        const res = await fetch(`${API_BASE}/api/admin/courses/${id}`, {
+          method: 'DELETE',
+          credentials: 'include'
+        });
+        if (res.ok) {
+          successCount++;
+        } else {
+          failCount++;
+        }
+      } catch (e) {
+        failCount++;
+      }
+    }
+    
+    alert(`删除完成：成功 ${successCount} 条，失败 ${failCount} 条`);
+    window.selectedIds.clear();
+    updateSelection();
+    loadCourses();
+  });
   
   // Export functionality
   exportBtn?.addEventListener('click', async () => {
@@ -225,7 +379,6 @@ const API_BASE = import.meta.env.PUBLIC_API_URL || 'http://localhost:8000';
       
       const courses = await res.json();
       
-      // Download as JSON file
       const blob = new Blob([JSON.stringify(courses, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -356,7 +509,6 @@ const API_BASE = import.meta.env.PUBLIC_API_URL || 'http://localhost:8000';
         throw new Error(result.detail || '导入失败');
       }
       
-      // Show result
       let resultClass = 'bg-green-50 text-green-800';
       if (result.errors.length > 0) {
         resultClass = 'bg-yellow-50 text-yellow-800';
@@ -377,6 +529,7 @@ const API_BASE = import.meta.env.PUBLIC_API_URL || 'http://localhost:8000';
       
       if (result.imported > 0) {
         loadCourses();
+        loadFilterOptions();
       }
     } catch (err) {
       importResult.className = 'mb-4 p-4 rounded-lg bg-red-50 text-red-800';
@@ -447,11 +600,28 @@ const API_BASE = import.meta.env.PUBLIC_API_URL || 'http://localhost:8000';
     }
   });
   
+  // Filter handlers
   let searchTimeout;
   searchInput?.addEventListener('input', () => {
     clearTimeout(searchTimeout);
-    searchTimeout = setTimeout(loadCourses, 300);
+    searchTimeout = setTimeout(() => { currentPage = 1; loadCourses(); }, 300);
   });
+  
+  semesterFilter?.addEventListener('change', () => { currentPage = 1; loadCourses(); });
+  campusFilter?.addEventListener('change', () => { currentPage = 1; loadCourses(); });
+  
+  clearFiltersBtn?.addEventListener('click', () => {
+    searchInput.value = '';
+    semesterFilter.value = '';
+    campusFilter.value = '';
+    currentPage = 1;
+    loadCourses();
+  });
+  
+  // Pagination
+  pageSizeSelect?.addEventListener('change', () => { currentPage = 1; loadCourses(); });
+  prevPageBtn?.addEventListener('click', () => { if (currentPage > 1) { currentPage--; loadCourses(); } });
+  nextPageBtn?.addEventListener('click', () => { currentPage++; loadCourses(); });
   
   window.openEdit = (course) => {
     isEditing = true;
@@ -487,13 +657,24 @@ const API_BASE = import.meta.env.PUBLIC_API_URL || 'http://localhost:8000';
     }
   };
   
-  // Store courses for edit function - use window for global access
-  window.allCourses = [];
+  window.toggleSelect = (id, checked) => {
+    if (checked) {
+      window.selectedIds.add(id);
+    } else {
+      window.selectedIds.delete(id);
+    }
+    updateSelection();
+  };
   
   async function loadCourses() {
     const q = searchInput?.value || '';
-    const params = new URLSearchParams({ page_size: '50' });
+    const semester = semesterFilter?.value || '';
+    const campus = campusFilter?.value || '';
+    const pageSize = parseInt(pageSizeSelect?.value || '20');
+    
+    const params = new URLSearchParams({ page: currentPage, page_size: pageSize });
     if (q) params.set('q', q);
+    if (semester) params.set('semester', semester);
     
     try {
       const res = await fetch(`${API_BASE}/api/admin/courses?${params}`, {
@@ -501,20 +682,45 @@ const API_BASE = import.meta.env.PUBLIC_API_URL || 'http://localhost:8000';
       });
       
       if (!res.ok) {
-        courseList.innerHTML = '<tr><td colspan="9" class="text-center py-8 text-red-500">加载失败，请确认管理员登录</td></tr>';
+        courseList.innerHTML = '<tr><td colspan="10" class="text-center py-8 text-red-500">加载失败，请确认管理员登录</td></tr>';
         return;
       }
       
-      const courses = await res.json();
+      let courses = await res.json();
+      
+      // Client-side campus filter (since backend may not support it)
+      if (campus) {
+        courses = courses.filter(c => c.campus === campus);
+      }
+      
       window.allCourses = courses;
       
+      // Update filter options
+      const campuses = new Set();
+      courses.forEach(c => { if (c.campus) campuses.add(c.campus); });
+      if (!campusFilter.value) {
+        campusFilter.innerHTML = '<option value="">全部校区</option>' + 
+          [...campuses].map(c => `<option value="${c}">${c}</option>`).join('');
+      }
+      
+      // Update pagination
+      pageInfo.textContent = `第 ${currentPage} 页`;
+      resultCount.textContent = `显示 ${courses.length} 条`;
+      prevPageBtn.disabled = currentPage <= 1;
+      nextPageBtn.disabled = courses.length < pageSize;
+      
       if (courses.length === 0) {
-        courseList.innerHTML = '<tr><td colspan="9" class="text-center py-8 text-gray-500">暂无课程</td></tr>';
+        courseList.innerHTML = '<tr><td colspan="10" class="text-center py-8 text-gray-500">暂无课程</td></tr>';
         return;
       }
       
       courseList.innerHTML = courses.map((course, i) => `
         <tr class="border-b border-gray-50 hover:bg-gray-50">
+          <td class="py-3 px-4">
+            <input type="checkbox" class="course-checkbox rounded" data-id="${course.id}" 
+              ${window.selectedIds.has(course.id) ? 'checked' : ''} 
+              onchange="toggleSelect(${course.id}, this.checked)" />
+          </td>
           <td class="py-3 px-4 text-sm text-gray-600">${course.id}</td>
           <td class="py-3 px-4 text-sm text-gray-600">${course.code}</td>
           <td class="py-3 px-4 text-sm text-gray-900">${course.name}${course.name_abbr ? ` (${course.name_abbr})` : ''}</td>
@@ -533,9 +739,10 @@ const API_BASE = import.meta.env.PUBLIC_API_URL || 'http://localhost:8000';
       `).join('');
     } catch (err) {
       console.error('Load courses error:', err);
-      courseList.innerHTML = '<tr><td colspan="9" class="text-center py-8 text-red-500">加载失败</td></tr>';
+      courseList.innerHTML = '<tr><td colspan="10" class="text-center py-8 text-red-500">加载失败</td></tr>';
     }
   }
   
   loadCourses();
+  loadFilterOptions();
 </script>

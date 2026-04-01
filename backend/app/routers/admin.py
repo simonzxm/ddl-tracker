@@ -93,6 +93,10 @@ async def get_dashboard_stats(
 async def list_all_tasks(
     q: Optional[str] = Query(None, description="搜索标题"),
     status_filter: Optional[str] = Query(None, alias="status"),
+    semester: Optional[str] = Query(None, description="学期筛选"),
+    course_id: Optional[int] = Query(None, description="课程ID筛选"),
+    due_from: Optional[str] = Query(None, description="截止时间起 (YYYY-MM-DD)"),
+    due_to: Optional[str] = Query(None, description="截止时间止 (YYYY-MM-DD)"),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     admin: User = Depends(get_current_admin),
@@ -115,6 +119,26 @@ async def list_all_tasks(
             query = query.where(Task.status == task_status)
         except ValueError:
             pass  # Invalid status, ignore filter
+    
+    if semester:
+        query = query.where(Course.semester == semester)
+    
+    if course_id:
+        query = query.where(Task.course_id == course_id)
+    
+    if due_from:
+        try:
+            from_date = datetime.strptime(due_from, "%Y-%m-%d")
+            query = query.where(Task.due_time >= from_date)
+        except ValueError:
+            pass
+    
+    if due_to:
+        try:
+            to_date = datetime.strptime(due_to, "%Y-%m-%d") + timedelta(days=1)
+            query = query.where(Task.due_time < to_date)
+        except ValueError:
+            pass
     
     query = query.order_by(Task.created_at.desc()).offset((page - 1) * page_size).limit(page_size)
     result = await db.execute(query)

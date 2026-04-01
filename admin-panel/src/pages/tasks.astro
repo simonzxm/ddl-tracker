@@ -5,21 +5,73 @@ const API_BASE = import.meta.env.PUBLIC_API_URL || 'http://localhost:8000';
 ---
 
 <AdminLayout title="任务管理" currentPage="/tasks">
-  <div class="mb-8 flex justify-between items-center">
-    <div>
-      <h2 class="text-2xl font-bold text-gray-900">任务管理</h2>
-      <p class="text-gray-500 mt-1">查看和管理所有 DDL 任务</p>
+  <div class="mb-6">
+    <div class="flex justify-between items-center mb-4">
+      <div>
+        <h2 class="text-2xl font-bold text-gray-900">任务管理</h2>
+        <p class="text-gray-500 mt-1">查看和管理所有 DDL 任务</p>
+      </div>
+      <div class="flex gap-2">
+        <button id="tab-all" class="px-4 py-2 bg-blue-500 text-white rounded-lg">全部</button>
+        <button id="tab-reported" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg">被举报</button>
+        <button id="tab-pending" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg">待验证</button>
+      </div>
     </div>
-    <div class="flex gap-2">
-      <input type="text" id="search" placeholder="搜索标题..." class="px-4 py-2 border rounded-lg" />
-      <select id="status-filter" class="px-4 py-2 border rounded-lg">
-        <option value="">全部状态</option>
-        <option value="pending">待验证</option>
-        <option value="verified">已验证</option>
-        <option value="hidden">已隐藏</option>
-      </select>
-      <button id="tab-all" class="px-4 py-2 bg-blue-500 text-white rounded-lg">全部</button>
-      <button id="tab-reported" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg">被举报</button>
+    
+    <!-- Filters -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-4">
+      <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+        <div>
+          <label class="block text-xs font-medium text-gray-500 mb-1">搜索标题</label>
+          <input type="text" id="search" placeholder="标题关键词..." class="w-full px-3 py-2 border rounded-lg text-sm" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-500 mb-1">状态</label>
+          <select id="status-filter" class="w-full px-3 py-2 border rounded-lg text-sm">
+            <option value="">全部状态</option>
+            <option value="pending">待验证</option>
+            <option value="verified">已验证</option>
+            <option value="hidden">已隐藏</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-500 mb-1">学期</label>
+          <select id="semester-filter" class="w-full px-3 py-2 border rounded-lg text-sm">
+            <option value="">全部学期</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-500 mb-1">课程</label>
+          <select id="course-filter" class="w-full px-3 py-2 border rounded-lg text-sm">
+            <option value="">全部课程</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-500 mb-1">截止时间起</label>
+          <input type="date" id="due-from" class="w-full px-3 py-2 border rounded-lg text-sm" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-500 mb-1">截止时间止</label>
+          <input type="date" id="due-to" class="w-full px-3 py-2 border rounded-lg text-sm" />
+        </div>
+      </div>
+      <div class="flex justify-between items-center mt-4">
+        <button id="clear-filters" class="text-sm text-gray-500 hover:text-gray-700">清除筛选</button>
+        <div class="flex gap-2">
+          <span id="result-count" class="text-sm text-gray-500"></span>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Batch Actions -->
+    <div id="batch-actions" class="hidden bg-blue-50 rounded-xl p-4 mb-4 flex items-center justify-between">
+      <span class="text-blue-700">已选择 <span id="selected-count">0</span> 项</span>
+      <div class="flex gap-2">
+        <button id="batch-verify" class="px-3 py-1.5 bg-green-500 text-white rounded-lg text-sm hover:bg-green-600">批量验证</button>
+        <button id="batch-hide" class="px-3 py-1.5 bg-yellow-500 text-white rounded-lg text-sm hover:bg-yellow-600">批量隐藏</button>
+        <button id="batch-delete" class="px-3 py-1.5 bg-red-500 text-white rounded-lg text-sm hover:bg-red-600">批量删除</button>
+        <button id="cancel-selection" class="px-3 py-1.5 bg-gray-200 text-gray-700 rounded-lg text-sm hover:bg-gray-300">取消</button>
+      </div>
     </div>
   </div>
   
@@ -28,6 +80,9 @@ const API_BASE = import.meta.env.PUBLIC_API_URL || 'http://localhost:8000';
     <table class="w-full">
       <thead class="bg-gray-50 border-b border-gray-100">
         <tr>
+          <th class="py-3 px-4 text-left">
+            <input type="checkbox" id="select-all" class="rounded" />
+          </th>
           <th class="text-left py-3 px-4 text-sm font-medium text-gray-500">ID</th>
           <th class="text-left py-3 px-4 text-sm font-medium text-gray-500">课程</th>
           <th class="text-left py-3 px-4 text-sm font-medium text-gray-500">标题</th>
@@ -39,10 +94,28 @@ const API_BASE = import.meta.env.PUBLIC_API_URL || 'http://localhost:8000';
       </thead>
       <tbody id="task-list">
         <tr>
-          <td colspan="7" class="text-center py-8 text-gray-500">加载中...</td>
+          <td colspan="8" class="text-center py-8 text-gray-500">加载中...</td>
         </tr>
       </tbody>
     </table>
+  </div>
+  
+  <!-- Pagination -->
+  <div class="mt-4 flex justify-between items-center">
+    <div class="flex items-center gap-2">
+      <span class="text-sm text-gray-500">每页</span>
+      <select id="page-size" class="px-2 py-1 border rounded text-sm">
+        <option value="20">20</option>
+        <option value="50">50</option>
+        <option value="100">100</option>
+      </select>
+      <span class="text-sm text-gray-500">条</span>
+    </div>
+    <div class="flex items-center gap-2">
+      <button id="prev-page" class="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg text-sm disabled:opacity-50">上一页</button>
+      <span id="page-info" class="text-sm text-gray-600">第 1 页</span>
+      <button id="next-page" class="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg text-sm">下一页</button>
+    </div>
   </div>
   
   <!-- Edit Modal -->
@@ -81,66 +154,140 @@ const API_BASE = import.meta.env.PUBLIC_API_URL || 'http://localhost:8000';
 </AdminLayout>
 
 <script define:vars={{ API_BASE }}>
+  // State
   let currentTab = 'all';
+  let currentPage = 1;
+  let pageSize = 20;
+  let selectedIds = new Set();
+  let allTasks = [];
   
+  // Elements
   const tabAll = document.getElementById('tab-all');
   const tabReported = document.getElementById('tab-reported');
+  const tabPending = document.getElementById('tab-pending');
   const taskList = document.getElementById('task-list');
   const searchInput = document.getElementById('search');
   const statusFilter = document.getElementById('status-filter');
+  const semesterFilter = document.getElementById('semester-filter');
+  const courseFilter = document.getElementById('course-filter');
+  const dueFromInput = document.getElementById('due-from');
+  const dueToInput = document.getElementById('due-to');
+  const clearFiltersBtn = document.getElementById('clear-filters');
+  const resultCount = document.getElementById('result-count');
+  const batchActions = document.getElementById('batch-actions');
+  const selectedCount = document.getElementById('selected-count');
+  const selectAllCheckbox = document.getElementById('select-all');
+  const pageSizeSelect = document.getElementById('page-size');
+  const prevPageBtn = document.getElementById('prev-page');
+  const nextPageBtn = document.getElementById('next-page');
+  const pageInfo = document.getElementById('page-info');
   const editModal = document.getElementById('edit-modal');
   const editForm = document.getElementById('edit-form');
   
-  tabAll?.addEventListener('click', () => {
-    currentTab = 'all';
-    tabAll.className = 'px-4 py-2 bg-blue-500 text-white rounded-lg';
-    tabReported.className = 'px-4 py-2 bg-gray-100 text-gray-700 rounded-lg';
-    loadTasks();
-  });
-  
-  tabReported?.addEventListener('click', () => {
-    currentTab = 'reported';
-    tabReported.className = 'px-4 py-2 bg-red-500 text-white rounded-lg';
-    tabAll.className = 'px-4 py-2 bg-gray-100 text-gray-700 rounded-lg';
-    loadTasks();
-  });
-  
-  searchInput?.addEventListener('input', debounce(loadTasks, 300));
-  statusFilter?.addEventListener('change', loadTasks);
-  
+  // Utility functions
   function debounce(fn, ms) {
     let timeout;
-    return () => { clearTimeout(timeout); timeout = setTimeout(fn, ms); };
+    return (...args) => { clearTimeout(timeout); timeout = setTimeout(() => fn(...args), ms); };
   }
   
+  function setActiveTab(tab) {
+    currentTab = tab;
+    currentPage = 1;
+    [tabAll, tabReported, tabPending].forEach(btn => {
+      btn.className = 'px-4 py-2 bg-gray-100 text-gray-700 rounded-lg';
+    });
+    if (tab === 'all') tabAll.className = 'px-4 py-2 bg-blue-500 text-white rounded-lg';
+    else if (tab === 'reported') tabReported.className = 'px-4 py-2 bg-red-500 text-white rounded-lg';
+    else if (tab === 'pending') tabPending.className = 'px-4 py-2 bg-yellow-500 text-white rounded-lg';
+    loadTasks();
+  }
+  
+  function updateBatchUI() {
+    if (selectedIds.size > 0) {
+      batchActions.classList.remove('hidden');
+      selectedCount.textContent = selectedIds.size;
+    } else {
+      batchActions.classList.add('hidden');
+    }
+    selectAllCheckbox.checked = allTasks.length > 0 && selectedIds.size === allTasks.length;
+  }
+  
+  // Load filter options
+  async function loadFilterOptions() {
+    try {
+      // Load semesters
+      const semRes = await fetch(`${API_BASE}/api/courses/semesters`, { credentials: 'include' });
+      if (semRes.ok) {
+        const semesters = await semRes.json();
+        semesterFilter.innerHTML = '<option value="">全部学期</option>' + 
+          semesters.map(s => `<option value="${s}">${s}</option>`).join('');
+      }
+      
+      // Load courses
+      const courseRes = await fetch(`${API_BASE}/api/admin/courses?page_size=500`, { credentials: 'include' });
+      if (courseRes.ok) {
+        const courses = await courseRes.json();
+        courseFilter.innerHTML = '<option value="">全部课程</option>' + 
+          courses.map(c => `<option value="${c.id}">${c.name} (${c.teacher})</option>`).join('');
+      }
+    } catch (err) {
+      console.error('Load filter options error:', err);
+    }
+  }
+  
+  // Load tasks
   async function loadTasks() {
     const q = searchInput?.value || '';
     const status = statusFilter?.value || '';
+    const semester = semesterFilter?.value || '';
+    const courseId = courseFilter?.value || '';
+    const dueFrom = dueFromInput?.value || '';
+    const dueTo = dueToInput?.value || '';
     
-    let endpoint = currentTab === 'reported' 
-      ? '/api/admin/tasks/reported'
-      : `/api/admin/tasks?q=${encodeURIComponent(q)}${status ? `&status=${status}` : ''}`;
+    let endpoint;
+    if (currentTab === 'reported') {
+      endpoint = '/api/admin/tasks/reported';
+    } else if (currentTab === 'pending') {
+      endpoint = `/api/admin/tasks?status=pending`;
+    } else {
+      const params = new URLSearchParams();
+      if (q) params.set('q', q);
+      if (status) params.set('status', status);
+      if (semester) params.set('semester', semester);
+      if (courseId) params.set('course_id', courseId);
+      if (dueFrom) params.set('due_from', dueFrom);
+      if (dueTo) params.set('due_to', dueTo);
+      params.set('page', currentPage.toString());
+      params.set('page_size', pageSize.toString());
+      endpoint = `/api/admin/tasks?${params}`;
+    }
     
     try {
       const res = await fetch(`${API_BASE}${endpoint}`, { credentials: 'include' });
       
       if (!res.ok) {
-        taskList.innerHTML = '<tr><td colspan="7" class="text-center py-8 text-red-500">加载失败，请确认管理员登录</td></tr>';
+        taskList.innerHTML = '<tr><td colspan="8" class="text-center py-8 text-red-500">加载失败，请确认管理员登录</td></tr>';
         return;
       }
       
       const tasks = await res.json();
+      allTasks = tasks;
+      
+      resultCount.textContent = `共 ${tasks.length} 条`;
       
       if (tasks.length === 0) {
-        taskList.innerHTML = '<tr><td colspan="7" class="text-center py-8 text-gray-500">暂无数据</td></tr>';
+        taskList.innerHTML = '<tr><td colspan="8" class="text-center py-8 text-gray-500">暂无数据</td></tr>';
         return;
       }
       
       taskList.innerHTML = tasks.map(task => `
-        <tr class="border-b border-gray-50 hover:bg-gray-50">
+        <tr class="border-b border-gray-50 hover:bg-gray-50 ${selectedIds.has(task.id) ? 'bg-blue-50' : ''}">
+          <td class="py-3 px-4">
+            <input type="checkbox" class="task-checkbox rounded" data-id="${task.id}" ${selectedIds.has(task.id) ? 'checked' : ''} />
+          </td>
           <td class="py-3 px-4 text-sm text-gray-600">${task.id}</td>
           <td class="py-3 px-4 text-sm text-gray-900">${task.course_name}</td>
-          <td class="py-3 px-4 text-sm text-gray-900 max-w-xs truncate">${task.title}</td>
+          <td class="py-3 px-4 text-sm text-gray-900 max-w-xs truncate" title="${task.title}">${task.title}</td>
           <td class="py-3 px-4 text-sm text-gray-600">${task.due_time ? new Date(task.due_time).toLocaleString('zh-CN') : '-'}</td>
           <td class="py-3 px-4 text-sm">
             <span class="text-green-600">+${task.upvotes}</span> / 
@@ -164,12 +311,118 @@ const API_BASE = import.meta.env.PUBLIC_API_URL || 'http://localhost:8000';
           </td>
         </tr>
       `).join('');
+      
+      // Bind checkbox events
+      document.querySelectorAll('.task-checkbox').forEach(cb => {
+        cb.addEventListener('change', (e) => {
+          const id = parseInt(e.target.dataset.id);
+          if (e.target.checked) {
+            selectedIds.add(id);
+          } else {
+            selectedIds.delete(id);
+          }
+          updateBatchUI();
+        });
+      });
+      
+      pageInfo.textContent = `第 ${currentPage} 页`;
+      prevPageBtn.disabled = currentPage === 1;
     } catch (err) {
       console.error('Load tasks error:', err);
-      taskList.innerHTML = '<tr><td colspan="7" class="text-center py-8 text-red-500">加载失败</td></tr>';
+      taskList.innerHTML = '<tr><td colspan="8" class="text-center py-8 text-red-500">加载失败</td></tr>';
     }
   }
   
+  // Event listeners
+  tabAll?.addEventListener('click', () => setActiveTab('all'));
+  tabReported?.addEventListener('click', () => setActiveTab('reported'));
+  tabPending?.addEventListener('click', () => setActiveTab('pending'));
+  
+  const debouncedLoad = debounce(loadTasks, 300);
+  searchInput?.addEventListener('input', debouncedLoad);
+  statusFilter?.addEventListener('change', () => { currentPage = 1; loadTasks(); });
+  semesterFilter?.addEventListener('change', () => { currentPage = 1; loadTasks(); });
+  courseFilter?.addEventListener('change', () => { currentPage = 1; loadTasks(); });
+  dueFromInput?.addEventListener('change', () => { currentPage = 1; loadTasks(); });
+  dueToInput?.addEventListener('change', () => { currentPage = 1; loadTasks(); });
+  
+  clearFiltersBtn?.addEventListener('click', () => {
+    searchInput.value = '';
+    statusFilter.value = '';
+    semesterFilter.value = '';
+    courseFilter.value = '';
+    dueFromInput.value = '';
+    dueToInput.value = '';
+    currentPage = 1;
+    loadTasks();
+  });
+  
+  pageSizeSelect?.addEventListener('change', () => {
+    pageSize = parseInt(pageSizeSelect.value);
+    currentPage = 1;
+    loadTasks();
+  });
+  
+  prevPageBtn?.addEventListener('click', () => {
+    if (currentPage > 1) {
+      currentPage--;
+      loadTasks();
+    }
+  });
+  
+  nextPageBtn?.addEventListener('click', () => {
+    currentPage++;
+    loadTasks();
+  });
+  
+  selectAllCheckbox?.addEventListener('change', (e) => {
+    if (e.target.checked) {
+      allTasks.forEach(t => selectedIds.add(t.id));
+    } else {
+      selectedIds.clear();
+    }
+    loadTasks(); // Re-render to update checkboxes
+    updateBatchUI();
+  });
+  
+  document.getElementById('cancel-selection')?.addEventListener('click', () => {
+    selectedIds.clear();
+    loadTasks();
+    updateBatchUI();
+  });
+  
+  // Batch operations
+  document.getElementById('batch-verify')?.addEventListener('click', async () => {
+    if (!confirm(`确认批量验证 ${selectedIds.size} 个任务？`)) return;
+    for (const id of selectedIds) {
+      await fetch(`${API_BASE}/api/admin/tasks/${id}/verify`, { method: 'POST', credentials: 'include' });
+    }
+    selectedIds.clear();
+    updateBatchUI();
+    loadTasks();
+  });
+  
+  document.getElementById('batch-hide')?.addEventListener('click', async () => {
+    if (!confirm(`确认批量隐藏 ${selectedIds.size} 个任务？`)) return;
+    for (const id of selectedIds) {
+      await fetch(`${API_BASE}/api/admin/tasks/${id}/hide`, { method: 'POST', credentials: 'include' });
+    }
+    selectedIds.clear();
+    updateBatchUI();
+    loadTasks();
+  });
+  
+  document.getElementById('batch-delete')?.addEventListener('click', async () => {
+    if (!confirm(`确认批量删除 ${selectedIds.size} 个任务？此操作不可恢复！`)) return;
+    for (const id of selectedIds) {
+      await fetch(`${API_BASE}/api/admin/tasks/${id}`, { method: 'DELETE', credentials: 'include' });
+    }
+    selectedIds.clear();
+    updateBatchUI();
+    loadTasks();
+  });
+  
+  // Single task operations
   window.openEditTask = async (id) => {
     try {
       const res = await fetch(`${API_BASE}/api/admin/tasks/${id}`, { credentials: 'include' });
@@ -205,12 +458,11 @@ const API_BASE = import.meta.env.PUBLIC_API_URL || 'http://localhost:8000';
   editForm?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const id = document.getElementById('edit-id').value;
-    // Send datetime without timezone conversion - keep as local time
     const dueTimeValue = document.getElementById('edit-due-time').value;
     const data = {
       title: document.getElementById('edit-title').value,
       description: document.getElementById('edit-description').value || null,
-      due_time: dueTimeValue ? dueTimeValue + ':00' : null,  // Format: 2026-03-30T23:59:00
+      due_time: dueTimeValue ? dueTimeValue + ':00' : null,
       status: document.getElementById('edit-status').value,
     };
     
@@ -254,5 +506,7 @@ const API_BASE = import.meta.env.PUBLIC_API_URL || 'http://localhost:8000';
     loadTasks();
   };
   
+  // Initialize
+  loadFilterOptions();
   loadTasks();
 </script>

@@ -11,11 +11,11 @@ class Course(Base):
     course_code: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     name_abbr: Mapped[str | None] = mapped_column(String(50), nullable=True)
-    teacher: Mapped[str] = mapped_column(String(100), nullable=False)
-    semester: Mapped[str] = mapped_column(String(20), nullable=False)  # e.g., "2025-Spring"
-    class_name: Mapped[str | None] = mapped_column(String(100), nullable=True)  # e.g., "数字逻辑与计算机组成03班"
+    teacher: Mapped[str] = mapped_column(String(200), nullable=False)
+    semester: Mapped[str] = mapped_column(String(50), nullable=False)  # e.g., "2025-2026学年 第2学期"
+    class_name: Mapped[str | None] = mapped_column(String(200), nullable=True)  # e.g., "数字逻辑与计算机组成03班"
     campus: Mapped[str | None] = mapped_column(String(50), nullable=True)  # e.g., "鼓楼校区"
-    time_location: Mapped[str | None] = mapped_column(String(200), nullable=True)  # Time and location mixed
+    time_location: Mapped[str | None] = mapped_column(Text, nullable=True)  # 可能包含多个时间地点
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[str] = mapped_column(DateTime, default=func.now(), nullable=False)
     updated_at: Mapped[str] = mapped_column(

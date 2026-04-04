@@ -41,9 +41,9 @@ class Task(Base):
     upvotes: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     downvotes: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     is_reported: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
-    created_at: Mapped[str] = mapped_column(DateTime, server_default=func.now(), nullable=False)
+    created_at: Mapped[str] = mapped_column(DateTime, default=func.now(), nullable=False)
     updated_at: Mapped[str] = mapped_column(
-        DateTime, server_default=func.now(), onupdate=func.now(), nullable=False
+        DateTime, default=func.now(), onupdate=func.now(), nullable=False
     )
     
     __table_args__ = (
@@ -86,7 +86,7 @@ class TaskVote(Base):
         Integer, ForeignKey("tasks.id", ondelete="CASCADE"), primary_key=True
     )
     vote_type: Mapped[VoteType] = mapped_column(Enum(VoteType), nullable=False)
-    created_at: Mapped[str] = mapped_column(DateTime, server_default=func.now(), nullable=False)
+    created_at: Mapped[str] = mapped_column(DateTime, default=func.now(), nullable=False)
     
     # Relationships
     user: Mapped["User"] = relationship("User", back_populates="votes")
@@ -103,7 +103,7 @@ class TaskCompletion(Base):
     task_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("tasks.id", ondelete="CASCADE"), primary_key=True
     )
-    completed_at: Mapped[str] = mapped_column(DateTime, server_default=func.now(), nullable=False)
+    completed_at: Mapped[str] = mapped_column(DateTime, default=func.now(), nullable=False)
     
     # Relationships
     user: Mapped["User"] = relationship("User", back_populates="completions")
@@ -121,9 +121,9 @@ class TaskNote(Base):
         Integer, ForeignKey("tasks.id", ondelete="CASCADE"), primary_key=True
     )
     content: Mapped[str] = mapped_column(Text, nullable=False)
-    created_at: Mapped[str] = mapped_column(DateTime, server_default=func.now(), nullable=False)
+    created_at: Mapped[str] = mapped_column(DateTime, default=func.now(), nullable=False)
     updated_at: Mapped[str] = mapped_column(
-        DateTime, server_default=func.now(), onupdate=func.now(), nullable=False
+        DateTime, default=func.now(), onupdate=func.now(), nullable=False
     )
     
     # Relationships
@@ -149,7 +149,7 @@ class TaskEditProposal(Base):
     )
     upvotes: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     downvotes: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
-    created_at: Mapped[str] = mapped_column(DateTime, server_default=func.now(), nullable=False)
+    created_at: Mapped[str] = mapped_column(DateTime, default=func.now(), nullable=False)
     resolved_at: Mapped[str | None] = mapped_column(DateTime, nullable=True)
     
     # Relationships
@@ -171,7 +171,7 @@ class ProposalVote(Base):
         Integer, ForeignKey("task_edit_proposals.id", ondelete="CASCADE"), primary_key=True
     )
     vote_type: Mapped[VoteType] = mapped_column(Enum(VoteType), nullable=False)
-    created_at: Mapped[str] = mapped_column(DateTime, server_default=func.now(), nullable=False)
+    created_at: Mapped[str] = mapped_column(DateTime, default=func.now(), nullable=False)
     
     # Relationships
     user: Mapped["User"] = relationship("User", back_populates="proposal_votes")

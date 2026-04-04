@@ -27,10 +27,9 @@ app = FastAPI(
 
 # CORS middleware
 # Origins are configured via the CORS_ORIGINS environment variable (comma-separated).
-# When credentials=True, wildcard "*" is not allowed — explicit origins are required.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins_list if settings.debug else [],
+    allow_origins=settings.cors_origins_list,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

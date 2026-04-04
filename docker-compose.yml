@@ -19,6 +19,7 @@ services:
       - APP_ENV=${APP_ENV:-production}
       - DEBUG=false
       - ALLOWED_EMAIL_DOMAINS=${ALLOWED_EMAIL_DOMAINS:-smail.nju.edu.cn,nju.edu.cn}
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:4321}
     depends_on:
       db:
         condition: service_healthy

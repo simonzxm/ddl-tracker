@@ -109,13 +109,6 @@ ALLOWED_EMAIL_DOMAINS=smail.nju.edu.cn,nju.edu.cn
 
 ### 3. 启动服务
 
-**方案 A - 使用外部网关（PVE/Nginx Proxy Manager）**：
-```bash
-# 使用简化版，不启动内置 nginx
-docker compose -f docker-compose.simple.yml up -d --build
-```
-
-**方案 B - 完整版（自带 Nginx）**：
 ```bash
 # 先构建 Admin Panel
 cd admin-panel && npm install && npm run build && cd ..

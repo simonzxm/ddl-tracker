@@ -509,7 +509,7 @@ async def list_courses(
             name_abbr=course.name_abbr,
             teacher=course.teacher,
             semester=course.semester,
-            class_number=course.class_number,
+            class_name=course.class_name,
             campus=course.campus,
             time_location=course.time_location,
             follower_count=follower_count or 0,
@@ -527,20 +527,20 @@ async def create_course(
     db: AsyncSession = Depends(get_db),
 ):
     """创建课程"""
-    # Check for duplicate (include class_number)
+    # Check for duplicate (include class_name)
     query = select(Course).where(
         Course.course_code == data.code,
         Course.teacher == data.teacher,
         Course.semester == data.semester,
     )
-    if data.class_number:
-        query = query.where(Course.class_number == data.class_number)
+    if data.class_name:
+        query = query.where(Course.class_name == data.class_name)
     else:
-        query = query.where(Course.class_number.is_(None))
+        query = query.where(Course.class_name.is_(None))
     
     exists = await db.execute(query)
     if exists.scalar_one_or_none():
-        raise HTTPException(status_code=400, detail="课程已存在（课号+教师+学期+班号重复）")
+        raise HTTPException(status_code=400, detail="课程已存在（课号+教师+学期+班级名称重复）")
     
     course = Course(
         course_code=data.code,
@@ -548,7 +548,7 @@ async def create_course(
         name_abbr=data.name_abbr,
         teacher=data.teacher,
         semester=data.semester,
-        class_number=data.class_number,
+        class_name=data.class_name,
         campus=data.campus,
         time_location=data.time_location,
     )
@@ -570,16 +570,16 @@ async def bulk_import_courses(
     errors = []
     
     for i, item in enumerate(data.courses):
-        # Check for duplicate (include class_number)
+        # Check for duplicate (include class_name)
         query = select(Course).where(
             Course.course_code == item.code,
             Course.teacher == item.teacher,
             Course.semester == item.semester,
         )
-        if item.class_number:
-            query = query.where(Course.class_number == item.class_number)
+        if item.class_name:
+            query = query.where(Course.class_name == item.class_name)
         else:
-            query = query.where(Course.class_number.is_(None))
+            query = query.where(Course.class_name.is_(None))
         
         exists = await db.execute(query)
         if exists.scalar_one_or_none():
@@ -587,7 +587,7 @@ async def bulk_import_courses(
                 skipped += 1
                 continue
             else:
-                errors.append(f"第 {i+1} 行: 课程已存在（{item.code} - {item.teacher} - {item.semester} - {item.class_number or '无班号'}）")
+                errors.append(f"第 {i+1} 行: 课程已存在（{item.code} - {item.teacher} - {item.semester} - {item.class_name or '无班级名称'}）")
                 continue
         
         try:
@@ -597,7 +597,7 @@ async def bulk_import_courses(
                 name_abbr=item.name_abbr,
                 teacher=item.teacher,
                 semester=item.semester,
-                class_number=item.class_number,
+                class_name=item.class_name,
                 campus=item.campus,
                 time_location=item.time_location,
             )
@@ -638,7 +638,7 @@ async def export_courses(
             "name_abbr": c.name_abbr,
             "teacher": c.teacher,
             "semester": c.semester,
-            "class_number": c.class_number,
+            "class_name": c.class_name,
             "campus": c.campus,
             "time_location": c.time_location,
         }

@@ -71,7 +71,7 @@ const API_BASE = '';
           <th class="text-left py-3 px-4 text-sm font-medium text-gray-500">课号</th>
           <th class="text-left py-3 px-4 text-sm font-medium text-gray-500">名称</th>
           <th class="text-left py-3 px-4 text-sm font-medium text-gray-500">教师</th>
-          <th class="text-left py-3 px-4 text-sm font-medium text-gray-500">班号</th>
+          <th class="text-left py-3 px-4 text-sm font-medium text-gray-500">班级名称</th>
           <th class="text-left py-3 px-4 text-sm font-medium text-gray-500">学期</th>
           <th class="text-left py-3 px-4 text-sm font-medium text-gray-500">校区</th>
           <th class="text-left py-3 px-4 text-sm font-medium text-gray-500">关注</th>
@@ -118,8 +118,8 @@ const API_BASE = '';
           <input type="text" id="course-code" required class="w-full px-3 py-2 border rounded-lg" placeholder="如: 22000160" />
         </div>
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">班号</label>
-          <input type="text" id="course-class-number" class="w-full px-3 py-2 border rounded-lg" placeholder="如: 03班" />
+          <label class="block text-sm font-medium text-gray-700 mb-1">班级名称</label>
+          <input type="text" id="course-class-name" class="w-full px-3 py-2 border rounded-lg" placeholder="如: 计算机科学与技术2班" />
         </div>
       </div>
       <div>
@@ -166,13 +166,12 @@ const API_BASE = '';
     <div class="mb-4 p-4 bg-blue-50 rounded-lg text-sm text-blue-800">
       <p class="font-medium mb-2">支持的格式：</p>
       <ul class="list-disc list-inside space-y-1">
-        <li><strong>CSV 格式</strong>：课号,课程名,简称,教师,学期,班号,校区,时间地点</li>
-        <li><strong>JSON 格式</strong>：数组格式，每个对象包含 code, name, name_abbr, teacher, semester, class_number, campus, time_location</li>
+        <li><strong>CSV 格式</strong>：课号,课程名,简称,教师,学期,班级名称,校区,时间地点</li>
+        <li><strong>JSON 格式</strong>：数组格式，每个对象包含 code, name, name_abbr, teacher, semester, class_name, campus, time_location</li>
       </ul>
-      <p class="mt-2 text-blue-600">示例 CSV（简称/班号/校区/时间地点可留空）：</p>
+      <p class="mt-2 text-blue-600">示例 CSV（简称/班级名称/校区/时间地点可留空）：</p>
       <code class="block bg-white p-2 rounded mt-1 text-xs">
-22000160,数字逻辑与计算机组成,DLCO,杨若瑜,2026-Spring,03班,鼓楼校区,周一 1-2节<br/>
-22000161,计算机网络,,张三,2026-Spring,01班,,
+22000160,数字逻辑与计算机组成,DLCO,杨若瑜,2026-Spring,数字逻辑与计算机组成03班,鼓楼校区,周一 1-2节
       </code>
     </div>
     
@@ -421,7 +420,7 @@ const API_BASE = '';
         name_abbr: parts[2] || null,
         teacher: parts[3],
         semester: parts[4],
-        class_number: parts[5] || null,
+        class_name: parts[5] || null,
         campus: parts[6] || null,
         time_location: parts[7] || null,
       };
@@ -443,7 +442,7 @@ const API_BASE = '';
         name_abbr: item.name_abbr || null,
         teacher: item.teacher,
         semester: item.semester,
-        class_number: item.class_number || null,
+        class_name: item.class_name || null,
         campus: item.campus || null,
         time_location: item.time_location || null,
       };
@@ -468,7 +467,7 @@ const API_BASE = '';
           <td class="py-1 px-2">${c.code}</td>
           <td class="py-1 px-2">${c.name}</td>
           <td class="py-1 px-2">${c.teacher}</td>
-          <td class="py-1 px-2">${c.class_number || '-'}</td>
+          <td class="py-1 px-2">${c.class_name || '-'}</td>
           <td class="py-1 px-2">${c.semester}</td>
           <td class="py-1 px-2">${c.campus || '-'}</td>
         </tr>
@@ -571,7 +570,7 @@ const API_BASE = '';
       name_abbr: document.getElementById('course-abbr').value || null,
       teacher: document.getElementById('course-teacher').value,
       semester: document.getElementById('course-semester').value,
-      class_number: document.getElementById('course-class-number').value || null,
+      class_name: document.getElementById('course-class-name').value || null,
       campus: document.getElementById('course-campus').value || null,
       time_location: document.getElementById('course-time-location').value || null,
     };
@@ -632,7 +631,7 @@ const API_BASE = '';
     document.getElementById('course-abbr').value = course.name_abbr || '';
     document.getElementById('course-teacher').value = course.teacher;
     document.getElementById('course-semester').value = course.semester;
-    document.getElementById('course-class-number').value = course.class_number || '';
+    document.getElementById('course-class-name').value = course.class_name || '';
     document.getElementById('course-campus').value = course.campus || '';
     document.getElementById('course-time-location').value = course.time_location || '';
     courseModal.classList.remove('hidden');
@@ -725,7 +724,7 @@ const API_BASE = '';
           <td class="py-3 px-4 text-sm text-gray-600">${course.code}</td>
           <td class="py-3 px-4 text-sm text-gray-900">${course.name}${course.name_abbr ? ` (${course.name_abbr})` : ''}</td>
           <td class="py-3 px-4 text-sm text-gray-600">${course.teacher}</td>
-          <td class="py-3 px-4 text-sm text-gray-600">${course.class_number || '-'}</td>
+          <td class="py-3 px-4 text-sm text-gray-600">${course.class_name || '-'}</td>
           <td class="py-3 px-4 text-sm text-gray-600">${course.semester}</td>
           <td class="py-3 px-4 text-sm text-gray-600">${course.campus || '-'}</td>
           <td class="py-3 px-4 text-sm text-gray-600">${course.follower_count}</td>

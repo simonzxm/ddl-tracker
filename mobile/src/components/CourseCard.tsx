@@ -9,11 +9,8 @@ interface CourseCardProps {
 }
 
 export function CourseCard({ course, onPress, onFollow }: CourseCardProps) {
-  // Build the info line: teacher | class_number | campus
+  // Build the info line: teacher | campus
   const infoItems = [course.teacher];
-  if (course.class_number) {
-    infoItems.push(course.class_number);
-  }
   if (course.campus) {
     infoItems.push(course.campus);
   }

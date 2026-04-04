@@ -9,7 +9,7 @@ class CourseCreate(BaseModel):
     name_abbr: Optional[str] = Field(None, max_length=50)
     teacher: str = Field(..., min_length=1, max_length=100)
     semester: str = Field(..., min_length=1, max_length=20)
-    class_number: Optional[str] = Field(None, max_length=20)  # e.g., "03班"
+    class_name: Optional[str] = Field(None, max_length=100)  # e.g., "数字逻辑与计算机组成03班"
     campus: Optional[str] = Field(None, max_length=50)  # e.g., "鼓楼校区"
     time_location: Optional[str] = Field(None, max_length=200)  # Time and location
     description: Optional[str] = None
@@ -18,7 +18,7 @@ class CourseCreate(BaseModel):
 class CourseUpdate(BaseModel):
     name: Optional[str] = Field(None, max_length=200)
     name_abbr: Optional[str] = Field(None, max_length=50)
-    class_number: Optional[str] = Field(None, max_length=20)
+    class_name: Optional[str] = Field(None, max_length=100)
     campus: Optional[str] = Field(None, max_length=50)
     time_location: Optional[str] = Field(None, max_length=200)
     description: Optional[str] = None
@@ -31,7 +31,7 @@ class CourseResponse(BaseModel):
     name_abbr: Optional[str]
     teacher: str
     semester: str
-    class_number: Optional[str] = None
+    class_name: Optional[str] = None
     campus: Optional[str] = None
     time_location: Optional[str] = None
     description: Optional[str] = None
@@ -51,7 +51,7 @@ class CourseListResponse(BaseModel):
     name_abbr: Optional[str]
     teacher: str
     semester: str
-    class_number: Optional[str] = None
+    class_name: Optional[str] = None
     campus: Optional[str] = None
     followers_count: int = 0
     is_followed: bool = False

@@ -70,7 +70,7 @@ class AdminCourseResponse(BaseModel):
     name_abbr: Optional[str]
     teacher: str
     semester: str
-    class_number: Optional[str] = None
+    class_name: Optional[str] = None
     campus: Optional[str] = None
     time_location: Optional[str] = None
     follower_count: int = 0
@@ -84,7 +84,7 @@ class CourseCreateRequest(BaseModel):
     name_abbr: Optional[str] = None
     teacher: str
     semester: str
-    class_number: Optional[str] = None
+    class_name: Optional[str] = None
     campus: Optional[str] = None
     time_location: Optional[str] = None
 
@@ -95,7 +95,7 @@ class CourseUpdateRequest(BaseModel):
     name_abbr: Optional[str] = None
     teacher: Optional[str] = None
     semester: Optional[str] = None
-    class_number: Optional[str] = None
+    class_name: Optional[str] = None
     campus: Optional[str] = None
     time_location: Optional[str] = None
 
@@ -108,7 +108,7 @@ class BulkCourseItem(BaseModel):
     name_abbr: Optional[str] = None
     teacher: str
     semester: str
-    class_number: Optional[str] = None
+    class_name: Optional[str] = None
     campus: Optional[str] = None
     time_location: Optional[str] = None
 

@@ -93,7 +93,7 @@ async def list_courses(
             name_abbr=course.name_abbr,
             teacher=course.teacher,
             semester=course.semester,
-            class_number=course.class_number,
+            class_name=course.class_name,
             campus=course.campus,
             followers_count=followers_count,
             is_followed=course.id in followed_ids,
@@ -136,7 +136,7 @@ async def list_followed_courses(
             name_abbr=course.name_abbr,
             teacher=course.teacher,
             semester=course.semester,
-            class_number=course.class_number,
+            class_name=course.class_name,
             campus=course.campus,
             followers_count=followers_count,
             is_followed=True,
@@ -191,7 +191,7 @@ async def get_course(
         name_abbr=course.name_abbr,
         teacher=course.teacher,
         semester=course.semester,
-        class_number=course.class_number,
+        class_name=course.class_name,
         campus=course.campus,
         time_location=course.time_location,
         description=course.description,
@@ -248,22 +248,22 @@ async def create_course(
     db: AsyncSession = Depends(get_db),
 ):
     """创建课程（仅管理员）"""
-    # Check duplicate (include class_number)
+    # Check duplicate (include class_name)
     query = select(Course).where(
         Course.course_code == data.course_code,
         Course.teacher == data.teacher,
         Course.semester == data.semester,
     )
-    if data.class_number:
-        query = query.where(Course.class_number == data.class_number)
+    if data.class_name:
+        query = query.where(Course.class_name == data.class_name)
     else:
-        query = query.where(Course.class_number.is_(None))
+        query = query.where(Course.class_name.is_(None))
     
     existing = await db.execute(query)
     if existing.scalar_one_or_none():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="该课程已存在（课号+教师+学期+班号重复）",
+            detail="该课程已存在（课号+教师+学期+班级名称重复）",
         )
     
     course = Course(**data.model_dump())
@@ -278,7 +278,7 @@ async def create_course(
         name_abbr=course.name_abbr,
         teacher=course.teacher,
         semester=course.semester,
-        class_number=course.class_number,
+        class_name=course.class_name,
         campus=course.campus,
         time_location=course.time_location,
         description=course.description,
@@ -317,7 +317,7 @@ async def update_course(
         name_abbr=course.name_abbr,
         teacher=course.teacher,
         semester=course.semester,
-        class_number=course.class_number,
+        class_name=course.class_name,
         campus=course.campus,
         time_location=course.time_location,
         description=course.description,

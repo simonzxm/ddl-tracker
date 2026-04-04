@@ -116,7 +116,6 @@ export default function CourseDetailScreen() {
 
   // Build the info items
   const infoItems = [course.teacher];
-  if (course.class_number) infoItems.push(course.class_number);
   if (course.campus) infoItems.push(course.campus);
 
   return (
@@ -138,10 +137,7 @@ export default function CourseDetailScreen() {
             <View style={styles.courseInfo}>
               <Text style={styles.courseCode}>{course.course_code}</Text>
               <Text style={styles.courseName}>
-                {course.name}
-                {course.name_abbr && (
-                  <Text style={styles.courseAbbr}> ({course.name_abbr})</Text>
-                )}
+                {course.class_name || course.name}
               </Text>
             </View>
             <TouchableOpacity

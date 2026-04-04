@@ -55,7 +55,7 @@ services:
       dockerfile: Dockerfile
     container_name: ddl-tracker-admin-build
     volumes:
-      - admin_panel_dist:/usr/share/nginx/html/admin
+      - admin_panel_dist:/output
 
   db:
     image: postgres:15-alpine

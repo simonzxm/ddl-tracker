@@ -5,6 +5,7 @@ RUN npm install
 COPY . .
 RUN npm run build
 
-FROM nginx:alpine
-# Copy built admin panel to nginx html dir
-COPY --from=build /app/dist /usr/share/nginx/html/admin
+# Final stage: just copy built files to the volume mount point and exit
+FROM alpine:3.20
+COPY --from=build /app/dist /dist
+CMD ["cp", "-r", "/dist/.", "/output/"]

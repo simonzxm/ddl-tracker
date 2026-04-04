@@ -7,6 +7,7 @@ interface Props {
 }
 
 const { title, currentPage = '' } = Astro.props;
+const API_BASE = import.meta.env.PUBLIC_API_URL || 'http://localhost:8000';
 
 const navItems = [
   { href: '/', label: '大盘', icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6' },
@@ -72,7 +73,7 @@ const navItems = [
       </main>
     </div>
     
-    <script is:inline>
+    <script define:vars={{ API_BASE }}>
       // Check auth on page load
       (function() {
         const user = localStorage.getItem('admin_user');
@@ -90,7 +91,7 @@ const navItems = [
       // Logout handler
       document.getElementById('logoutBtn')?.addEventListener('click', async () => {
         try {
-          await fetch('http://localhost:8000/api/auth/logout', {
+          await fetch(`${API_BASE}/api/auth/logout`, {
             method: 'POST',
             credentials: 'include',
           });

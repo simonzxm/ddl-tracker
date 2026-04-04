@@ -14,7 +14,7 @@ redis==5.0.1
 # Validation & Security
 pydantic==2.6.1
 pydantic-settings==2.1.0
-passlib[bcrypt]==1.7.4
+bcrypt==4.1.2
 email-validator==2.1.0.post1
 
 # Email

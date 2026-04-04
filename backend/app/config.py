@@ -1,6 +1,7 @@
 from pydantic_settings import BaseSettings
 from functools import lru_cache
 from pathlib import Path
+import os
 
 
 class Settings(BaseSettings):
@@ -37,9 +38,9 @@ class Settings(BaseSettings):
         return [d.strip() for d in self.allowed_email_domains.split(",")]
     
     class Config:
-        # Look for .env in project root (parent of backend/)
-        env_file = str(Path(__file__).resolve().parent.parent.parent / ".env")
+        env_file = ".env"
         env_file_encoding = "utf-8"
+        extra = "ignore"
 
 
 @lru_cache

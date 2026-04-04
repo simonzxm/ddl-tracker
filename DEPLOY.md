@@ -59,13 +59,17 @@ nano .env
 **必须修改**：
 ```env
 POSTGRES_PASSWORD=你的数据库密码
-SESSION_SECRET_KEY=随机字符串  # openssl rand -hex 32
+SESSION_SECRET_KEY=随机字符串
 SMTP_HOST=smtp.example.com
+SMTP_PORT=587
 SMTP_USER=your-email
 SMTP_PASSWORD=your-smtp-password
+SMTP_FROM=DDL Tracker <noreply@example.com>
 APP_ENV=production
 DEBUG=false
 ```
+
+> 生成随机密钥：`openssl rand -hex 32`
 
 ### 3. 启动服务
 
@@ -79,8 +83,10 @@ curl http://localhost:8000/health
 
 ### 4. 初始化数据库 + 创建管理员
 
+先创建初始化脚本：
+
 ```bash
-docker compose exec api python << 'EOF'
+cat > init_db.py << 'EOF'
 import asyncio
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from sqlalchemy import text
@@ -117,6 +123,18 @@ async def setup():
 
 asyncio.run(setup())
 EOF
+```
+
+然后执行：
+
+```bash
+# 复制脚本到容器并执行
+docker compose cp init_db.py api:/app/init_db.py
+docker compose exec api python init_db.py
+
+# 清理
+rm init_db.py
+docker compose exec api rm init_db.py
 ```
 
 ---

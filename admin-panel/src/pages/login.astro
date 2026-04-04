@@ -1,5 +1,6 @@
 ---
 // Admin Login Page
+const API_BASE = import.meta.env.PUBLIC_API_URL || 'http://localhost:8000';
 ---
 
 <html lang="zh-CN">
@@ -50,9 +51,7 @@
     </form>
   </div>
 
-  <script>
-    const API_BASE = 'http://localhost:8000';
-    
+  <script define:vars={{ API_BASE }}>
     document.getElementById('loginForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       

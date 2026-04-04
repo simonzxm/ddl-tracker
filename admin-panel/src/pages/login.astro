@@ -1,6 +1,6 @@
 ---
 // Admin Login Page
-const API_BASE = import.meta.env.PUBLIC_API_URL || 'http://localhost:8000';
+const API_BASE = '';
 ---
 
 <html lang="zh-CN">
@@ -84,7 +84,7 @@ const API_BASE = import.meta.env.PUBLIC_API_URL || 'http://localhost:8000';
         localStorage.setItem('admin_user', JSON.stringify(data.user));
         
         // Redirect to dashboard
-        window.location.href = '/';
+        window.location.href = '/admin/';
       } catch (err) {
         errorEl.textContent = err.message;
         errorEl.classList.remove('hidden');
@@ -94,7 +94,7 @@ const API_BASE = import.meta.env.PUBLIC_API_URL || 'http://localhost:8000';
     // Check if already logged in
     const user = localStorage.getItem('admin_user');
     if (user) {
-      window.location.href = '/';
+      window.location.href = '/admin/';
     }
   </script>
 </body>

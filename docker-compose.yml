@@ -5,8 +5,6 @@ services:
       dockerfile: Dockerfile
     container_name: ddl-tracker-api
     restart: unless-stopped
-    ports:
-      - "8000:8000"
     environment:
       - DATABASE_URL=postgresql+asyncpg://postgres:${POSTGRES_PASSWORD:-postgres}@db:5432/ddl_tracker
       - REDIS_URL=redis://redis:6379/0
@@ -33,6 +31,31 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+
+  nginx:
+    image: nginx:alpine
+    container_name: ddl-tracker-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - admin_panel_dist:/usr/share/nginx/html/admin:ro
+    depends_on:
+      api:
+        condition: service_healthy
+      admin-panel:
+        condition: service_completed_successfully
+    networks:
+      - ddl-network
+
+  admin-panel:
+    build:
+      context: ./admin-panel
+      dockerfile: Dockerfile
+    container_name: ddl-tracker-admin-build
+    volumes:
+      - admin_panel_dist:/usr/share/nginx/html/admin
 
   db:
     image: postgres:15-alpine
@@ -74,3 +97,4 @@ networks:
 volumes:
   postgres_data:
   redis_data:
+  admin_panel_dist:

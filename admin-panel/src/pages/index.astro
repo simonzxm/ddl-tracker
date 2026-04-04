@@ -2,10 +2,10 @@
 import AdminLayout from '../layouts/AdminLayout.astro';
 import StatCard from '../components/StatCard.astro';
 
-const API_BASE = import.meta.env.PUBLIC_API_URL || 'http://localhost:8000';
+const API_BASE = '';
 ---
 
-<AdminLayout title="大盘概览" currentPage="/">
+<AdminLayout title="大盘概览" currentPage="/admin/">
   <div class="mb-8">
     <h2 class="text-2xl font-bold text-gray-900">大盘概览</h2>
     <p class="text-gray-500 mt-1">系统运行状态一览</p>
@@ -65,13 +65,13 @@ const API_BASE = import.meta.env.PUBLIC_API_URL || 'http://localhost:8000';
   <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
     <h3 class="text-lg font-semibold text-gray-900 mb-4">快捷操作</h3>
     <div class="flex flex-wrap gap-4">
-      <a href="/tasks" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors">
+      <a href="/admin/tasks" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors">
         审核任务
       </a>
-      <a href="/users" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
+      <a href="/admin/users" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
         管理用户
       </a>
-      <a href="/courses" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
+      <a href="/admin/courses" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
         管理课程
       </a>
     </div>

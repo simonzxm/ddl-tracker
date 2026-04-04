@@ -81,60 +81,26 @@ docker compose ps
 curl http://localhost:8000/health
 ```
 
-### 4. 初始化数据库 + 创建管理员
-
-先创建初始化脚本：
+### 4. 初始化数据库
 
 ```bash
-cat > init_db.py << 'EOF'
-import asyncio
-from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
-from sqlalchemy import text
-import os
-
-async def setup():
-    engine = create_async_engine(os.environ["DATABASE_URL"])
-    
-    from app.database import Base
-    from app.models import User, UserRole, Course, Task
-    
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    print("✓ 数据库表创建完成")
-    
-    from app.services.auth import hash_password
-    Session = async_sessionmaker(engine, class_=AsyncSession)
-    async with Session() as db:
-        result = await db.execute(text("SELECT id FROM users LIMIT 1"))
-        if result.first():
-            print("✓ 已有用户，跳过创建管理员")
-        else:
-            admin = User(
-                email="admin@nju.edu.cn",       # ← 改成你的邮箱
-                nickname="管理员",               # ← 改成你的昵称  
-                password_hash=hash_password("your-password"),  # ← 改成你的密码
-                role=UserRole.ADMIN,
-                karma=100
-            )
-            db.add(admin)
-            await db.commit()
-            print("✓ 管理员创建完成")
-    await engine.dispose()
-
-asyncio.run(setup())
-EOF
+# 运行数据库迁移
+docker compose exec api alembic upgrade head
 ```
 
-然后执行：
+> **管理员账户**：第一个通过 API 注册的用户会自动成为管理员（角色 `admin`，karma 100）。
+> 部署完成后，使用移动端或直接调用 API 注册第一个账户即可。
 
 ```bash
-# 复制脚本到容器并执行
-docker compose cp init_db.py api:/app/init_db.py
-docker compose exec api python init_db.py
+# 快速验证：通过 API 注册管理员
+curl -X POST http://localhost:8000/api/auth/send-code \
+  -H "Content-Type: application/json" \
+  -d '{"email": "your-email@nju.edu.cn"}'
 
-# 清理
-rm init_db.py
-docker compose exec api rm init_db.py
+# 收到验证码后注册
+curl -X POST http://localhost:8000/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"email": "your-email@nju.edu.cn", "code": "123456", "nickname": "管理员", "password": "your-password"}'
 ```
 
 ---

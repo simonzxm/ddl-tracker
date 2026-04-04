@@ -1,5 +1,5 @@
 import bcrypt
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import User, UserRole
@@ -42,12 +42,17 @@ async def create_user(
     password: str,
     role: UserRole = UserRole.STUDENT,
 ) -> User:
+    # First registered user automatically becomes admin
+    user_count = await db.scalar(select(func.count()).select_from(User))
+    if user_count == 0:
+        role = UserRole.ADMIN
+    
     user = User(
         email=email.lower(),
         nickname=nickname,
         password_hash=hash_password(password),
         role=role,
-        karma=0,
+        karma=100 if role == UserRole.ADMIN else 0,
     )
     db.add(user)
     await db.flush()

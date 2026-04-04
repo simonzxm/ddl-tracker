@@ -1,7 +1,7 @@
 """rename_class_number_to_class_name
 
 Revision ID: a8b7c6d5e4f3
-Revises: deeea2b84d98
+Revises: 1fe0cfdf2b89
 Create Date: 2026-04-04 21:40:00.000000
 
 """
@@ -13,7 +13,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision: str = 'a8b7c6d5e4f3'
-down_revision: Union[str, None] = 'deeea2b84d98'
+down_revision: Union[str, None] = '1fe0cfdf2b89'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

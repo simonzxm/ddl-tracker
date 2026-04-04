@@ -15,7 +15,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "edu.nju.ddltracker"
+      "bundleIdentifier": "at.nju.ddl"
     },
     "android": {
       "adaptiveIcon": {
@@ -23,7 +23,7 @@
         "backgroundColor": "#2563eb"
       },
       "edgeToEdgeEnabled": true,
-      "package": "edu.nju.ddltracker"
+      "package": "at.nju.ddl"
     },
     "web": {
       "favicon": "./assets/favicon.png",
@@ -32,6 +32,12 @@
     "plugins": [
       "expo-router",
       "expo-secure-store"
-    ]
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "9f1064a3-36bd-4b38-a668-d5640884e558"
+      }
+    }
   }
 }

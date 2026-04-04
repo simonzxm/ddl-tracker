@@ -410,7 +410,7 @@ const API_BASE = '';
   function parseCSV(text) {
     const lines = text.trim().split('\n').filter(line => line.trim());
     return lines.map(line => {
-      const parts = line.split(',').map(p => p.trim());
+      const parts = parseCSVLine(line);
       if (parts.length < 5) {
         throw new Error(`格式错误: "${line}" - 至少需要 5 个字段（课号,名称,简称,教师,学期）`);
       }
@@ -425,6 +425,45 @@ const API_BASE = '';
         time_location: parts[7] || null,
       };
     });
+  }
+  
+  // 正确解析CSV行，处理引号内的逗号
+  function parseCSVLine(line) {
+    const result = [];
+    let current = '';
+    let inQuotes = false;
+    
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i];
+      const nextChar = line[i + 1];
+      
+      if (inQuotes) {
+        if (char === '"') {
+          if (nextChar === '"') {
+            // 转义的引号 ""
+            current += '"';
+            i++;
+          } else {
+            // 引号结束
+            inQuotes = false;
+          }
+        } else {
+          current += char;
+        }
+      } else {
+        if (char === '"') {
+          inQuotes = true;
+        } else if (char === ',') {
+          result.push(current.trim());
+          current = '';
+        } else {
+          current += char;
+        }
+      }
+    }
+    
+    result.push(current.trim());
+    return result;
   }
   
   function parseJSON(text) {

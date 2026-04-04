@@ -2,27 +2,34 @@
 
 ## 部署架构
 
+### 方案 A：简化部署（推荐用于 PVE/外部网关）
+
 ```
-┌─────────────────────────────────────────────────────────┐
-│                     Nginx (80/443)                       │
-│   ┌─────────────┬─────────────┬─────────────────────┐   │
-│   │  /api/*     │  /admin/*   │  /docs              │   │
-│   └──────┬──────┴──────┬──────┴──────────┬──────────┘   │
-│          │             │                 │              │
-│          ▼             ▼                 ▼              │
-│   ┌────────────┐ ┌───────────┐    ┌────────────┐       │
-│   │ FastAPI    │ │ 静态文件   │    │ Swagger UI │       │
-│   │ (8000)     │ │ (admin)   │    │            │       │
-│   └─────┬──────┘ └───────────┘    └────────────┘       │
-│         │                                               │
-│   ┌─────┴─────┬─────────────┐                          │
-│   ▼           ▼             ▼                          │
-│ ┌──────┐  ┌───────┐  ┌───────────┐                     │
-│ │Postgr│  │ Redis │  │ Mobile App│ (独立分发)          │
-│ │(5432)│  │(6379) │  └───────────┘                     │
-│ └──────┘  └───────┘                                    │
-└─────────────────────────────────────────────────────────┘
+外部网关 (Nginx Proxy Manager / Traefik / PVE)
+        │
+        ▼ 反代到 :8000
+┌───────────────────────────────────┐
+│   Docker Compose (simple)         │
+│   ┌──────────┐                    │
+│   │ FastAPI  │◄──┐                │
+│   │ (8000)   │   │                │
+│   └────┬─────┘   │                │
+│        │         │                │
+│   ┌────┴────┬────┴────┐           │
+│   ▼         ▼         │           │
+│ ┌──────┐ ┌───────┐    │           │
+│ │Postgr│ │ Redis │    │           │
+│ │(内部)│ │(内部) │    │           │
+│ └──────┘ └───────┘    │           │
+└───────────────────────┼───────────┘
+                        │
+   Admin Panel ─────────┘ (静态托管在网关或单独服务)
+   Mobile App (独立分发)
 ```
+
+### 方案 B：完整部署（自带 Nginx）
+
+使用默认的 `docker-compose.yml`，包含 Nginx 容器。
 
 ---
 
@@ -32,7 +39,6 @@
 - **系统**: Ubuntu 20.04+ / Debian 11+ / CentOS 8+
 - **配置**: 最低 1C2G，推荐 2C4G
 - **存储**: 20GB+ SSD
-- **网络**: 开放 80, 443 端口
 
 ### 2. 安装 Docker 和 Docker Compose
 
@@ -77,11 +83,14 @@ nano .env
 **必须修改的配置**：
 
 ```env
-# 数据库密码 (使用强密码)
+# 数据库密码 (使用强密码，建议 32 位随机)
 POSTGRES_PASSWORD=your-strong-password-here
 
 # Session 密钥 (随机生成)
-SESSION_SECRET_KEY=$(openssl rand -hex 32)
+SESSION_SECRET_KEY=your-random-session-key
+
+# 生成随机密钥的方法:
+# openssl rand -hex 32
 
 # SMTP 邮箱配置 (用于发送验证码)
 SMTP_HOST=smtp.your-mail-provider.com
@@ -98,23 +107,24 @@ DEBUG=false
 ALLOWED_EMAIL_DOMAINS=smail.nju.edu.cn,nju.edu.cn
 ```
 
-### 3. 构建 Admin Panel
+### 3. 启动服务
 
+**方案 A - 使用外部网关（PVE/Nginx Proxy Manager）**：
 ```bash
-cd admin-panel
-npm install
-npm run build
-cd ..
+# 使用简化版，不启动内置 nginx
+docker compose -f docker-compose.simple.yml up -d --build
 ```
 
-构建后的静态文件在 `admin-panel/dist/` 目录。
+**方案 B - 完整版（自带 Nginx）**：
+```bash
+# 先构建 Admin Panel
+cd admin-panel && npm install && npm run build && cd ..
 
-### 4. 启动服务
+# 启动所有服务
+docker compose up -d --build
+```
 
 ```bash
-# 构建并启动所有服务
-docker compose up -d --build
-
 # 查看运行状态
 docker compose ps
 
@@ -122,7 +132,7 @@ docker compose ps
 docker compose logs -f
 ```
 
-### 5. 初始化数据库
+### 4. 初始化数据库
 
 ```bash
 # 进入 API 容器执行数据库迁移
@@ -137,120 +147,129 @@ print('Database initialized!')
 "
 ```
 
-### 6. 创建管理员账户
+### 5. 创建管理员账户
 
 ```bash
-# 进入容器
+# 进入容器的 Python shell
 docker compose exec api python
 
-# 在 Python shell 中执行
->>> import asyncio
->>> from app.database import async_session
->>> from app.models import User, UserRole
->>> from app.services.auth import get_password_hash
+# 在 Python shell 中执行:
+```
 
->>> async def create_admin():
-...     async with async_session() as db:
-...         admin = User(
-...             email="admin@nju.edu.cn",
-...             nickname="系统管理员",
-...             hashed_password=get_password_hash("your-admin-password"),
-...             role=UserRole.ADMIN,
-...             is_verified=True,
-...             karma=100
-...         )
-...         db.add(admin)
-...         await db.commit()
-...         print("Admin created!")
+```python
+import asyncio
+from app.database import async_session
+from app.models import User, UserRole
 
->>> asyncio.run(create_admin())
->>> exit()
+async def create_admin():
+    async with async_session() as db:
+        admin = User(
+            email="admin@nju.edu.cn",
+            nickname="系统管理员",
+            role=UserRole.ADMIN,
+            is_verified=True,
+            karma=100
+        )
+        db.add(admin)
+        await db.commit()
+        print("Admin created!")
+
+asyncio.run(create_admin())
+exit()
 ```
 
 ---
 
-## 三、HTTPS 配置 (生产环境必须)
+## 三、Admin Panel 部署
 
-### 方式一：使用 Let's Encrypt (推荐)
+### 方案 A：使用外部网关
 
-```bash
-# 安装 certbot
-sudo apt install certbot
-
-# 获取证书 (先停止 nginx)
-docker compose stop nginx
-sudo certbot certonly --standalone -d your-domain.com
-
-# 复制证书
-sudo cp /etc/letsencrypt/live/your-domain.com/fullchain.pem ./nginx/ssl/
-sudo cp /etc/letsencrypt/live/your-domain.com/privkey.pem ./nginx/ssl/
-sudo chmod 644 ./nginx/ssl/*.pem
-```
-
-### 修改 nginx.conf 启用 HTTPS
-
-编辑 `nginx/nginx.conf`，取消 HTTPS server 块的注释，并修改域名。
+构建静态文件，然后通过你的网关托管：
 
 ```bash
-# 重启 nginx
-docker compose restart nginx
-```
-
-### 自动续期证书
-
-```bash
-# 添加 cron job
-sudo crontab -e
-
-# 添加以下行 (每月1日凌晨3点续期)
-0 3 1 * * certbot renew --quiet && docker compose restart nginx
-```
-
----
-
-## 四、移动端构建与分发
-
-### iOS
-
-```bash
-cd mobile
-
-# 安装依赖
+cd admin-panel
 npm install
-
-# 构建 iOS
-npx expo prebuild --platform ios
-cd ios && pod install && cd ..
-
-# 打包 (需要 macOS 和 Xcode)
-npx expo run:ios --configuration Release
+npm run build
 ```
 
-发布到 App Store 需要 Apple Developer 账号 ($99/年)。
+构建产物在 `admin-panel/dist/`，配置网关将 `/admin` 路径指向这个目录，或单独托管。
 
-### Android
+### 方案 B：使用内置 Nginx
+
+已包含在 `docker-compose.yml` 中，自动挂载 `admin-panel/dist/` 到 `/admin` 路径。
+
+---
+
+## 四、Mobile App 构建
+
+> ⚠️ Mobile 在**本地开发机**打包，不在服务器上。
+
+### 1. 配置 API 地址
+
+编辑 `mobile/.env`：
+
+```env
+# 改为你的服务器地址（必须是 HTTPS 或同局域网）
+EXPO_PUBLIC_API_URL=https://your-domain.com
+```
+
+### 2. 本地开发测试
 
 ```bash
 cd mobile
+npm install
+npx expo start
+```
 
-# 构建 Android APK
+### 3. 打包 Android APK
+
+```bash
+# 方式一：本地打包
 npx expo prebuild --platform android
 cd android && ./gradlew assembleRelease
 
-# APK 位置
-ls android/app/build/outputs/apk/release/
+# APK 位置: android/app/build/outputs/apk/release/app-release.apk
+
+# 方式二：使用 EAS Build（云端打包，推荐）
+npm install -g eas-cli
+eas login
+eas build --platform android --profile production
+```
+
+### 4. 打包 iOS
+
+需要 macOS + Xcode + Apple Developer 账号：
+
+```bash
+npx expo prebuild --platform ios
+cd ios && pod install
+# 在 Xcode 中打开 ios/*.xcworkspace 进行打包
 ```
 
 或使用 EAS Build：
 ```bash
-npm install -g eas-cli
-eas login
-eas build --platform android
+eas build --platform ios --profile production
 ```
 
 ---
 
-## 五、运维命令
+## 五、PVE 网关配置示例
+
+如果使用 Nginx Proxy Manager，添加以下代理：
+
+| 域名 | 目标 | 说明 |
+|------|------|------|
+| `api.your-domain.com` | `http://容器IP:8000` | 后端 API |
+| `admin.your-domain.com` | 静态文件目录 | Admin Panel |
+
+然后修改 `mobile/.env`：
+```env
+EXPO_PUBLIC_API_URL=https://api.your-domain.com
+```
+
+---
+
+## 六、运维命令
 
 ### 日常管理
 
@@ -259,19 +278,14 @@ eas build --platform android
 docker compose ps
 
 # 查看日志
-docker compose logs -f api        # API 日志
-docker compose logs -f db         # 数据库日志
-docker compose logs --tail=100    # 最近100行
+docker compose logs -f api
+docker compose logs --tail=100
 
 # 重启服务
 docker compose restart api
-docker compose restart            # 重启所有
 
 # 停止服务
 docker compose down
-
-# 停止并删除数据卷 (⚠️ 会删除数据库!)
-docker compose down -v
 ```
 
 ### 数据库备份
@@ -287,129 +301,50 @@ docker compose exec -T db psql -U postgres ddl_tracker < backup_20260401.sql
 ### 更新部署
 
 ```bash
-# 拉取最新代码
 git pull origin main
 
-# 重新构建 admin panel
-cd admin-panel && npm install && npm run build && cd ..
+# 方案 A
+docker compose -f docker-compose.simple.yml up -d --build
 
-# 重新构建并重启服务
+# 方案 B
+cd admin-panel && npm run build && cd ..
 docker compose up -d --build
-```
-
----
-
-## 六、监控与告警
-
-### 健康检查
-
-```bash
-# API 健康检查
-curl http://localhost/health
-
-# 数据库连接测试
-docker compose exec db pg_isready -U postgres
-
-# Redis 连接测试
-docker compose exec redis redis-cli ping
-```
-
-### 简易监控脚本
-
-创建 `monitor.sh`:
-
-```bash
-#!/bin/bash
-API_URL="http://localhost/health"
-
-if ! curl -sf "$API_URL" > /dev/null; then
-    echo "[$(date)] API is down! Restarting..."
-    docker compose restart api
-    # 发送告警邮件/通知
-fi
-```
-
-添加到 cron:
-```bash
-*/5 * * * * /home/user/ddl-tracker/monitor.sh >> /var/log/ddl-monitor.log 2>&1
 ```
 
 ---
 
 ## 七、常见问题
 
+### Q: API 连接失败
+```bash
+# 检查服务状态
+docker compose ps
+
+# 检查日志
+docker compose logs api
+
+# 测试健康检查
+curl http://localhost:8000/health
+```
+
 ### Q: 数据库连接失败
 ```bash
-# 检查数据库是否运行
-docker compose ps db
 docker compose logs db
-
-# 检查网络
-docker network ls
 docker compose exec api ping db
 ```
 
 ### Q: 邮件发送失败
-```bash
-# 测试 SMTP
-docker compose exec api python -c "
-import smtplib
-from email.mime.text import MIMEText
-import os
-
-msg = MIMEText('Test')
-msg['Subject'] = 'Test'
-msg['From'] = os.environ['SMTP_FROM']
-msg['To'] = 'your-email@example.com'
-
-with smtplib.SMTP(os.environ['SMTP_HOST'], int(os.environ['SMTP_PORT'])) as s:
-    s.starttls()
-    s.login(os.environ['SMTP_USER'], os.environ['SMTP_PASSWORD'])
-    s.send_message(msg)
-    print('Email sent!')
-"
-```
-
-### Q: Admin Panel 404
-```bash
-# 确认构建成功
-ls -la admin-panel/dist/
-
-# 检查 nginx 挂载
-docker compose exec nginx ls /usr/share/nginx/html/admin/
-```
-
-### Q: 磁盘空间不足
-```bash
-# 清理 Docker 缓存
-docker system prune -a
-
-# 清理旧日志
-docker compose logs --tail=0
-```
-
----
-
-## 八、安全建议
-
-1. **定期更新** - `docker compose pull && docker compose up -d`
-2. **数据库密码** - 使用至少 32 位随机密码
-3. **HTTPS** - 生产环境必须启用
-4. **防火墙** - 只开放必要端口 (80, 443)
-5. **备份** - 设置自动每日备份
-6. **监控** - 配置健康检查和告警
+检查 `.env` 中的 SMTP 配置是否正确。
 
 ---
 
 ## 快速部署检查清单
 
-- [ ] 服务器准备就绪 (Docker, Docker Compose)
-- [ ] 代码上传到服务器
-- [ ] `.env` 配置完成 (数据库密码、SMTP、Session 密钥)
-- [ ] Admin Panel 构建完成
+- [ ] `.env` 配置完成（POSTGRES_PASSWORD, SESSION_SECRET_KEY, SMTP）
 - [ ] `docker compose up -d --build` 成功
+- [ ] `docker compose ps` 显示所有服务 healthy
 - [ ] 数据库初始化完成
 - [ ] 管理员账户创建完成
-- [ ] HTTPS 证书配置 (生产环境)
-- [ ] 健康检查通过
-- [ ] 备份脚本配置
+- [ ] 网关/反代配置完成（HTTPS）
+- [ ] `mobile/.env` 配置正确的 API 地址
+- [ ] Mobile App 打包测试通过

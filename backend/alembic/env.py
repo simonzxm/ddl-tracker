@@ -9,7 +9,11 @@ from alembic import context
 
 from app.config import get_settings
 from app.database import Base
-from app.models import User, UserCourse, Course, Task, TaskVote
+from app.models import (  # noqa: F401 — imported for alembic metadata discovery
+    User, UserCourse, Course,
+    Task, TaskVote, TaskCompletion, TaskNote,
+    TaskEditProposal, ProposalVote,
+)
 
 settings = get_settings()
 

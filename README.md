@@ -83,26 +83,29 @@ ddl-tracker/
 │   │   ├── routers/         # API 路由
 │   │   └── services/        # 业务逻辑
 │   ├── alembic/             # 数据库迁移
+│   ├── tests/               # 测试
 │   └── Dockerfile
 ├── admin-panel/             # Astro + Tailwind 管理面板
 │   ├── src/
 │   │   ├── layouts/         # 布局组件
 │   │   ├── components/      # UI 组件
-│   │   └── pages/           # 页面
-│   └── dist/                # 构建输出
+│   │   ├── pages/           # 页面
+│   │   └── styles/          # 全局样式
+│   └── astro.config.mjs
 ├── mobile/                  # React Native + Expo 移动端
 │   ├── app/                 # Expo Router 页面
 │   │   ├── (auth)/          # 认证相关页面
 │   │   ├── (tabs)/          # 底部标签页
+│   │   ├── course/          # 课程详情
 │   │   └── task/            # 任务详情/创建
 │   └── src/
 │       ├── components/      # UI 组件
 │       ├── hooks/           # React Hooks
 │       ├── services/        # API 服务
 │       └── types/           # TypeScript 类型
-├── nginx/                   # Nginx 配置
 ├── docker-compose.yml
-└── .env.example
+├── .env.example
+└── DEPLOY.md                # 部署指南
 ```
 
 ## 🔐 认证机制

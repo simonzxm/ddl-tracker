@@ -2,37 +2,26 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy import select, func, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime, timedelta
-from pydantic import BaseModel
 from typing import Optional
 
 from app.database import get_db
 from app.models import User, Course, Task, TaskVote, UserCourse, TaskStatus, UserRole, TaskEditProposal, EditProposalStatus
 from app.dependencies import get_current_admin
+from app.schemas.admin import (
+    DashboardStats,
+    TaskAuditResponse,
+    TaskUpdateRequest,
+    UserListResponse,
+    UserUpdateRequest,
+    AdminCourseResponse,
+    CourseCreateRequest,
+    CourseUpdateRequest,
+    BulkImportRequest,
+    BulkImportResult,
+    ProposalListResponse,
+)
 
 router = APIRouter()
-
-
-class DashboardStats(BaseModel):
-    total_users: int
-    active_users_7d: int
-    total_courses: int
-    total_tasks: int
-    pending_tasks: int
-    reported_tasks: int
-    new_tasks_7d: int
-
-
-class TaskAuditResponse(BaseModel):
-    id: int
-    course_name: str
-    title: str
-    creator_nickname: Optional[str]
-    status: str
-    upvotes: int
-    downvotes: int
-    is_reported: bool
-    due_time: Optional[datetime] = None
-    created_at: datetime
 
 
 @router.get("/dashboard", response_model=DashboardStats)
@@ -88,7 +77,8 @@ async def get_dashboard_stats(
     )
 
 
-# Task management (all tasks) - MUST be before /tasks/{task_id} routes
+# ================== Task Management ==================
+
 @router.get("/tasks", response_model=list[TaskAuditResponse])
 async def list_all_tasks(
     q: Optional[str] = Query(None, description="搜索标题"),
@@ -113,7 +103,6 @@ async def list_all_tasks(
         query = query.where(Task.title.ilike(f"%{q}%"))
     
     if status_filter:
-        # TaskStatus enum values are already lowercase: pending, verified, hidden
         try:
             task_status = TaskStatus(status_filter)
             query = query.where(Task.status == task_status)
@@ -282,13 +271,6 @@ async def admin_delete_task(
     return {"message": "任务已删除"}
 
 
-class TaskUpdateRequest(BaseModel):
-    title: Optional[str] = None
-    description: Optional[str] = None
-    due_time: Optional[datetime] = None
-    status: Optional[str] = None
-
-
 @router.put("/tasks/{task_id}")
 async def admin_update_task(
     task_id: int,
@@ -373,14 +355,7 @@ async def dismiss_report(
     return {"message": "举报已驳回"}
 
 
-class UserListResponse(BaseModel):
-    id: int
-    email: str
-    nickname: str
-    karma: int
-    role: str
-    created_at: datetime
-
+# ================== User Management ==================
 
 @router.get("/users", response_model=list[UserListResponse])
 async def list_users(
@@ -452,11 +427,6 @@ async def remove_user_admin(
     return {"message": f"{user.nickname} 已取消管理员权限"}
 
 
-class UserUpdateRequest(BaseModel):
-    nickname: Optional[str] = None
-    karma: Optional[int] = None
-
-
 @router.put("/users/{user_id}")
 async def update_user(
     user_id: int,
@@ -499,45 +469,9 @@ async def delete_user(
     return {"message": "用户已删除"}
 
 
-# Course management
-class CourseListResponse(BaseModel):
-    id: int
-    code: str
-    name: str
-    name_abbr: Optional[str]
-    teacher: str
-    semester: str
-    class_number: Optional[str] = None
-    campus: Optional[str] = None
-    time_location: Optional[str] = None
-    follower_count: int = 0
-    task_count: int = 0
-    created_at: datetime
+# ================== Course Management ==================
 
-
-class CourseCreateRequest(BaseModel):
-    code: str
-    name: str
-    name_abbr: Optional[str] = None
-    teacher: str
-    semester: str
-    class_number: Optional[str] = None
-    campus: Optional[str] = None
-    time_location: Optional[str] = None
-
-
-class CourseUpdateRequest(BaseModel):
-    code: Optional[str] = None
-    name: Optional[str] = None
-    name_abbr: Optional[str] = None
-    teacher: Optional[str] = None
-    semester: Optional[str] = None
-    class_number: Optional[str] = None
-    campus: Optional[str] = None
-    time_location: Optional[str] = None
-
-
-@router.get("/courses", response_model=list[CourseListResponse])
+@router.get("/courses", response_model=list[AdminCourseResponse])
 async def list_courses(
     q: Optional[str] = Query(None, description="搜索课程名/课号/教师"),
     semester: Optional[str] = Query(None, description="学期筛选"),
@@ -568,7 +502,7 @@ async def list_courses(
     result = await db.execute(query)
     
     return [
-        CourseListResponse(
+        AdminCourseResponse(
             id=course.id,
             code=course.course_code,
             name=course.name,
@@ -622,29 +556,6 @@ async def create_course(
     await db.flush()
     
     return {"message": "课程已创建", "id": course.id}
-
-
-class BulkCourseItem(BaseModel):
-    code: str
-    name: str
-    name_abbr: Optional[str] = None
-    teacher: str
-    semester: str
-    class_number: Optional[str] = None
-    campus: Optional[str] = None
-    time_location: Optional[str] = None
-
-
-class BulkImportRequest(BaseModel):
-    courses: list[BulkCourseItem]
-    skip_duplicates: bool = True  # If true, skip duplicates; if false, fail on duplicate
-
-
-class BulkImportResult(BaseModel):
-    total: int
-    imported: int
-    skipped: int
-    errors: list[str]
 
 
 @router.post("/courses/bulk-import", response_model=BulkImportResult)
@@ -783,20 +694,7 @@ async def delete_course(
     return {"message": "课程已删除"}
 
 
-# Proposal management
-class ProposalListResponse(BaseModel):
-    id: int
-    task_id: int
-    task_title: Optional[str] = None
-    proposer_id: Optional[int]
-    proposer_nickname: Optional[str]
-    new_description: str
-    reason: Optional[str]
-    status: str
-    upvotes: int
-    downvotes: int
-    created_at: datetime
-
+# ================== Proposal Management ==================
 
 @router.get("/proposals", response_model=list[ProposalListResponse])
 async def list_proposals(
@@ -815,7 +713,6 @@ async def list_proposals(
     
     if status:
         try:
-            # EditProposalStatus values are lowercase (pending, approved, rejected)
             status_enum = EditProposalStatus(status)
             query = query.where(TaskEditProposal.status == status_enum)
         except ValueError:

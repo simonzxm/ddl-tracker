@@ -513,7 +513,6 @@ async def mark_task_completed(
     
     completion = TaskCompletion(user_id=user.id, task_id=task_id)
     db.add(completion)
-    await db.commit()
     return {"message": "标记成功"}
 
 
@@ -530,7 +529,6 @@ async def unmark_task_completed(
             TaskCompletion.task_id == task_id,
         )
     )
-    await db.commit()
     return {"message": "取消标记成功"}
 
 
@@ -587,7 +585,7 @@ async def update_task_note(
         note = TaskNote(user_id=user.id, task_id=task_id, content=data.content)
         db.add(note)
     
-    await db.commit()
+    await db.flush()
     await db.refresh(note)
     
     return TaskNoteResponse(
@@ -610,7 +608,6 @@ async def delete_task_note(
             TaskNote.task_id == task_id,
         )
     )
-    await db.commit()
     return {"message": "备注已删除"}
 
 

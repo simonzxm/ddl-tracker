@@ -26,6 +26,7 @@ class Settings(BaseSettings):
     app_env: str = "development"
     debug: bool = True
     allowed_email_domains: str = "smail.nju.edu.cn,nju.edu.cn"
+    cors_origins: str = "http://localhost:8081,http://localhost:19006,http://localhost:3000,http://localhost:4321"
     
     # Karma thresholds
     karma_verified_threshold: int = 50
@@ -34,13 +35,18 @@ class Settings(BaseSettings):
     karma_downvote_loss: int = 2
     
     @property
+    def cors_origins_list(self) -> list[str]:
+        return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+    
+    @property
     def allowed_domains_list(self) -> list[str]:
         return [d.strip() for d in self.allowed_email_domains.split(",")]
     
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-        extra = "ignore"
+    model_config = {
+        "env_file": ".env",
+        "env_file_encoding": "utf-8",
+        "extra": "ignore",
+    }
 
 
 @lru_cache

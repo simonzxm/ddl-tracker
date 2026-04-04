@@ -45,7 +45,7 @@ docker --version && docker compose version
 ### 1. 获取代码
 
 ```bash
-git clone https://github.com/your-org/ddl-tracker.git
+git clone https://github.com/simonzxm/ddl-tracker.git
 cd ddl-tracker
 ```
 

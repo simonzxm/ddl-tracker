@@ -19,6 +19,7 @@
 │ └──────┘ └───────┘    │           │
 └───────────────────────┘
    Admin Panel (静态托管)
+   Mobile Web UI (/app, 静态托管)
    Mobile App (独立分发)
 ```
 
@@ -67,6 +68,7 @@ SMTP_PASSWORD=your-smtp-password
 SMTP_FROM=DDL Tracker <noreply@example.com>
 APP_ENV=production
 DEBUG=false
+EXPO_PUBLIC_API_URL=https://ddl.nju.at
 ```
 
 > 生成随机密钥：`openssl rand -hex 32`
@@ -146,7 +148,44 @@ eas build --platform android
 
 ---
 
-## 五、运维
+## 五、Mobile Web UI（/app）
+
+Mobile 使用 Expo Web 构建并由 nginx 在同域名下托管到 `/app`。
+
+### 1. 配置 API 地址
+
+```bash
+# 本地调试（在 mobile 工作目录）
+cp mobile/.env.example mobile/.env
+# 然后按需修改 EXPO_PUBLIC_API_URL
+```
+
+```env
+# 生产部署（项目根目录 .env，供 docker-compose 传递到 mobile-web 构建）
+EXPO_PUBLIC_API_URL=https://ddl.nju.at
+```
+
+### 2. 本地开发
+
+```bash
+cd mobile
+npm install
+npm run web
+```
+
+### 3. 生产部署
+
+```bash
+docker compose up -d --build
+```
+
+`docker-compose.yml` 中的 `mobile-web` 服务会构建 Expo Web 并将静态产物挂载给 nginx，访问：
+
+- `https://ddl.nju.at/app/`
+
+---
+
+## 六、运维
 
 ```bash
 # 日志
@@ -172,3 +211,4 @@ git pull && docker compose up -d --build
 - [ ] 管理员账户已创建
 - [ ] 网关反代配置完成
 - [ ] `mobile/.env` API 地址正确
+- [ ] `https://ddl.nju.at/app/` 可访问

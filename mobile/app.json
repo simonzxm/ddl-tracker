@@ -33,6 +33,9 @@
       "expo-router",
       "expo-secure-store"
     ],
+    "experiments": {
+      "baseUrl": "/app"
+    },
     "extra": {
       "router": {},
       "eas": {

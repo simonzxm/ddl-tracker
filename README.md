@@ -54,6 +54,18 @@ npx expo start
 ```
 扫描二维码在 Expo Go 中运行，或按 `i` / `a` 启动 iOS/Android 模拟器
 
+### Web UI（Expo Web）
+```bash
+cd mobile
+npm install
+npm run web
+```
+本地开发请在 `mobile/.env`（可由 `mobile/.env.example` 复制）中配置：
+```env
+EXPO_PUBLIC_API_URL=http://localhost:8000
+```
+生产环境部署后访问 `https://ddl.nju.at/app`；Docker 构建会读取项目根目录 `.env` 里的 `EXPO_PUBLIC_API_URL`。
+
 ### Docker 部署
 
 ```bash
@@ -66,6 +78,11 @@ docker compose logs -f api
 # 运行数据库迁移
 docker compose exec api alembic upgrade head
 ```
+
+部署后可访问：
+- API: `https://ddl.nju.at/api/...`
+- Admin Panel: `https://ddl.nju.at/admin/`
+- Mobile Web UI: `https://ddl.nju.at/app/`
 
 ## 📁 项目结构
 

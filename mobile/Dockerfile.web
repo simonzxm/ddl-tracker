@@ -1,0 +1,12 @@
+FROM node:22-alpine AS build
+WORKDIR /app
+ARG EXPO_PUBLIC_API_URL=https://ddl.nju.at
+ENV EXPO_PUBLIC_API_URL=${EXPO_PUBLIC_API_URL}
+COPY package*.json ./
+RUN npm install
+COPY . .
+RUN npm run web:build
+
+FROM alpine:3.20
+COPY --from=build /app/dist /dist
+CMD ["cp", "-r", "/dist/.", "/output/"]

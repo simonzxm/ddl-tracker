@@ -1,0 +1,24 @@
+# Local secrets and environment
+.env
+.env.*
+.dev.vars
+.dev.vars.*
+
+# Real course data is managed outside this repository
+*.csv
+!data/fixtures/*.csv
+
+# Database exports and backup material
+*.dump
+*.sql.gz
+*.backup
+
+# Dependencies and generated output
+node_modules/
+dist/
+coverage/
+.wrangler/
+
+# OS and editor files
+.DS_Store
+*.swp

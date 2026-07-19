@@ -101,6 +101,26 @@ function date(value: Date | null): string | null {
   return value?.toISOString() ?? null;
 }
 
+function tombstone(
+  id: string,
+  entityType: 'course_task' | 'task_proposal' | 'task_comment',
+  state: 'hidden' | 'deleted',
+  revision: number,
+  extra: Record<string, unknown> = {},
+): SnapshotRecord {
+  return {
+    record_type: 'content_tombstone',
+    id,
+    payload: {
+      entity_type: entityType,
+      entity_id: id,
+      state,
+      revision,
+      ...extra,
+    },
+  };
+}
+
 export class PostgresSnapshotReader {
   readonly #client: Client;
 
@@ -431,23 +451,64 @@ export class PostgresSnapshotReader {
        where class_section_id = any($1::uuid[])`,
       [classSectionIds],
     );
-    const taskIds = tasks.rows.map(({ id }) => id);
+    const taskById = new Map(tasks.rows.map((task) => [task.id, task]));
+    const allTaskIds = tasks.rows.map(({ id }) => id);
+    const visibleTasks = tasks.rows.filter(({ state }) => state === 'visible');
+    const visibleTaskIds = visibleTasks.map(({ id }) => id);
     for (const row of tasks.rows) {
-      records.push({
-        record_type: 'course_task',
-        id: row.id,
-        payload: {
+      if (row.state === 'visible') {
+        records.push({
+          record_type: 'course_task',
           id: row.id,
-          class_section_id: row.class_section_id,
-          created_by: row.created_by,
-          state: row.state,
-          revision: row.revision,
-          created_at: row.created_at.toISOString(),
-          updated_at: row.updated_at.toISOString(),
-        },
-      });
+          payload: {
+            id: row.id,
+            class_section_id: row.class_section_id,
+            created_by: row.created_by,
+            state: row.state,
+            revision: row.revision,
+            created_at: row.created_at.toISOString(),
+            updated_at: row.updated_at.toISOString(),
+          },
+        });
+      } else if (row.state === 'hidden') {
+        records.push(
+          tombstone(row.id, 'course_task', 'hidden', row.revision),
+        );
+      }
     }
-    if (taskIds.length === 0) return;
+    const mergedTaskIds = tasks.rows
+      .filter(({ state }) => state === 'merged')
+      .map(({ id }) => id);
+    if (mergedTaskIds.length > 0) {
+      const merges = await this.#client.query<{
+        source_task_id: string;
+        target_task_id: string;
+        reason: string;
+        created_at: Date;
+        revision: number;
+      }>(
+        `select tm.source_task_id, tm.target_task_id, tm.reason,
+                tm.created_at, source.revision
+         from task_merges tm
+         join course_tasks source on source.id = tm.source_task_id
+         where tm.source_task_id = any($1::uuid[])`,
+        [mergedTaskIds],
+      );
+      for (const merge of merges.rows) {
+        records.push({
+          record_type: 'task_merge',
+          id: merge.source_task_id,
+          payload: {
+            source_task_id: merge.source_task_id,
+            target_task_id: merge.target_task_id,
+            reason: merge.reason,
+            revision: merge.revision,
+            created_at: merge.created_at.toISOString(),
+          },
+        });
+      }
+    }
+    if (allTaskIds.length === 0) return;
 
     const proposals = await this.#client.query<ProposalRow>(
       `select id, task_id, author_id, title, deadline, description,
@@ -455,10 +516,24 @@ export class PostgresSnapshotReader {
               revision, created_at
        from task_proposals
        where task_id = any($1::uuid[])`,
-      [taskIds],
+      [allTaskIds],
     );
-    const proposalIds = proposals.rows.map(({ id }) => id);
+    const visibleProposals: ProposalRow[] = [];
+    const redirectedProposalIds: string[] = [];
     for (const row of proposals.rows) {
+      const parent = taskById.get(row.task_id);
+      if (row.state === 'redirected') {
+        redirectedProposalIds.push(row.id);
+        continue;
+      }
+      if (parent?.state !== 'visible') continue;
+      if (row.state === 'hidden') {
+        records.push(
+          tombstone(row.id, 'task_proposal', 'hidden', row.revision),
+        );
+        continue;
+      }
+      visibleProposals.push(row);
       records.push({
         record_type: 'task_proposal',
         id: row.id,
@@ -478,8 +553,36 @@ export class PostgresSnapshotReader {
         },
       });
     }
+    if (redirectedProposalIds.length > 0) {
+      const redirects = await this.#client.query<{
+        source_proposal_id: string;
+        canonical_proposal_id: string;
+        created_at: Date;
+        revision: number;
+      }>(
+        `select r.source_proposal_id, r.canonical_proposal_id,
+                r.created_at, source.revision
+         from proposal_redirects r
+         join task_proposals source on source.id = r.source_proposal_id
+         where r.source_proposal_id = any($1::uuid[])`,
+        [redirectedProposalIds],
+      );
+      for (const redirect of redirects.rows) {
+        records.push({
+          record_type: 'proposal_redirect',
+          id: redirect.source_proposal_id,
+          payload: {
+            source_proposal_id: redirect.source_proposal_id,
+            canonical_proposal_id: redirect.canonical_proposal_id,
+            revision: redirect.revision,
+            created_at: redirect.created_at.toISOString(),
+          },
+        });
+      }
+    }
 
-    if (proposalIds.length > 0) {
+    const visibleProposalIds = visibleProposals.map(({ id }) => id);
+    if (visibleProposalIds.length > 0) {
       const totals = await this.#client.query<{
         proposal_id: string;
         up: number;
@@ -489,7 +592,7 @@ export class PostgresSnapshotReader {
         `select proposal_id, up, down, updated_at
          from proposal_vote_totals
          where proposal_id = any($1::uuid[])`,
-        [proposalIds],
+        [visibleProposalIds],
       );
       for (const row of totals.rows) {
         records.push({
@@ -511,7 +614,7 @@ export class PostgresSnapshotReader {
         `select proposal_id, direction, updated_at
          from accuracy_votes
          where user_id = $1 and proposal_id = any($2::uuid[])`,
-        [userId, proposalIds],
+        [userId, visibleProposalIds],
       );
       for (const row of votes.rows) {
         records.push({
@@ -526,44 +629,62 @@ export class PostgresSnapshotReader {
       }
     }
 
-    const comments = await this.#client.query<CommentRow>(
-      `select tc.id, tc.task_id, tc.author_id, tc.current_revision,
-              latest.body, tc.state, tc.deleted_at,
-              tc.created_at, tc.updated_at
-       from task_comments tc
-       left join lateral (
-         select body
-         from comment_revisions cr
-         where cr.comment_id = tc.id
-         order by cr.revision desc
-         limit 1
-       ) latest on true
-       where tc.task_id = any($1::uuid[])`,
-      [taskIds],
-    );
-    for (const row of comments.rows) {
-      records.push({
-        record_type: 'task_comment',
-        id: row.id,
-        payload: {
+    const visibleComments: CommentRow[] = [];
+    if (visibleTaskIds.length > 0) {
+      const comments = await this.#client.query<CommentRow>(
+        `select tc.id, tc.task_id, tc.author_id, tc.current_revision,
+                latest.body, tc.state, tc.deleted_at,
+                tc.created_at, tc.updated_at
+         from task_comments tc
+         left join lateral (
+           select body
+           from comment_revisions cr
+           where cr.comment_id = tc.id
+           order by cr.revision desc
+           limit 1
+         ) latest on true
+         where tc.task_id = any($1::uuid[])`,
+        [visibleTaskIds],
+      );
+      for (const row of comments.rows) {
+        if (row.state === 'hidden' || row.deleted_at !== null) {
+          records.push(
+            tombstone(
+              row.id,
+              'task_comment',
+              row.deleted_at === null ? 'hidden' : 'deleted',
+              row.current_revision,
+              row.deleted_at === null
+                ? {}
+                : { deleted_at: row.deleted_at.toISOString() },
+            ),
+          );
+          continue;
+        }
+        visibleComments.push(row);
+        records.push({
+          record_type: 'task_comment',
           id: row.id,
-          course_task_id: row.task_id,
-          author_id: row.author_id,
-          body: row.body,
-          revision: row.current_revision,
-          state: row.state,
-          deleted_at: date(row.deleted_at),
-          created_at: row.created_at.toISOString(),
-          updated_at: row.updated_at.toISOString(),
-        },
-      });
+          payload: {
+            id: row.id,
+            course_task_id: row.task_id,
+            author_id: row.author_id,
+            body: row.body,
+            revision: row.current_revision,
+            state: row.state,
+            deleted_at: null,
+            created_at: row.created_at.toISOString(),
+            updated_at: row.updated_at.toISOString(),
+          },
+        });
+      }
     }
 
     const authorIds = new Set<string>();
     for (const id of [
-      ...tasks.rows.map(({ created_by }) => created_by),
-      ...proposals.rows.map(({ author_id }) => author_id),
-      ...comments.rows.map(({ author_id }) => author_id),
+      ...visibleTasks.map(({ created_by }) => created_by),
+      ...visibleProposals.map(({ author_id }) => author_id),
+      ...visibleComments.map(({ author_id }) => author_id),
     ]) {
       if (id !== null && id !== userId) authorIds.add(id);
     }

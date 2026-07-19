@@ -3,6 +3,7 @@ import {
   adminContentActionRequestSchema,
   adminReportResolutionRequestSchema,
   adminRoleRequestSchema,
+  adminTaskMergeRequestSchema,
   adminUserActionRequestSchema,
   parseUuidV7,
 } from '@ddl-tracker/contracts';
@@ -65,6 +66,13 @@ export interface AdminRouteDependencies {
     limit: number;
     afterCreatedAt?: Date;
     afterId?: string;
+  }): Promise<unknown>;
+  mergeTask(input: {
+    actorId: string;
+    sourceTaskId: string;
+    targetTaskId: string;
+    reason: string;
+    requestId: string;
   }): Promise<unknown>;
 }
 
@@ -281,6 +289,30 @@ export function registerAdminRoutes(
         actorId: actor.user.id,
         targetUserId: pathId(context.req.param('user_id'), 'User ID'),
         maintainer: body.maintainer,
+        reason: body.reason,
+        requestId: context.get('requestId'),
+      }),
+    );
+  });
+
+  app.post('/v1/admin/tasks/:source_task_id/merge', async (context) => {
+    const actor = await maintainer(
+      context.req.header('authorization'),
+      dependencies,
+    );
+    const body = await readValidatedJson(
+      context.req.raw,
+      adminTaskMergeRequestSchema,
+      ADMIN_BODY_LIMIT,
+    );
+    return context.json(
+      await dependencies.mergeTask({
+        actorId: actor.user.id,
+        sourceTaskId: pathId(
+          context.req.param('source_task_id'),
+          'Source task ID',
+        ),
+        targetTaskId: body.target_task_id,
         reason: body.reason,
         requestId: context.get('requestId'),
       }),

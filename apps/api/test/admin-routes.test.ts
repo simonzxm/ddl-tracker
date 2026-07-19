@@ -54,6 +54,13 @@ function dependencies(maintainer = true): AdminRouteDependencies {
       changed: true,
     })),
     listAudit: vi.fn(async () => ({ entries: [], next: null })),
+    mergeTask: vi.fn(async () => ({
+      source_task_id: TARGET_ID,
+      target_task_id: REPORT_ID,
+      redirected_proposals: 0,
+      moved_proposals: 1,
+      recovered_personal_todos: 0,
+    })),
   };
 }
 
@@ -172,6 +179,29 @@ describe('maintainer routes', () => {
     expect(deps.setMaintainerRole).toHaveBeenCalledWith(
       expect.objectContaining({ targetUserId: TARGET_ID, maintainer: true }),
     );
+  });
+
+  it('maps task merge commands with the actual request ID', async () => {
+    const deps = dependencies();
+    const response = await app(deps).request(
+      `/v1/admin/tasks/${TARGET_ID}/merge`,
+      {
+        method: 'POST',
+        headers: jsonHeaders,
+        body: JSON.stringify({
+          target_task_id: REPORT_ID,
+          reason: 'Confirmed duplicate.',
+        }),
+      },
+    );
+    expect(response.status).toBe(200);
+    expect(deps.mergeTask).toHaveBeenCalledWith({
+      actorId: USER_ID,
+      sourceTaskId: TARGET_ID,
+      targetTaskId: REPORT_ID,
+      reason: 'Confirmed duplicate.',
+      requestId: REQUEST_ID,
+    });
   });
 
   it('validates report and audit query bounds', async () => {

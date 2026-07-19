@@ -59,7 +59,7 @@ export class IncrementalSyncService {
       afterSequence = (
         await this.#cursorCodec.decode(input.request.cursor, input.userId)
       ).sequence;
-    } catch (error) {
+    } catch {
       throw new HttpError({
         code: 'invalid_request',
         message: 'Sync cursor is invalid.',

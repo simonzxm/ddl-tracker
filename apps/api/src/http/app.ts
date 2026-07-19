@@ -23,6 +23,7 @@ export interface AppDependencies {
   auth?: AuthRouteDependencies;
   catalog?: CatalogRouteDependencies;
   adminCatalog?: AdminCatalogRouteDependencies;
+  sync?: unknown;
 }
 
 export function createApp(dependencies: AppDependencies): Hono<{

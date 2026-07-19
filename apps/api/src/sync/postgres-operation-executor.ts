@@ -85,14 +85,10 @@ interface PersonalTodoRow {
 }
 
 function payloadRecord(operation: OperationEnvelope): Record<string, unknown> {
-  if (
-    typeof operation.payload !== 'object' ||
-    operation.payload === null ||
-    Array.isArray(operation.payload)
-  ) {
+  if (Array.isArray(operation.payload)) {
     throw new Error('Validated operation payload is not an object.');
   }
-  return operation.payload as Record<string, unknown>;
+  return operation.payload;
 }
 
 function stringField(payload: Record<string, unknown>, field: string): string {
@@ -126,7 +122,7 @@ function integerField(payload: Record<string, unknown>, field: string): number {
 }
 
 function proposalField(payload: Record<string, unknown>): CanonicalProposal {
-  return canonicalizeProposal(payload['proposal'] as ProposalInput);
+  return canonicalizeProposal(payload.proposal as ProposalInput);
 }
 
 function shanghaiLocalDate(now: Date): string {

@@ -15,6 +15,13 @@
       "when": 1784466438305,
       "tag": "0001_good_human_robot",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1784468302677,
+      "tag": "0002_lame_rocket_racer",
+      "breakpoints": true
     }
   ]
 }

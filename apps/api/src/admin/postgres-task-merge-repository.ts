@@ -20,6 +20,26 @@ interface VoteRow {
   direction: 'up' | 'down';
 }
 
+interface PrivateDetailsRow {
+  user_id: string;
+  task_id: string;
+  private_title: string | null;
+  private_deadline: Date | null;
+  private_note: string | null;
+  revision: number;
+  created_at: Date;
+  updated_at: Date;
+}
+
+interface PrivateStateRow {
+  user_id: string;
+  task_id: string;
+  state: 'pending' | 'completed' | 'ignored';
+  revision: number;
+  created_at: Date;
+  updated_at: Date;
+}
+
 export class PostgresTaskMergeRepository {
   readonly #client: Client;
   readonly #createId: () => string;
@@ -45,6 +65,7 @@ export class PostgresTaskMergeRepository {
     target_task_id: string;
     redirected_proposals: number;
     moved_proposals: number;
+    recovered_personal_todos: number;
   }> {
     if (input.sourceTaskId === input.targetTaskId) {
       throw conflict('A task cannot be merged into itself.');
@@ -139,6 +160,13 @@ export class PostgresTaskMergeRepository {
         redirected += 1;
       }
 
+      const recoveredPersonalTodos = await this.#mergePrivateOverlays({
+        sourceTaskId: input.sourceTaskId,
+        targetTaskId: input.targetTaskId,
+        classSectionId: source.class_section_id,
+        now,
+      });
+
       await this.#client.query(
         'update task_comments set task_id = $2 where task_id = $1',
         [input.sourceTaskId, input.targetTaskId],
@@ -175,6 +203,7 @@ export class PostgresTaskMergeRepository {
           target_task_id: input.targetTaskId,
           redirected_proposals: redirected,
           moved_proposals: moved,
+          recovered_personal_todos: recoveredPersonalTodos,
         },
         now,
       );
@@ -186,6 +215,7 @@ export class PostgresTaskMergeRepository {
         requestId: input.requestId,
         redirected,
         moved,
+        recoveredPersonalTodos,
         now,
       });
       return {
@@ -193,6 +223,7 @@ export class PostgresTaskMergeRepository {
         target_task_id: input.targetTaskId,
         redirected_proposals: redirected,
         moved_proposals: moved,
+        recovered_personal_todos: recoveredPersonalTodos,
       };
     });
   }
@@ -210,6 +241,245 @@ export class PostgresTaskMergeRepository {
       [[sourceTaskId, targetTaskId]],
     );
     return new Map(result.rows.map((task) => [task.id, task]));
+  }
+
+  async #mergePrivateOverlays(input: {
+    sourceTaskId: string;
+    targetTaskId: string;
+    classSectionId: string;
+    now: Date;
+  }): Promise<number> {
+    const detailsResult = await this.#client.query<PrivateDetailsRow>(
+      `select user_id, task_id, private_title, private_deadline, private_note,
+              revision, created_at, updated_at
+       from personal_task_details
+       where task_id = any($1::uuid[])
+       order by user_id, task_id
+       for update`,
+      [[input.sourceTaskId, input.targetTaskId]],
+    );
+    const statesResult = await this.#client.query<PrivateStateRow>(
+      `select user_id, task_id, state, revision, created_at, updated_at
+       from personal_task_states
+       where task_id = any($1::uuid[])
+       order by user_id, task_id
+       for update`,
+      [[input.sourceTaskId, input.targetTaskId]],
+    );
+    const details = new Map(
+      detailsResult.rows.map((row) => [`${row.user_id}:${row.task_id}`, row]),
+    );
+    const states = new Map(
+      statesResult.rows.map((row) => [`${row.user_id}:${row.task_id}`, row]),
+    );
+    const users = new Set<string>();
+    for (const row of detailsResult.rows) {
+      if (row.task_id === input.sourceTaskId) users.add(row.user_id);
+    }
+    for (const row of statesResult.rows) {
+      if (row.task_id === input.sourceTaskId) users.add(row.user_id);
+    }
+
+    let recovered = 0;
+    for (const userId of users) {
+      const sourceDetails = details.get(`${userId}:${input.sourceTaskId}`);
+      const targetDetails = details.get(`${userId}:${input.targetTaskId}`);
+      const sourceState = states.get(`${userId}:${input.sourceTaskId}`);
+      const targetState = states.get(`${userId}:${input.targetTaskId}`);
+
+      if (sourceDetails !== undefined && targetDetails !== undefined) {
+        if (!sameDetails(sourceDetails, targetDetails)) {
+          const todoId = this.#createId();
+          const todoState = sourceState?.state ?? 'pending';
+          await this.#client.query(
+            `insert into personal_todos (
+               id, user_id, class_section_id, title, deadline, note, state,
+               revision, created_at, updated_at
+             ) values ($1, $2, $3, $4, $5, $6, $7, 1, $8, $8)`,
+            [
+              todoId,
+              userId,
+              input.classSectionId,
+              sourceDetails.private_title ?? 'Recovered task details',
+              sourceDetails.private_deadline,
+              sourceDetails.private_note,
+              todoState,
+              input.now,
+            ],
+          );
+          await this.#client.query(
+            `delete from personal_task_details
+             where user_id = $1 and task_id = $2`,
+            [userId, input.sourceTaskId],
+          );
+          await this.#client.query(
+            `delete from personal_task_states
+             where user_id = $1 and task_id = $2`,
+            [userId, input.sourceTaskId],
+          );
+          await this.#privateEvent(
+            userId,
+            'personal_todo_upserted',
+            {
+              id: todoId,
+              class_section_id: input.classSectionId,
+              title: sourceDetails.private_title ?? 'Recovered task details',
+              deadline: sourceDetails.private_deadline?.toISOString() ?? null,
+              note: sourceDetails.private_note,
+              state: todoState,
+              revision: 1,
+              created_at: input.now.toISOString(),
+              updated_at: input.now.toISOString(),
+              deleted_at: null,
+            },
+            input.now,
+          );
+          await this.#privateEvent(
+            userId,
+            'personal_task_details_deleted',
+            {
+              course_task_id: input.sourceTaskId,
+              revision: sourceDetails.revision + 1,
+              deleted_at: input.now.toISOString(),
+              reason: 'task_merge_conflict',
+            },
+            input.now,
+          );
+          recovered += 1;
+          continue;
+        }
+        await this.#client.query(
+          `delete from personal_task_details
+           where user_id = $1 and task_id = $2`,
+          [userId, input.sourceTaskId],
+        );
+        await this.#privateEvent(
+          userId,
+          'personal_task_details_deleted',
+          {
+            course_task_id: input.sourceTaskId,
+            revision: sourceDetails.revision + 1,
+            deleted_at: input.now.toISOString(),
+            reason: 'task_merge_duplicate',
+          },
+          input.now,
+        );
+      } else if (sourceDetails !== undefined) {
+        const revision = sourceDetails.revision + 1;
+        await this.#client.query(
+          `update personal_task_details
+           set task_id = $3, revision = $4, updated_at = $5
+           where user_id = $1 and task_id = $2`,
+          [
+            userId,
+            input.sourceTaskId,
+            input.targetTaskId,
+            revision,
+            input.now,
+          ],
+        );
+        await this.#privateEvent(
+          userId,
+          'personal_task_details_upserted',
+          {
+            course_task_id: input.targetTaskId,
+            private_title: sourceDetails.private_title,
+            private_deadline:
+              sourceDetails.private_deadline?.toISOString() ?? null,
+            private_note: sourceDetails.private_note,
+            revision,
+            created_at: sourceDetails.created_at.toISOString(),
+            updated_at: input.now.toISOString(),
+          },
+          input.now,
+        );
+      }
+
+      if (sourceState === undefined) continue;
+      if (targetState === undefined) {
+        const revision = sourceState.revision + 1;
+        await this.#client.query(
+          `update personal_task_states
+           set task_id = $3, revision = $4, updated_at = $5
+           where user_id = $1 and task_id = $2`,
+          [
+            userId,
+            input.sourceTaskId,
+            input.targetTaskId,
+            revision,
+            input.now,
+          ],
+        );
+        await this.#privateStateEvent(
+          userId,
+          input.targetTaskId,
+          sourceState.state,
+          revision,
+          sourceState.created_at,
+          input.now,
+        );
+        continue;
+      }
+      const state = preferredState(targetState.state, sourceState.state);
+      const revision = targetState.revision + 1;
+      await this.#client.query(
+        `update personal_task_states
+         set state = $3, revision = $4, updated_at = $5
+         where user_id = $1 and task_id = $2`,
+        [userId, input.targetTaskId, state, revision, input.now],
+      );
+      await this.#client.query(
+        `delete from personal_task_states
+         where user_id = $1 and task_id = $2`,
+        [userId, input.sourceTaskId],
+      );
+      await this.#privateStateEvent(
+        userId,
+        input.targetTaskId,
+        state,
+        revision,
+        targetState.created_at,
+        input.now,
+      );
+    }
+    return recovered;
+  }
+
+  async #privateStateEvent(
+    userId: string,
+    taskId: string,
+    state: PrivateStateRow['state'],
+    revision: number,
+    createdAt: Date,
+    now: Date,
+  ): Promise<void> {
+    await this.#privateEvent(
+      userId,
+      'personal_task_state_upserted',
+      {
+        course_task_id: taskId,
+        state,
+        revision,
+        created_at: createdAt.toISOString(),
+        updated_at: now.toISOString(),
+      },
+      now,
+    );
+  }
+
+  async #privateEvent(
+    userId: string,
+    type: string,
+    payload: Record<string, unknown>,
+    now: Date,
+  ): Promise<void> {
+    await this.#client.query(
+      `insert into sync_events (
+         event_id, scope, scope_user_id, type, schema_version,
+         payload, occurred_at
+       ) values ($1, 'private_user', $2, $3, 1, $4::jsonb, $5)`,
+      [this.#createId(), userId, type, JSON.stringify(payload), now],
+    );
   }
 
   async #mergeProposalVotes(input: {
@@ -348,6 +618,7 @@ export class PostgresTaskMergeRepository {
     requestId: string;
     redirected: number;
     moved: number;
+    recoveredPersonalTodos: number;
     now: Date;
   }): Promise<void> {
     await this.#client.query(
@@ -365,6 +636,7 @@ export class PostgresTaskMergeRepository {
           target_task_id: input.targetTaskId,
           redirected_proposals: input.redirected,
           moved_proposals: input.moved,
+          recovered_personal_todos: input.recoveredPersonalTodos,
         }),
         input.requestId,
         input.now,
@@ -383,6 +655,30 @@ export class PostgresTaskMergeRepository {
       throw error;
     }
   }
+}
+
+
+function sameDetails(
+  left: PrivateDetailsRow,
+  right: PrivateDetailsRow,
+): boolean {
+  return (
+    left.private_title === right.private_title &&
+    left.private_deadline?.getTime() === right.private_deadline?.getTime() &&
+    left.private_note === right.private_note
+  );
+}
+
+function preferredState(
+  left: PrivateStateRow['state'],
+  right: PrivateStateRow['state'],
+): PrivateStateRow['state'] {
+  const priority: Record<PrivateStateRow['state'], number> = {
+    completed: 3,
+    pending: 2,
+    ignored: 1,
+  };
+  return priority[left] >= priority[right] ? left : right;
 }
 
 function conflict(message: string): HttpError {

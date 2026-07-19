@@ -62,6 +62,8 @@ export const courses = pgTable(
     name: text('name').notNull(),
     credits: numeric('credits', { precision: 5, scale: 2 }),
     department: text('department'),
+    active: boolean('active').default(true).notNull(),
+    revision: integer('revision').default(1).notNull(),
     sourceMetadata: jsonb('source_metadata')
       .$type<Record<string, unknown>>()
       .default(sql`'{}'::jsonb`)
@@ -79,6 +81,7 @@ export const courses = pgTable(
       table.externalCourseCode,
     ),
     index('courses_term_idx').on(table.termId),
+    check('courses_revision_positive', sql`${table.revision} > 0`),
   ],
 );
 

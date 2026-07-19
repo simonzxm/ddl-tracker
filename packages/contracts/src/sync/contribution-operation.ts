@@ -99,7 +99,7 @@ const setAccuracyVoteSchema = operation(
   z
     .object({
       proposal_id: uuidV7Schema,
-      value: z.enum(['up', 'down']).nullable(),
+      value: z.enum(['up', 'down', 'none']),
     })
     .strict(),
 );

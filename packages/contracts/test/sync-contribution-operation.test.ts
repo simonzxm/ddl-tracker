@@ -69,7 +69,7 @@ describe('task and proposal contribution payloads', () => {
   });
 
   it('supports setting, changing, and withdrawing one accuracy vote', () => {
-    for (const value of ['up', 'down', null] as const) {
+    for (const value of ['up', 'down', 'none'] as const) {
       expect(
         contributionOperationSchema.parse(
           envelope('set_accuracy_vote', {

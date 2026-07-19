@@ -110,11 +110,36 @@ export const authChallenges = pgTable(
       .notNull(),
   },
   (table) => [
-    uniqueIndex('auth_challenges_current_subject_unique')
+    uniqueIndex('auth_challenges_active_subject_unique')
       .on(table.provider, table.normalizedSubject)
-      .where(sql`${table.status} in ('pending', 'active')`),
+      .where(sql`${table.status} = 'active'`),
+    uniqueIndex('auth_challenges_pending_subject_unique')
+      .on(table.provider, table.normalizedSubject)
+      .where(sql`${table.status} = 'pending'`),
     index('auth_challenges_expiry_idx').on(table.expiresAt),
     check('auth_challenges_attempts_nonnegative', sql`${table.attempts} >= 0`),
+  ],
+);
+
+export const registrationTokens = pgTable(
+  'registration_tokens',
+  {
+    id: uuid('id').primaryKey(),
+    tokenHash: text('token_hash').notNull(),
+    provider: text('provider').notNull(),
+    normalizedSubject: text('normalized_subject').notNull(),
+    subjectDisplay: text('subject_display').notNull(),
+    attempts: integer('attempts').default(0).notNull(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    consumedAt: timestamp('consumed_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex('registration_tokens_hash_unique').on(table.tokenHash),
+    index('registration_tokens_expiry_idx').on(table.expiresAt),
+    check('registration_tokens_attempts_nonnegative', sql`${table.attempts} >= 0`),
   ],
 );
 

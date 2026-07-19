@@ -39,7 +39,13 @@ describe('sync request modes', () => {
         mode: 'incremental',
         cursor: 'cursor-1',
         event_limit: 500,
-        operations: Array.from({ length: 100 }, () => ({})),
+        operations: Array.from({ length: 100 }, (_, index) => ({
+          operation_id: `018f0000-0000-7000-8000-${String(index).padStart(12, '0')}`,
+          type: 'follow_class_section',
+          schema_version: 1,
+          depends_on: [],
+          payload: { class_section_id: ID },
+        })),
       }).mode,
     ).toBe('incremental');
   });

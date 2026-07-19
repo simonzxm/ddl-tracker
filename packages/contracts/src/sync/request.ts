@@ -1,10 +1,11 @@
 import { z } from 'zod';
 
 import { opaqueTokenSchema, uuidV7Schema } from '../schema.js';
-
-export const SYNC_PROTOCOL_VERSION = 1;
-export const MAX_SYNC_OPERATIONS = 100;
-export const MAX_SYNC_PAGE_SIZE = 500;
+import { operationBatchSchema } from './operation.js';
+import {
+  MAX_SYNC_PAGE_SIZE,
+  SYNC_PROTOCOL_VERSION,
+} from './limits.js';
 
 const emptyOperationsSchema = z.array(z.never()).max(0);
 const snapshotFields = {
@@ -38,9 +39,7 @@ export const incrementalSyncRequestSchema = z
     mode: z.literal('incremental'),
     cursor: opaqueTokenSchema,
     event_limit: z.number().int().min(1).max(MAX_SYNC_PAGE_SIZE),
-    operations: z
-      .array(z.record(z.string(), z.unknown()))
-      .max(MAX_SYNC_OPERATIONS),
+    operations: operationBatchSchema,
   })
   .strict();
 

@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm';
 import {
+  bigint,
   bigserial,
   check,
   index,
@@ -49,6 +50,26 @@ export const operationReceipts = pgTable(
   (table) => [
     primaryKey({ columns: [table.userId, table.operationId] }),
     index('operation_receipts_expiry_idx').on(table.expiresAt),
+  ],
+);
+
+export const syncEventRetention = pgTable(
+  'sync_event_retention',
+  {
+    singletonId: integer('singleton_id').primaryKey().default(1),
+    minimumSequence: bigint('minimum_sequence', { mode: 'number' })
+      .default(0)
+      .notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    check('sync_event_retention_singleton', sql`${table.singletonId} = 1`),
+    check(
+      'sync_event_retention_sequence_nonnegative',
+      sql`${table.minimumSequence} >= 0`,
+    ),
   ],
 );
 

@@ -26,11 +26,23 @@ export const studentOperationTypeSchema = z.enum([
   'create_content_report',
 ]);
 
-export const operationEnvelopeSchema = z.union([
-  privateOperationSchema,
-  contributionOperationSchema,
-  discussionOperationSchema,
-]);
+export const operationEnvelopeSchema = z
+  .union([
+    privateOperationSchema,
+    contributionOperationSchema,
+    discussionOperationSchema,
+  ])
+  .superRefine((operation, context) => {
+    for (const [field, value] of Object.entries(operation.payload)) {
+      if (field.endsWith('_id') && value === operation.operation_id) {
+        context.addIssue({
+          code: 'custom',
+          path: ['payload', field],
+          message: 'An operation ID cannot also be used as an entity ID.',
+        });
+      }
+    }
+  });
 
 export const operationBatchSchema = z
   .array(operationEnvelopeSchema)

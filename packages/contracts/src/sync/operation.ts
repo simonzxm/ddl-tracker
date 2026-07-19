@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import { uuidV7Schema } from '../schema.js';
 import { MAX_SYNC_OPERATIONS } from './limits.js';
+import { privateOperationSchema } from './private-operation.js';
 
 export const studentOperationTypeSchema = z.enum([
   'follow_class_section',
@@ -24,15 +25,32 @@ export const studentOperationTypeSchema = z.enum([
   'create_content_report',
 ]);
 
-export const operationEnvelopeSchema = z
+export const publicOperationTypeSchema = z.enum([
+  'publish_personal_todo_as_course_task',
+  'publish_personal_task_details_as_proposal',
+  'create_course_task_with_initial_proposal',
+  'create_task_proposal',
+  'set_accuracy_vote',
+  'create_task_comment',
+  'edit_task_comment',
+  'delete_task_comment',
+  'create_content_report',
+]);
+
+const publicOperationEnvelopeSchema = z
   .object({
     operation_id: uuidV7Schema,
-    type: studentOperationTypeSchema,
+    type: publicOperationTypeSchema,
     schema_version: z.literal(1),
     depends_on: z.array(uuidV7Schema).max(MAX_SYNC_OPERATIONS),
     payload: z.record(z.string(), z.unknown()),
   })
   .strict();
+
+export const operationEnvelopeSchema = z.union([
+  privateOperationSchema,
+  publicOperationEnvelopeSchema,
+]);
 
 export const operationBatchSchema = z
   .array(operationEnvelopeSchema)

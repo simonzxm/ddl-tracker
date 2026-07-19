@@ -8,7 +8,8 @@
     "db:generate": "drizzle-kit generate --config=drizzle.config.mjs",
     "db:migrate": "drizzle-kit migrate --config=drizzle.config.mjs",
     "dev": "wrangler dev",
-    "typecheck": "tsc -b --pretty false"
+    "typecheck": "tsc -b --pretty false",
+    "types:worker": "wrangler types --env-interface Env"
   },
   "dependencies": {
     "@ddl-tracker/contracts": "workspace:*",

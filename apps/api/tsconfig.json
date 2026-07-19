@@ -4,8 +4,8 @@
     "outDir": "dist",
     "rootDir": "src",
     "tsBuildInfoFile": "dist/.tsbuildinfo",
-    "types": ["@cloudflare/workers-types", "node"]
+    "types": ["node"]
   },
-  "include": ["src/**/*.ts"],
+  "include": ["src/**/*.ts", "worker-configuration.d.ts"],
   "references": [{ "path": "../../packages/contracts" }]
 }

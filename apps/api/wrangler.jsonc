@@ -1,0 +1,21 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "ddl-tracker-api",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-07-19",
+  "compatibility_flags": ["nodejs_compat"],
+  "hyperdrive": [
+    {
+      "binding": "HYPERDRIVE",
+      "id": "00000000000000000000000000000000"
+    }
+  ],
+  "vars": {
+    "APP_ENVIRONMENT": "development",
+    "ALLOWED_EMAIL_DOMAINS": "example.edu",
+    "SMTP_HOST": "smtp.feishu.cn",
+    "SMTP_PORT": "465",
+    "SMTP_FROM_ADDRESS": "noreply@example.edu",
+    "SMTP_FROM_NAME": "DDL Tracker"
+  }
+}

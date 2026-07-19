@@ -14,6 +14,7 @@ import type {
   SessionRecord,
   VerificationCompletion,
 } from '../auth/account-service.js';
+import { authenticateBearer } from './bearer.js';
 import { HttpError } from './errors.js';
 import type { AppVariables } from './app.js';
 import { readValidatedJson } from './json-body.js';
@@ -82,32 +83,6 @@ function toSession(session: SessionRecord) {
   };
 }
 
-function readBearerToken(authorization: string | undefined): string {
-  if (authorization === undefined) {
-    throw new HttpError({
-      code: 'unauthenticated',
-      message: 'Authentication is required.',
-      status: 401,
-    });
-  }
-  const match = /^Bearer ([A-Za-z0-9_-]+)$/u.exec(authorization);
-  if (match?.[1] === undefined) {
-    throw new HttpError({
-      code: 'unauthenticated',
-      message: 'Authentication is required.',
-      status: 401,
-    });
-  }
-  return match[1];
-}
-
-async function authenticate(
-  authorization: string | undefined,
-  dependencies: AuthRouteDependencies,
-): Promise<AuthenticatedPrincipal> {
-  return dependencies.authenticate(readBearerToken(authorization));
-}
-
 export function registerAuthRoutes(
   app: Hono<{ Variables: AppVariables }>,
   dependencies: AuthRouteDependencies,
@@ -166,17 +141,17 @@ export function registerAuthRoutes(
   });
 
   app.get('/v1/me', async (context) => {
-    const principal = await authenticate(
+    const principal = await authenticateBearer(
       context.req.header('authorization'),
-      dependencies,
+      (token) => dependencies.authenticate(token),
     );
     return context.json(toPublicUser(principal.user));
   });
 
   app.patch('/v1/me/profile', async (context) => {
-    const principal = await authenticate(
+    const principal = await authenticateBearer(
       context.req.header('authorization'),
-      dependencies,
+      (token) => dependencies.authenticate(token),
     );
     const body = await readValidatedJson(
       context.req.raw,
@@ -192,27 +167,27 @@ export function registerAuthRoutes(
   });
 
   app.delete('/v1/me', async (context) => {
-    const principal = await authenticate(
+    const principal = await authenticateBearer(
       context.req.header('authorization'),
-      dependencies,
+      (token) => dependencies.authenticate(token),
     );
     await dependencies.deleteAccount(principal.user.id);
     return context.body(null, 204);
   });
 
   app.get('/v1/sessions', async (context) => {
-    const principal = await authenticate(
+    const principal = await authenticateBearer(
       context.req.header('authorization'),
-      dependencies,
+      (token) => dependencies.authenticate(token),
     );
     const sessions = await dependencies.listSessions(principal.user.id);
     return context.json({ sessions: sessions.map(toSession) });
   });
 
   app.delete('/v1/sessions/:session_id', async (context) => {
-    const principal = await authenticate(
+    const principal = await authenticateBearer(
       context.req.header('authorization'),
-      dependencies,
+      (token) => dependencies.authenticate(token),
     );
     let sessionId: string;
     try {
@@ -239,9 +214,9 @@ export function registerAuthRoutes(
   });
 
   app.delete('/v1/sessions', async (context) => {
-    const principal = await authenticate(
+    const principal = await authenticateBearer(
       context.req.header('authorization'),
-      dependencies,
+      (token) => dependencies.authenticate(token),
     );
     await dependencies.revokeAllSessions(principal.user.id);
     return context.body(null, 204);

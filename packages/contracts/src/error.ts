@@ -1,0 +1,57 @@
+import { z } from 'zod';
+
+import { parseUuidV7 } from './uuid.js';
+
+export const apiErrorCodeSchema = z.enum([
+  'account_suspended',
+  'challenge_expired',
+  'challenge_locked',
+  'conflict',
+  'content_hidden',
+  'cursor_expired',
+  'dependency_failed',
+  'duplicate_proposal',
+  'forbidden',
+  'inactive_term',
+  'internal_error',
+  'invalid_request',
+  'method_not_allowed',
+  'not_found',
+  'operation_id_reused',
+  'payload_too_large',
+  'protocol_version_unsupported',
+  'rate_limited',
+  'registration_required',
+  'registration_token_invalid',
+  'revision_conflict',
+  'temporarily_unavailable',
+  'unauthenticated',
+  'unsupported_media_type',
+  'username_taken',
+]);
+
+const uuidV7Schema = z.string().transform((value, context) => {
+  try {
+    return parseUuidV7(value);
+  } catch (error) {
+    context.addIssue({
+      code: 'custom',
+      message: error instanceof Error ? error.message : 'Invalid UUIDv7.',
+    });
+    return z.NEVER;
+  }
+});
+
+export const apiErrorSchema = z
+  .object({
+    code: apiErrorCodeSchema,
+    details: z.record(z.string(), z.unknown()),
+    message: z.string().min(1).max(500),
+    retryable: z.boolean(),
+    retry_after: z.number().int().positive().optional(),
+    request_id: uuidV7Schema,
+  })
+  .strict();
+
+export type ApiErrorCode = z.infer<typeof apiErrorCodeSchema>;
+export type ApiError = z.infer<typeof apiErrorSchema>;

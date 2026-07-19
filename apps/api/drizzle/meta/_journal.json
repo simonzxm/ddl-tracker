@@ -8,6 +8,13 @@
       "when": 1784457059992,
       "tag": "0000_wise_shotgun",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1784466438305,
+      "tag": "0001_good_human_robot",
+      "breakpoints": true
     }
   ]
 }

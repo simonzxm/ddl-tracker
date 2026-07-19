@@ -35,7 +35,12 @@ export default tseslint.config(
     },
   },
   {
-    files: ['**/*.js', '**/*.mjs'],
+    files: [
+      '**/*.js',
+      '**/*.mjs',
+      '**/test/**/*.ts',
+      'vitest.config.ts',
+    ],
     extends: [tseslint.configs.disableTypeChecked],
   },
 );

@@ -6,6 +6,7 @@ import {
   registerAdminCatalogRoutes,
   type AdminCatalogRouteDependencies,
 } from './admin-catalog-routes.js';
+import { registerAdminRoutes, type AdminRouteDependencies } from './admin-routes.js';
 import { registerAuthRoutes, type AuthRouteDependencies } from './auth-routes.js';
 import {
   registerCatalogRoutes,
@@ -28,6 +29,7 @@ export interface AppDependencies {
   auth?: AuthRouteDependencies;
   catalog?: CatalogRouteDependencies;
   adminCatalog?: AdminCatalogRouteDependencies;
+  admin?: AdminRouteDependencies;
   comments?: CommentHistoryRouteDependencies;
   sync?: SyncRouteDependencies;
 }
@@ -77,6 +79,9 @@ export function createApp(dependencies: AppDependencies): Hono<{
   }
   if (dependencies.adminCatalog !== undefined) {
     registerAdminCatalogRoutes(app, dependencies.adminCatalog);
+  }
+  if (dependencies.admin !== undefined) {
+    registerAdminRoutes(app, dependencies.admin);
   }
   if (dependencies.comments !== undefined) {
     registerCommentHistoryRoutes(app, dependencies.comments);

@@ -7,6 +7,13 @@ import {
 
 const ID = '018f0000-0000-7000-8000-000000000001';
 const HASH = 'a'.repeat(64);
+const TERM = {
+  external_code: '2026-2027-1',
+  display_name: '2026-2027学年 第1学期',
+  starts_on: '2026-08-31',
+  ends_on: '2027-01-17',
+  time_zone: 'Asia/Shanghai' as const,
+};
 
 describe('admin catalog import contracts', () => {
   it('validates the first bounded plan batch', () => {
@@ -19,6 +26,7 @@ describe('admin catalog import contracts', () => {
         manifest_hash: HASH,
         environment: 'staging',
         manifest: { schema_version: 1 },
+        term: TERM,
         row_count: 1,
         batch_index: 0,
         total_batches: 1,
@@ -66,6 +74,7 @@ describe('admin catalog import contracts', () => {
         manifest_hash: HASH,
         environment: 'staging',
         manifest: {},
+        term: TERM,
         row_count: 2,
         batch_index: 1,
         total_batches: 2,
@@ -104,6 +113,7 @@ describe('admin catalog import contracts', () => {
         manifest_hash: HASH,
         environment: 'staging',
         manifest: {},
+        term: TERM,
         row_count: 501,
         batch_index: 1,
         total_batches: 3,

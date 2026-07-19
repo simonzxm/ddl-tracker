@@ -41,6 +41,25 @@ export const normalizedCatalogClassSectionSchema = z
   })
   .strict();
 
+export const normalizedCatalogTermSchema = z
+  .object({
+    external_code: z.string().trim().min(1).max(100),
+    display_name: normalizedTextSchema(1, 200),
+    starts_on: z.string().regex(/^\d{4}-\d{2}-\d{2}$/u),
+    ends_on: z.string().regex(/^\d{4}-\d{2}-\d{2}$/u),
+    time_zone: z.literal('Asia/Shanghai'),
+  })
+  .strict()
+  .superRefine((value, context) => {
+    if (value.starts_on > value.ends_on) {
+      context.addIssue({
+        code: 'custom',
+        path: ['ends_on'],
+        message: 'Term end date must not precede its start date.',
+      });
+    }
+  });
+
 export const catalogPlanBatchRequestSchema = z
   .object({
     import_id: uuidV7Schema.nullable(),
@@ -50,6 +69,7 @@ export const catalogPlanBatchRequestSchema = z
     manifest_hash: sha256Schema,
     environment: z.string().trim().min(1).max(100),
     manifest: z.record(z.string(), z.unknown()),
+    term: normalizedCatalogTermSchema,
     row_count: z.number().int().nonnegative(),
     batch_index: z.number().int().nonnegative(),
     total_batches: z.number().int().min(1).max(1000),

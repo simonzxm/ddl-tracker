@@ -3,6 +3,10 @@ import { Hono } from 'hono';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
 
 import { registerAuthRoutes, type AuthRouteDependencies } from './auth-routes.js';
+import {
+  registerCatalogRoutes,
+  type CatalogRouteDependencies,
+} from './catalog-routes.js';
 import { HttpError, toApiError } from './errors.js';
 
 export interface AppVariables {
@@ -13,6 +17,7 @@ export interface AppDependencies {
   createRequestId?: () => string;
   checkReady: () => Promise<boolean>;
   auth?: AuthRouteDependencies;
+  catalog?: CatalogRouteDependencies;
 }
 
 export function createApp(dependencies: AppDependencies): Hono<{
@@ -54,6 +59,9 @@ export function createApp(dependencies: AppDependencies): Hono<{
 
   if (dependencies.auth !== undefined) {
     registerAuthRoutes(app, dependencies.auth);
+  }
+  if (dependencies.catalog !== undefined) {
+    registerCatalogRoutes(app, dependencies.catalog);
   }
 
   app.notFound((context) => {

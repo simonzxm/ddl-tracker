@@ -150,6 +150,10 @@ class FakeImportRepository implements CatalogImportRepository {
     });
   }
 
+  getStatus(): Promise<CatalogImportRecord | null> {
+    return Promise.resolve(this.record);
+  }
+
   completePlan(
     _importId: string,
     baselineHash: string,
@@ -173,6 +177,47 @@ function service(repository: FakeImportRepository): CatalogImportService {
     now: () => NOW,
   });
 }
+
+describe('CatalogImportService status', () => {
+  it('returns stable import progress and maps missing imports', async () => {
+    const repository = new FakeImportRepository();
+    repository.record = {
+      id: IMPORT_ID,
+      actorId: ACTOR_ID,
+      checksum: HASH,
+      headerHash: HASH,
+      manifestHash: HASH,
+      environment: 'staging',
+      filename: 'fixture.csv',
+      manifest: {},
+      term: request().term,
+      rowCount: 1,
+      totalBatches: 2,
+      receivedBatches: 1,
+      appliedBatches: 0,
+      baselineHash: null,
+      deactivationCount: 0,
+      diff: null,
+      status: 'planned',
+      failureMessage: null,
+    };
+
+    await expect(service(repository).getStatus(IMPORT_ID)).resolves.toEqual({
+      import_id: IMPORT_ID,
+      status: 'planned',
+      received_batches: 1,
+      applied_batches: 0,
+      total_batches: 2,
+      diff: null,
+      failure_message: null,
+    });
+
+    repository.record = null;
+    await expect(service(repository).getStatus(IMPORT_ID)).rejects.toMatchObject({
+      code: 'not_found',
+    });
+  });
+});
 
 describe('CatalogImportService plan batches', () => {
   it('accepts a first batch, builds a final diff, and binds its baseline', async () => {

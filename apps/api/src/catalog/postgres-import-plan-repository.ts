@@ -304,6 +304,21 @@ export class PostgresCatalogImportRepository implements CatalogImportRepository 
     };
   }
 
+  async getStatus(importId: string): Promise<CatalogImportRecord | null> {
+    const result = await this.#client.query<ImportRow>(
+      `select id, actor_id, checksum, header_hash, manifest_hash,
+              environment, filename, manifest, normalized_term, row_count,
+              total_batches, received_batches, applied_batches,
+              baseline_hash, deactivation_count, diff, status,
+              failure_message
+       from catalog_imports
+       where id = $1`,
+      [importId],
+    );
+    const row = result.rows[0];
+    return row === undefined ? null : toImportRecord(row);
+  }
+
   async completePlan(
     importId: string,
     baselineHash: string,

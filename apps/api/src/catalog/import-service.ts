@@ -57,6 +57,16 @@ export type SavePlanBatchOutcome =
   | { kind: 'metadata_conflict' }
   | { kind: 'batch_conflict' };
 
+export interface CatalogImportStatus {
+  import_id: string;
+  status: 'planned' | 'applied' | 'failed';
+  received_batches: number;
+  applied_batches: number;
+  total_batches: number;
+  diff: CatalogImportDiff | null;
+  failure_message: string | null;
+}
+
 export interface CatalogImportRepository {
   savePlanBatch(input: {
     generatedImportId: string;
@@ -72,6 +82,7 @@ export interface CatalogImportRepository {
     diff: CatalogImportDiff,
     now: Date,
   ): Promise<void>;
+  getStatus(importId: string): Promise<CatalogImportRecord | null>;
 }
 
 export interface CatalogPlanBatchResponse {
@@ -136,6 +147,26 @@ export class CatalogImportService {
     this.#repository = options.repository;
     this.#createId = options.createId ?? createUuidV7;
     this.#now = options.now ?? (() => new Date());
+  }
+
+  async getStatus(importId: string): Promise<CatalogImportStatus> {
+    const record = await this.#repository.getStatus(importId);
+    if (record === null) {
+      throw new HttpError({
+        code: 'not_found',
+        message: 'Catalog import not found.',
+        status: 404,
+      });
+    }
+    return {
+      import_id: record.id,
+      status: record.status,
+      received_batches: record.receivedBatches,
+      applied_batches: record.appliedBatches,
+      total_batches: record.totalBatches,
+      diff: record.diff,
+      failure_message: record.failureMessage,
+    };
   }
 
   async planBatch(

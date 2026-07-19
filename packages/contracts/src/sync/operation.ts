@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
-import { uuidV7Schema } from '../schema.js';
 import { contributionOperationSchema } from './contribution-operation.js';
+import { discussionOperationSchema } from './discussion-operation.js';
 import { MAX_SYNC_OPERATIONS } from './limits.js';
 import { privateOperationSchema } from './private-operation.js';
 
@@ -26,27 +26,10 @@ export const studentOperationTypeSchema = z.enum([
   'create_content_report',
 ]);
 
-export const publicOperationTypeSchema = z.enum([
-  'create_task_comment',
-  'edit_task_comment',
-  'delete_task_comment',
-  'create_content_report',
-]);
-
-const publicOperationEnvelopeSchema = z
-  .object({
-    operation_id: uuidV7Schema,
-    type: publicOperationTypeSchema,
-    schema_version: z.literal(1),
-    depends_on: z.array(uuidV7Schema).max(MAX_SYNC_OPERATIONS),
-    payload: z.record(z.string(), z.unknown()),
-  })
-  .strict();
-
 export const operationEnvelopeSchema = z.union([
   privateOperationSchema,
   contributionOperationSchema,
-  publicOperationEnvelopeSchema,
+  discussionOperationSchema,
 ]);
 
 export const operationBatchSchema = z

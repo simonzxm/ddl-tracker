@@ -89,7 +89,7 @@ describePostgres('PostgresCatalogImportRepository planning', () => {
   beforeAll(async () => {
     client = new Client({ connectionString: databaseUrl });
     await client.connect();
-    repository = new PostgresCatalogImportRepository(client);
+    repository = new PostgresCatalogImportRepository(client, 'staging');
   });
 
   beforeEach(async () => {
@@ -148,6 +148,28 @@ describePostgres('PostgresCatalogImportRepository planning', () => {
         generatedImportId: '018f0000-0000-7000-8000-000000000608',
         actorId: ACTOR_ID,
         request: request({ import_id: IMPORT_ID, filename: 'other.csv' }),
+        batchChecksum: 'b'.repeat(64),
+        now: NOW,
+      }),
+    ).resolves.toEqual({ kind: 'metadata_conflict' });
+  });
+
+  it('isolates plan continuation and status by server environment', async () => {
+    await repository.savePlanBatch({
+      generatedImportId: IMPORT_ID,
+      actorId: ACTOR_ID,
+      request: request(),
+      batchChecksum: 'b'.repeat(64),
+      now: NOW,
+    });
+    const production = new PostgresCatalogImportRepository(client, 'production');
+
+    await expect(production.getStatus(IMPORT_ID)).resolves.toBeNull();
+    await expect(
+      production.savePlanBatch({
+        generatedImportId: '018f0000-0000-7000-8000-000000000609',
+        actorId: ACTOR_ID,
+        request: request({ import_id: IMPORT_ID }),
         batchChecksum: 'b'.repeat(64),
         now: NOW,
       }),

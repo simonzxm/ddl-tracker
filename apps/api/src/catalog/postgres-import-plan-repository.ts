@@ -133,9 +133,11 @@ function metadataMatches(
 
 export class PostgresCatalogImportRepository implements CatalogImportRepository {
   readonly #client: Client;
+  readonly #environment: string;
 
-  constructor(client: Client) {
+  constructor(client: Client, environment: string) {
     this.#client = client;
+    this.#environment = environment;
   }
 
   async savePlanBatch(input: {
@@ -145,6 +147,9 @@ export class PostgresCatalogImportRepository implements CatalogImportRepository 
     batchChecksum: string;
     now: Date;
   }): Promise<SavePlanBatchOutcome> {
+    if (input.request.environment !== this.#environment) {
+      return { kind: 'metadata_conflict' };
+    }
     const importId = input.request.import_id ?? input.generatedImportId;
     await this.#client.query('begin');
     try {
@@ -183,9 +188,9 @@ export class PostgresCatalogImportRepository implements CatalogImportRepository 
                 baseline_hash, deactivation_count, diff, status,
                 failure_message
          from catalog_imports
-         where id = $1
+         where id = $1 and environment = $2
          for update`,
-        [importId],
+        [importId, this.#environment],
       );
       const row = importResult.rows[0];
       if (row === undefined) {
@@ -261,8 +266,8 @@ export class PostgresCatalogImportRepository implements CatalogImportRepository 
               total_batches, received_batches, applied_batches,
               baseline_hash, deactivation_count, diff, status,
               failure_message
-       from catalog_imports where id = $1`,
-      [importId],
+       from catalog_imports where id = $1 and environment = $2`,
+      [importId, this.#environment],
     );
     const row = importResult.rows[0];
     if (row === undefined) {
@@ -312,8 +317,8 @@ export class PostgresCatalogImportRepository implements CatalogImportRepository 
               baseline_hash, deactivation_count, diff, status,
               failure_message
        from catalog_imports
-       where id = $1`,
-      [importId],
+       where id = $1 and environment = $2`,
+      [importId, this.#environment],
     );
     const row = result.rows[0];
     return row === undefined ? null : toImportRecord(row);
@@ -331,13 +336,15 @@ export class PostgresCatalogImportRepository implements CatalogImportRepository 
            diff = $3::jsonb,
            deactivation_count = $4,
            updated_at = $5
-       where id = $1 and status = 'planned' and diff is null`,
+       where id = $1 and environment = $6
+         and status = 'planned' and diff is null`,
       [
         importId,
         baselineHash,
         JSON.stringify(diff),
         diff.courses.deactivated + diff.class_sections.deactivated,
         now,
+        this.#environment,
       ],
     );
     if (result.rowCount !== 1) {
@@ -345,8 +352,9 @@ export class PostgresCatalogImportRepository implements CatalogImportRepository 
         baseline_hash: string | null;
         diff: unknown;
       }>(
-        `select baseline_hash, diff from catalog_imports where id = $1`,
-        [importId],
+        `select baseline_hash, diff
+         from catalog_imports where id = $1 and environment = $2`,
+        [importId, this.#environment],
       );
       const row = existing.rows[0];
       if (

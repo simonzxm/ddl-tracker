@@ -1,0 +1,1 @@
+ALTER TABLE "catalog_imports" ADD COLUMN "normalized_term" jsonb DEFAULT '{}'::jsonb NOT NULL;

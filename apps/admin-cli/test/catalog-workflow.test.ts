@@ -160,7 +160,9 @@ describe('catalog workflow', () => {
     const progress: number[] = [];
 
     const result = await planCatalogImport(api, prepared(), {
-      onProgress: ({ completed }) => progress.push(completed),
+      onProgress: ({ completed }) => {
+        progress.push(completed);
+      },
     });
 
     expect(result.importId).toBe(IMPORT_ID);

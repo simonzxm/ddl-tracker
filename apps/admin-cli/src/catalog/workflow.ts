@@ -93,7 +93,7 @@ export async function planCatalogImport(
       completed: number;
       total: number;
       importId: string;
-    }) => void;
+    }) => void | Promise<void>;
   } = {},
 ): Promise<{ importId: string; response: CatalogPlanResponse }> {
   const startBatchIndex = options.startBatchIndex ?? 0;
@@ -140,7 +140,7 @@ export async function planCatalogImport(
     }
     importId = response.import_id;
     lastResponse = response;
-    options.onProgress?.({
+    await options.onProgress?.({
       completed: batchIndex + 1,
       total: prepared.batches.length,
       importId,
@@ -162,7 +162,7 @@ export async function applyCatalogImport(
       completed: number;
       total: number;
       importId: string;
-    }) => void;
+    }) => void | Promise<void>;
   },
 ): Promise<CatalogApplyResponse> {
   const status = await client.getStatus(importId);
@@ -194,7 +194,7 @@ export async function applyCatalogImport(
       confirm_deactivations: options.confirmDeactivations,
     });
     lastResponse = response;
-    options.onProgress?.({
+    await options.onProgress?.({
       completed: response.applied_batches,
       total: response.total_batches,
       importId,

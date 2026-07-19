@@ -6,13 +6,13 @@ const snapshotPayloadSchema = z
   .object({
     version: z.literal(1),
     token_type: z.literal('snapshot'),
-    snapshot_id: z.string().uuid(),
+    snapshot_id: z.uuid(),
     kind: z.enum(['account', 'class_section']),
-    user_id: z.string().uuid(),
+    user_id: z.uuid(),
     environment: z.string().min(1).max(100),
-    class_section_id: z.string().uuid().nullable(),
-    anchor_sequence: z.number().int().nonnegative().safe(),
-    expires_at: z.number().int().positive().safe(),
+    class_section_id: z.uuid().nullable(),
+    anchor_sequence: z.number().int().nonnegative(),
+    expires_at: z.number().int().positive(),
   })
   .strict()
   .superRefine((value, context) => {
@@ -31,15 +31,15 @@ const snapshotPayloadSchema = z
 const pagePayloadSchema = z.object({
   version: z.literal(1),
   token_type: z.literal('page'),
-  snapshot_id: z.string().uuid(),
+  snapshot_id: z.uuid(),
   kind: z.enum(['account', 'class_section']),
-  user_id: z.string().uuid(),
+  user_id: z.uuid(),
   environment: z.string().min(1).max(100),
-  class_section_id: z.string().uuid().nullable(),
-  anchor_sequence: z.number().int().nonnegative().safe(),
+  class_section_id: z.uuid().nullable(),
+  anchor_sequence: z.number().int().nonnegative(),
   after_record_type: z.string().min(1).max(100),
   after_id: z.string().min(1).max(200),
-  expires_at: z.number().int().positive().safe(),
+  expires_at: z.number().int().positive(),
 }).strict();
 
 type SnapshotPayload = z.infer<typeof snapshotPayloadSchema>;

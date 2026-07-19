@@ -2,15 +2,17 @@ import { createUuidV7 } from '@ddl-tracker/contracts';
 import { Hono } from 'hono';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
 
+import { registerAuthRoutes, type AuthRouteDependencies } from './auth-routes.js';
 import { HttpError, toApiError } from './errors.js';
 
-interface AppVariables {
+export interface AppVariables {
   requestId: string;
 }
 
 export interface AppDependencies {
   createRequestId?: () => string;
   checkReady: () => Promise<boolean>;
+  auth?: AuthRouteDependencies;
 }
 
 export function createApp(dependencies: AppDependencies): Hono<{
@@ -49,6 +51,10 @@ export function createApp(dependencies: AppDependencies): Hono<{
 
     return context.json({ status: 'ready' });
   });
+
+  if (dependencies.auth !== undefined) {
+    registerAuthRoutes(app, dependencies.auth);
+  }
 
   app.notFound((context) => {
     const requestId = context.get('requestId');

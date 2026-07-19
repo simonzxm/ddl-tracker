@@ -1,11 +1,19 @@
 import type { Client } from 'pg';
 
+import { createUuidV7 } from '@ddl-tracker/contracts';
+
 import type { MailDelivery } from './auth/email-challenge-service.js';
 import type { SmtpSession } from './auth/smtp-mail-delivery.js';
+import { PostgresRetentionService } from './maintenance/postgres-retention-service.js';
 import { createRuntimeApp } from './runtime-app.js';
+
+export interface RetentionRunner {
+  runBatch(input: { now: Date; limit: number }): Promise<unknown>;
+}
 
 export interface WorkerHandlerOptions {
   createClient(connectionString: string): Client;
+  createRetentionRunner?: (client: Client) => RetentionRunner;
   mailDelivery?: MailDelivery;
   createSmtpSession?: () => SmtpSession;
 }
@@ -16,6 +24,11 @@ export interface WorkerFetchHandler {
     env: Env,
     context: ExecutionContext,
   ): Promise<Response>;
+  scheduled(
+    controller: ScheduledController,
+    env: Env,
+    context: ExecutionContext,
+  ): Promise<void>;
 }
 
 export function createWorkerHandler(
@@ -40,6 +53,24 @@ export function createWorkerHandler(
             ? {}
             : { createSmtpSession: options.createSmtpSession }),
         }).fetch(request, env, context);
+      } finally {
+        if (connected) await client.end();
+      }
+    },
+
+    async scheduled(controller, env): Promise<void> {
+      const client = options.createClient(env.HYPERDRIVE.connectionString);
+      let connected = false;
+      try {
+        await client.connect();
+        connected = true;
+        const retention =
+          options.createRetentionRunner?.(client) ??
+          new PostgresRetentionService(client, { createId: createUuidV7 });
+        await retention.runBatch({
+          now: new Date(controller.scheduledTime),
+          limit: 1000,
+        });
       } finally {
         if (connected) await client.end();
       }

@@ -75,6 +75,32 @@ describe('createWorkerHandler', () => {
     expect(client.end).toHaveBeenCalledOnce();
   });
 
+  it('runs bounded retention with one client on the scheduled timestamp', async () => {
+    const client = fakeClient();
+    const retention = {
+      runBatch: vi.fn(async () => undefined),
+    };
+    const handler = createWorkerHandler({
+      createClient: () => client as unknown as Client,
+      createRetentionRunner: () => retention,
+      mailDelivery,
+    });
+    const controller = {
+      cron: '17 3 * * *',
+      scheduledTime: Date.parse('2026-07-20T03:17:00.000Z'),
+      noRetry: vi.fn(),
+    } as unknown as ScheduledController;
+
+    await handler.scheduled(controller, environment(), context);
+
+    expect(retention.runBatch).toHaveBeenCalledWith({
+      now: new Date('2026-07-20T03:17:00.000Z'),
+      limit: 1000,
+    });
+    expect(client.connect).toHaveBeenCalledOnce();
+    expect(client.end).toHaveBeenCalledOnce();
+  });
+
   it('closes the client after an application failure response', async () => {
     const client = fakeClient({ queryError: new Error('database failed') });
     const handler = createWorkerHandler({

@@ -33,6 +33,10 @@ export const catalogImports = pgTable(
       .$type<Record<string, unknown>>()
       .default(sql`'{}'::jsonb`)
       .notNull(),
+    normalizedTerm: jsonb('normalized_term')
+      .$type<Record<string, unknown>>()
+      .default(sql`'{}'::jsonb`)
+      .notNull(),
     rowCount: integer('row_count').notNull(),
     totalBatches: integer('total_batches').default(1).notNull(),
     receivedBatches: integer('received_batches').default(0).notNull(),

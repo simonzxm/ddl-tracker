@@ -1,4 +1,8 @@
-import { parseDisplayName, parseUsername } from '@ddl-tracker/contracts';
+import {
+  createUuidV7,
+  parseDisplayName,
+  parseUsername,
+} from '@ddl-tracker/contracts';
 
 import { HttpError } from '../http/errors.js';
 import type { PublicUser } from './account-service.js';
@@ -15,23 +19,28 @@ export interface AccountLifecycleRepository {
     displayName: string;
     expectedRevision: number;
     now: Date;
+    eventId: string;
   }): Promise<ProfileUpdateOutcome>;
   deleteAccount(
     userId: string,
     now: Date,
+    eventId: string,
   ): Promise<'deleted' | 'last_maintainer' | 'not_found'>;
 }
 
 export class AccountLifecycleService {
   readonly #repository: AccountLifecycleRepository;
   readonly #now: () => Date;
+  readonly #createId: () => string;
 
   constructor(options: {
     repository: AccountLifecycleRepository;
     now?: () => Date;
+    createId?: () => string;
   }) {
     this.#repository = options.repository;
     this.#now = options.now ?? (() => new Date());
+    this.#createId = options.createId ?? createUuidV7;
   }
 
   async updateProfile(
@@ -62,6 +71,7 @@ export class AccountLifecycleService {
       displayName,
       expectedRevision: input.expectedRevision,
       now: this.#now(),
+      eventId: this.#createId(),
     });
     if (outcome.kind === 'success') {
       return outcome.user;
@@ -91,7 +101,11 @@ export class AccountLifecycleService {
   }
 
   async deleteAccount(userId: string): Promise<void> {
-    const outcome = await this.#repository.deleteAccount(userId, this.#now());
+    const outcome = await this.#repository.deleteAccount(
+      userId,
+      this.#now(),
+      this.#createId(),
+    );
     if (outcome === 'deleted') {
       return;
     }

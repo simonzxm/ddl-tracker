@@ -12,6 +12,7 @@ import {
   type CatalogRouteDependencies,
 } from './catalog-routes.js';
 import { HttpError, toApiError } from './errors.js';
+import { registerSyncRoutes, type SyncRouteDependencies } from './sync-routes.js';
 
 export interface AppVariables {
   requestId: string;
@@ -23,7 +24,7 @@ export interface AppDependencies {
   auth?: AuthRouteDependencies;
   catalog?: CatalogRouteDependencies;
   adminCatalog?: AdminCatalogRouteDependencies;
-  sync?: unknown;
+  sync?: SyncRouteDependencies;
 }
 
 export function createApp(dependencies: AppDependencies): Hono<{
@@ -71,6 +72,10 @@ export function createApp(dependencies: AppDependencies): Hono<{
   }
   if (dependencies.adminCatalog !== undefined) {
     registerAdminCatalogRoutes(app, dependencies.adminCatalog);
+  }
+
+  if (dependencies.sync !== undefined) {
+    registerSyncRoutes(app, dependencies.sync);
   }
 
   app.notFound((context) => {

@@ -157,6 +157,7 @@ describePostgres('PostgresSnapshotReader', () => {
     expect(types).toContain('accuracy_vote');
     expect(types).toContain('task_comment');
     expect(JSON.stringify(page.records)).not.toContain('Other private');
+    expect(JSON.stringify(page.records)).not.toContain('raw_source');
     expect(page.complete).toBe(true);
   });
 

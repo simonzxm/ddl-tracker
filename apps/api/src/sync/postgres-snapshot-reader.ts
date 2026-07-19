@@ -208,14 +208,13 @@ export class PostgresSnapshotReader {
       campus: string | null;
       capacity: number | null;
       schedule_text: string | null;
-      raw_source: unknown;
       active: boolean;
       revision: number;
       created_at: Date;
       updated_at: Date;
     }>(
       `select id, course_id, external_section_id, section_number,
-              instructors, campus, capacity, schedule_text, raw_source,
+              instructors, campus, capacity, schedule_text,
               active, revision, created_at, updated_at
        from class_sections
        where id = $1 and active = true
@@ -243,7 +242,6 @@ export class PostgresSnapshotReader {
           campus: row.campus,
           capacity: row.capacity,
           schedule_text: row.schedule_text,
-          raw_source: row.raw_source,
           active: row.active,
           revision: row.revision,
           created_at: row.created_at.toISOString(),
@@ -386,14 +384,13 @@ export class PostgresSnapshotReader {
       campus: string | null;
       capacity: number | null;
       schedule_text: string | null;
-      raw_source: unknown;
       active: boolean;
       revision: number;
       created_at: Date;
       updated_at: Date;
     }>(
       `select id, course_id, external_section_id, section_number,
-              instructors, campus, capacity, schedule_text, raw_source,
+              instructors, campus, capacity, schedule_text,
               active, revision, created_at, updated_at
        from class_sections where id = any($1::uuid[])`,
       [classSectionIds],
@@ -419,7 +416,6 @@ export class PostgresSnapshotReader {
           campus: row.campus,
           capacity: row.capacity,
           schedule_text: row.schedule_text,
-          raw_source: row.raw_source,
           active: row.active,
           revision: row.revision,
           created_at: row.created_at.toISOString(),

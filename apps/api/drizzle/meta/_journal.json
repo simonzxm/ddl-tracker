@@ -36,6 +36,13 @@
       "when": 1784468829203,
       "tag": "0004_nostalgic_thaddeus_ross",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1784477842784,
+      "tag": "0005_condemned_winter_soldier",
+      "breakpoints": true
     }
   ]
 }

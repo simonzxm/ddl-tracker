@@ -1,0 +1,21 @@
+{
+  "name": "@ddl-tracker/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "wrangler deploy --dry-run --outdir dist",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "dev": "wrangler dev",
+    "typecheck": "tsc -b --pretty false"
+  },
+  "dependencies": {
+    "@ddl-tracker/contracts": "workspace:*",
+    "@hono/zod-openapi": "1.5.1",
+    "drizzle-orm": "0.45.2",
+    "hono": "4.12.31",
+    "pg": "8.22.0",
+    "zod": "4.4.3"
+  }
+}

@@ -9,7 +9,7 @@
     "db:migrate": "drizzle-kit migrate --config=drizzle.config.mjs",
     "dev": "wrangler dev",
     "typecheck": "tsc -b --pretty false",
-    "types:worker": "wrangler types --env-interface Env"
+    "types:worker": "wrangler types --env-interface Env --strict-vars false"
   },
   "dependencies": {
     "@ddl-tracker/contracts": "workspace:*",

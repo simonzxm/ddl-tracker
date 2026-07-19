@@ -89,7 +89,7 @@ async function testDependencies(options?: {
   const client = options?.client ?? apiClient();
   const prompts = [...(options?.prompts ?? [])];
   const dependencies: Partial<CliDependencies> = {
-    env: { DDL_TRACKER_ADMIN_TOKEN: 'secret-token' },
+    env: { ...process.env, DDL_TRACKER_ADMIN_TOKEN: 'secret-token' },
     readTextFile: vi.fn(async () => manifest),
     readBinaryFile: vi.fn(async () => csv),
     writeLine: (value) => output.push(value),

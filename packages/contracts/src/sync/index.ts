@@ -6,3 +6,4 @@ export * from './operation.js';
 export * from './private-operation.js';
 export * from './request.js';
 export * from './response.js';
+export * from './snapshot.js';

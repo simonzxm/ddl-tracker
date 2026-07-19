@@ -11,6 +11,10 @@ import {
   registerCatalogRoutes,
   type CatalogRouteDependencies,
 } from './catalog-routes.js';
+import {
+  registerCommentHistoryRoutes,
+  type CommentHistoryRouteDependencies,
+} from './comment-history-routes.js';
 import { HttpError, toApiError } from './errors.js';
 import { registerSyncRoutes, type SyncRouteDependencies } from './sync-routes.js';
 
@@ -24,6 +28,7 @@ export interface AppDependencies {
   auth?: AuthRouteDependencies;
   catalog?: CatalogRouteDependencies;
   adminCatalog?: AdminCatalogRouteDependencies;
+  comments?: CommentHistoryRouteDependencies;
   sync?: SyncRouteDependencies;
 }
 
@@ -72,6 +77,9 @@ export function createApp(dependencies: AppDependencies): Hono<{
   }
   if (dependencies.adminCatalog !== undefined) {
     registerAdminCatalogRoutes(app, dependencies.adminCatalog);
+  }
+  if (dependencies.comments !== undefined) {
+    registerCommentHistoryRoutes(app, dependencies.comments);
   }
 
   if (dependencies.sync !== undefined) {

@@ -146,7 +146,7 @@ describePostgres('PostgresSnapshotReader', () => {
     });
 
     const types = page.records.map(({ record_type }) => record_type);
-    expect(types).toContain('user_profile');
+    expect(types).toContain('public_user_profile');
     expect(types).toContain('followed_class_section');
     expect(types).toContain('personal_todo');
     expect(types).toContain('personal_task_details');

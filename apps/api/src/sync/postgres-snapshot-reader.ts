@@ -125,7 +125,7 @@ export class PostgresSnapshotReader {
     limit: number;
   }): Promise<SnapshotPage> {
     const records: SnapshotRecord[] = [];
-    await this.#appendUserProfile(records, input.userId, 'user_profile');
+    await this.#appendUserProfile(records, input.userId, 'public_user_profile');
 
     const follows = await this.#client.query<{
       class_section_id: string;

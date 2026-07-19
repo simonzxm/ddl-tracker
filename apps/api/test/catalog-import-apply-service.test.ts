@@ -8,6 +8,7 @@ import {
 
 const ACTOR_ID = '018f0000-0000-7000-8000-000000000701';
 const IMPORT_ID = '018f0000-0000-7000-8000-000000000702';
+const REQUEST_ID = '018f0000-0000-7000-8000-000000000703';
 const NOW = new Date('2026-07-19T12:00:00.000Z');
 
 class FakeApplyRepository implements CatalogImportApplyRepository {
@@ -41,7 +42,7 @@ describe('CatalogImportApplyService', () => {
   it('applies a requested batch with an ID factory and returns progress', async () => {
     const repository = new FakeApplyRepository();
 
-    const response = await service(repository).applyBatch(ACTOR_ID, IMPORT_ID, {
+    const response = await service(repository).applyBatch(ACTOR_ID, IMPORT_ID, REQUEST_ID, {
       batch_index: 0,
       confirm_deactivations: false,
     });
@@ -57,6 +58,7 @@ describe('CatalogImportApplyService', () => {
     expect(repository.received).toMatchObject({
       actorId: ACTOR_ID,
       importId: IMPORT_ID,
+      requestId: REQUEST_ID,
       batchIndex: 0,
       confirmDeactivations: false,
       now: NOW,
@@ -74,7 +76,7 @@ describe('CatalogImportApplyService', () => {
     };
 
     await expect(
-      service(repository).applyBatch(ACTOR_ID, IMPORT_ID, {
+      service(repository).applyBatch(ACTOR_ID, IMPORT_ID, REQUEST_ID, {
         batch_index: 1,
         confirm_deactivations: true,
       }),
@@ -103,7 +105,7 @@ describe('CatalogImportApplyService', () => {
       const repository = new FakeApplyRepository();
       repository.outcome = testCase.outcome;
       await expect(
-        service(repository).applyBatch(ACTOR_ID, IMPORT_ID, {
+        service(repository).applyBatch(ACTOR_ID, IMPORT_ID, REQUEST_ID, {
           batch_index: 0,
           confirm_deactivations: false,
         }),

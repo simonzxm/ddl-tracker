@@ -19,6 +19,7 @@ export interface CatalogImportApplyRepository {
   applyBatch(input: {
     actorId: string;
     importId: string;
+    requestId: string;
     batchIndex: number;
     confirmDeactivations: boolean;
     now: Date;
@@ -53,11 +54,13 @@ export class CatalogImportApplyService {
   async applyBatch(
     actorId: string,
     importId: string,
+    requestId: string,
     request: CatalogApplyRequest,
   ): Promise<CatalogApplyResponse> {
     const outcome = await this.#repository.applyBatch({
       actorId,
       importId,
+      requestId,
       batchIndex: request.batch_index,
       confirmDeactivations: request.confirm_deactivations,
       now: this.#now(),

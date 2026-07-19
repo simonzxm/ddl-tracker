@@ -2,6 +2,10 @@ import { createUuidV7 } from '@ddl-tracker/contracts';
 import { Hono } from 'hono';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
 
+import {
+  registerAdminCatalogRoutes,
+  type AdminCatalogRouteDependencies,
+} from './admin-catalog-routes.js';
 import { registerAuthRoutes, type AuthRouteDependencies } from './auth-routes.js';
 import {
   registerCatalogRoutes,
@@ -18,6 +22,7 @@ export interface AppDependencies {
   checkReady: () => Promise<boolean>;
   auth?: AuthRouteDependencies;
   catalog?: CatalogRouteDependencies;
+  adminCatalog?: AdminCatalogRouteDependencies;
 }
 
 export function createApp(dependencies: AppDependencies): Hono<{
@@ -62,6 +67,9 @@ export function createApp(dependencies: AppDependencies): Hono<{
   }
   if (dependencies.catalog !== undefined) {
     registerCatalogRoutes(app, dependencies.catalog);
+  }
+  if (dependencies.adminCatalog !== undefined) {
+    registerAdminCatalogRoutes(app, dependencies.adminCatalog);
   }
 
   app.notFound((context) => {

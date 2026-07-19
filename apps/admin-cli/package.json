@@ -1,0 +1,19 @@
+{
+  "name": "@ddl-tracker/admin-cli",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "ddl-tracker-admin": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc -b --pretty false"
+  },
+  "dependencies": {
+    "@ddl-tracker/contracts": "workspace:*",
+    "commander": "15.0.0",
+    "csv-parse": "7.0.1",
+    "zod": "4.4.3"
+  }
+}

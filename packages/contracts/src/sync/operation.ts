@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { uuidV7Schema } from '../schema.js';
+import { contributionOperationSchema } from './contribution-operation.js';
 import { MAX_SYNC_OPERATIONS } from './limits.js';
 import { privateOperationSchema } from './private-operation.js';
 
@@ -26,11 +27,6 @@ export const studentOperationTypeSchema = z.enum([
 ]);
 
 export const publicOperationTypeSchema = z.enum([
-  'publish_personal_todo_as_course_task',
-  'publish_personal_task_details_as_proposal',
-  'create_course_task_with_initial_proposal',
-  'create_task_proposal',
-  'set_accuracy_vote',
   'create_task_comment',
   'edit_task_comment',
   'delete_task_comment',
@@ -49,6 +45,7 @@ const publicOperationEnvelopeSchema = z
 
 export const operationEnvelopeSchema = z.union([
   privateOperationSchema,
+  contributionOperationSchema,
   publicOperationEnvelopeSchema,
 ]);
 

@@ -1,0 +1,290 @@
+import { createHash } from 'node:crypto';
+
+import type {
+  CatalogImportDiff,
+  CatalogPlanBatchRequest,
+} from '@ddl-tracker/contracts';
+
+export interface BaselineTerm {
+  id: string;
+  externalCode: string;
+  name: string;
+  startsOn: string | null;
+  endsOn: string | null;
+}
+
+export interface BaselineCourse {
+  id: string;
+  externalCourseCode: string;
+  name: string;
+  credits: string | null;
+  department: string | null;
+  active: boolean;
+  revision: number;
+}
+
+export interface BaselineClassSection {
+  id: string;
+  externalSectionId: string;
+  externalCourseCode: string;
+  sectionNumber: string;
+  instructors: string[];
+  campus: string | null;
+  capacity: number | null;
+  scheduleText: string | null;
+  active: boolean;
+  revision: number;
+}
+
+export interface CatalogBaseline {
+  term: BaselineTerm | null;
+  courses: BaselineCourse[];
+  classSections: BaselineClassSection[];
+}
+
+export interface DesiredCatalog {
+  term: CatalogPlanBatchRequest['term'];
+  courses: CatalogPlanBatchRequest['courses'];
+  classSections: CatalogPlanBatchRequest['class_sections'];
+}
+
+interface Counts {
+  added: number;
+  updated: number;
+  unchanged: number;
+  deactivated: number;
+}
+
+function emptyCounts(): Counts {
+  return { added: 0, updated: 0, unchanged: 0, deactivated: 0 };
+}
+
+function incrementChange(
+  changes: Record<string, number>,
+  field: string,
+): void {
+  changes[field] = (changes[field] ?? 0) + 1;
+}
+
+function compareField<T>(
+  changes: Record<string, number>,
+  field: string,
+  current: T,
+  desired: T,
+): boolean {
+  if (current === desired) {
+    return false;
+  }
+  incrementChange(changes, field);
+  return true;
+}
+
+function compareArrayField(
+  changes: Record<string, number>,
+  field: string,
+  current: readonly string[],
+  desired: readonly string[],
+): boolean {
+  return compareField(
+    changes,
+    field,
+    JSON.stringify(current),
+    JSON.stringify(desired),
+  );
+}
+
+function uniqueMap<T>(
+  values: readonly T[],
+  key: (value: T) => string,
+  label: string,
+): Map<string, T> {
+  const map = new Map<string, T>();
+  for (const value of values) {
+    const currentKey = key(value);
+    if (map.has(currentKey)) {
+      throw new Error(`Duplicate ${label}: ${currentKey}.`);
+    }
+    map.set(currentKey, value);
+  }
+  return map;
+}
+
+export function buildCatalogImportDiff(
+  desired: DesiredCatalog,
+  baseline: CatalogBaseline,
+  checksumPreviouslyApplied: boolean,
+): CatalogImportDiff {
+  const fieldChanges: Record<string, number> = {};
+  const termCounts = emptyCounts();
+  const courseCounts = emptyCounts();
+  const sectionCounts = emptyCounts();
+
+  if (baseline.term === null) {
+    termCounts.added = 1;
+  } else {
+    const changed = [
+      compareField(
+        fieldChanges,
+        'terms.name',
+        baseline.term.name,
+        desired.term.display_name,
+      ),
+      compareField(
+        fieldChanges,
+        'terms.starts_on',
+        baseline.term.startsOn,
+        desired.term.starts_on,
+      ),
+      compareField(
+        fieldChanges,
+        'terms.ends_on',
+        baseline.term.endsOn,
+        desired.term.ends_on,
+      ),
+    ].some(Boolean);
+    termCounts[changed ? 'updated' : 'unchanged'] += 1;
+  }
+
+  const desiredCourses = uniqueMap(
+    desired.courses,
+    (course) => course.external_course_code,
+    'course external code',
+  );
+  const baselineCourses = uniqueMap(
+    baseline.courses,
+    (course) => course.externalCourseCode,
+    'baseline course external code',
+  );
+  for (const course of desired.courses) {
+    const current = baselineCourses.get(course.external_course_code);
+    if (current === undefined) {
+      courseCounts.added += 1;
+      continue;
+    }
+    const changed = [
+      compareField(
+        fieldChanges,
+        'courses.name',
+        current.name,
+        course.name,
+      ),
+      compareField(
+        fieldChanges,
+        'courses.credits',
+        current.credits,
+        course.credits,
+      ),
+      compareField(
+        fieldChanges,
+        'courses.department',
+        current.department,
+        course.department_name,
+      ),
+      compareField(fieldChanges, 'courses.active', current.active, true),
+    ].some(Boolean);
+    courseCounts[changed ? 'updated' : 'unchanged'] += 1;
+  }
+  for (const course of baseline.courses) {
+    if (course.active && !desiredCourses.has(course.externalCourseCode)) {
+      courseCounts.deactivated += 1;
+      incrementChange(fieldChanges, 'courses.active');
+    }
+  }
+
+  const desiredSections = uniqueMap(
+    desired.classSections,
+    (section) => section.external_section_id,
+    'class section external ID',
+  );
+  const baselineSections = uniqueMap(
+    baseline.classSections,
+    (section) => section.externalSectionId,
+    'baseline class section external ID',
+  );
+  for (const section of desired.classSections) {
+    const current = baselineSections.get(section.external_section_id);
+    if (current === undefined) {
+      sectionCounts.added += 1;
+      continue;
+    }
+    if (current.externalCourseCode !== section.external_course_code) {
+      throw new Error(
+        `Class section ${section.external_section_id} cannot move between courses.`,
+      );
+    }
+    const changed = [
+      compareField(
+        fieldChanges,
+        'class_sections.section_number',
+        current.sectionNumber,
+        section.section_number,
+      ),
+      compareArrayField(
+        fieldChanges,
+        'class_sections.instructors',
+        current.instructors,
+        section.instructors,
+      ),
+      compareField(
+        fieldChanges,
+        'class_sections.campus',
+        current.campus,
+        section.campus_name,
+      ),
+      compareField(
+        fieldChanges,
+        'class_sections.capacity',
+        current.capacity,
+        section.capacity,
+      ),
+      compareField(
+        fieldChanges,
+        'class_sections.schedule_text',
+        current.scheduleText,
+        section.schedule_text,
+      ),
+      compareField(
+        fieldChanges,
+        'class_sections.active',
+        current.active,
+        true,
+      ),
+    ].some(Boolean);
+    sectionCounts[changed ? 'updated' : 'unchanged'] += 1;
+  }
+
+  const deactivatedSectionIds: string[] = [];
+  for (const section of baseline.classSections) {
+    if (section.active && !desiredSections.has(section.externalSectionId)) {
+      sectionCounts.deactivated += 1;
+      deactivatedSectionIds.push(section.id);
+      incrementChange(fieldChanges, 'class_sections.active');
+    }
+  }
+
+  return {
+    terms: termCounts,
+    courses: courseCounts,
+    class_sections: sectionCounts,
+    field_changes: Object.fromEntries(
+      Object.entries(fieldChanges).sort(([left], [right]) =>
+        left.localeCompare(right),
+      ),
+    ),
+    deactivated_class_section_ids: deactivatedSectionIds.sort(),
+    checksum_previously_applied: checksumPreviouslyApplied,
+  };
+}
+
+export function hashCatalogBaseline(baseline: CatalogBaseline): string {
+  const canonical = JSON.stringify({
+    term: baseline.term,
+    courses: [...baseline.courses].sort((left, right) =>
+      left.externalCourseCode.localeCompare(right.externalCourseCode),
+    ),
+    classSections: [...baseline.classSections].sort((left, right) =>
+      left.externalSectionId.localeCompare(right.externalSectionId),
+    ),
+  });
+  return createHash('sha256').update(canonical, 'utf8').digest('hex');
+}

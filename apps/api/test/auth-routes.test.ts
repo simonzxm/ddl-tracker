@@ -60,6 +60,13 @@ function dependencies(): AuthRouteDependencies {
     listSessions: vi.fn(async () => [session]),
     revokeSession: vi.fn(async () => true),
     revokeAllSessions: vi.fn(async () => 1),
+    updateProfile: vi.fn(async () => ({
+      ...user,
+      username: 'new_name',
+      displayName: 'New Name',
+      profileRevision: 2,
+    })),
+    deleteAccount: vi.fn(async () => undefined),
   };
 }
 
@@ -158,6 +165,45 @@ describe('authentication routes', () => {
       id: USER_ID,
       display_name: 'Student',
     });
+  });
+
+  it('updates only the authenticated user profile with expected revision', async () => {
+    const auth = dependencies();
+    const response = await app(auth).request('/v1/me/profile', {
+      method: 'PATCH',
+      headers: {
+        authorization: 'Bearer session-token',
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        username: 'new_name',
+        display_name: 'New Name',
+        expected_revision: 1,
+      }),
+    });
+
+    expect(response.status).toBe(200);
+    expect(auth.updateProfile).toHaveBeenCalledWith(USER_ID, {
+      username: 'new_name',
+      displayName: 'New Name',
+      expectedRevision: 1,
+    });
+    await expect(response.json()).resolves.toMatchObject({
+      username: 'new_name',
+      display_name: 'New Name',
+      profile_revision: 2,
+    });
+  });
+
+  it('deletes only the authenticated account', async () => {
+    const auth = dependencies();
+    const response = await app(auth).request('/v1/me', {
+      method: 'DELETE',
+      headers: { authorization: 'Bearer session-token' },
+    });
+
+    expect(response.status).toBe(204);
+    expect(auth.deleteAccount).toHaveBeenCalledWith(USER_ID);
   });
 
   it('lists and revokes only the authenticated user sessions', async () => {

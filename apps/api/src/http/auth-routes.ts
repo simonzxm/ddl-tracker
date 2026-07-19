@@ -3,6 +3,7 @@ import {
   emailChallengeRequestSchema,
   emailVerificationRequestSchema,
   parseUuidV7,
+  profileUpdateRequestSchema,
   type PublicUserWire,
 } from '@ddl-tracker/contracts';
 import type { Hono } from 'hono';
@@ -47,6 +48,15 @@ export interface AuthRouteDependencies {
   listSessions(userId: string): Promise<SessionRecord[]>;
   revokeSession(userId: string, sessionId: string): Promise<boolean>;
   revokeAllSessions(userId: string): Promise<number>;
+  updateProfile(
+    userId: string,
+    input: {
+      username: string;
+      displayName: string;
+      expectedRevision: number;
+    },
+  ): Promise<PublicUser>;
+  deleteAccount(userId: string): Promise<void>;
 }
 
 function toPublicUser(user: PublicUser): PublicUserWire {
@@ -161,6 +171,33 @@ export function registerAuthRoutes(
       dependencies,
     );
     return context.json(toPublicUser(principal.user));
+  });
+
+  app.patch('/v1/me/profile', async (context) => {
+    const principal = await authenticate(
+      context.req.header('authorization'),
+      dependencies,
+    );
+    const body = await readValidatedJson(
+      context.req.raw,
+      profileUpdateRequestSchema,
+      AUTH_BODY_LIMIT,
+    );
+    const updated = await dependencies.updateProfile(principal.user.id, {
+      username: body.username,
+      displayName: body.display_name,
+      expectedRevision: body.expected_revision,
+    });
+    return context.json(toPublicUser(updated));
+  });
+
+  app.delete('/v1/me', async (context) => {
+    const principal = await authenticate(
+      context.req.header('authorization'),
+      dependencies,
+    );
+    await dependencies.deleteAccount(principal.user.id);
+    return context.body(null, 204);
   });
 
   app.get('/v1/sessions', async (context) => {

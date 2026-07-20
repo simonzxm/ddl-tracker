@@ -1,0 +1,36 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "ddl-tracker-api-production",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-07-19",
+  "compatibility_flags": ["nodejs_compat"],
+  "triggers": {
+    "crons": ["17 3 * * *"]
+  },
+  "observability": {
+    "enabled": true,
+    "logs": {
+      "enabled": true,
+      "invocation_logs": true,
+      "persist": true
+    },
+    "traces": {
+      "enabled": true,
+      "head_sampling_rate": 0.1
+    }
+  },
+  "hyperdrive": [
+    {
+      "binding": "HYPERDRIVE",
+      "id": "00000000000000000000000000000000"
+    }
+  ],
+  "vars": {
+    "APP_ENVIRONMENT": "production",
+    "ALLOWED_EMAIL_DOMAINS": "school.example",
+    "SMTP_HOST": "smtp.feishu.cn",
+    "SMTP_PORT": "465",
+    "SMTP_FROM_ADDRESS": "noreply@school.example",
+    "SMTP_FROM_NAME": "DDL Tracker"
+  }
+}

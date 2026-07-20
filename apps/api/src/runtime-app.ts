@@ -25,7 +25,10 @@ import { PostgresCatalogRepository } from './catalog/postgres-catalog-repository
 import { PostgresCatalogImportApplyRepository } from './catalog/postgres-import-apply-repository.js';
 import { PostgresCatalogImportRepository } from './catalog/postgres-import-plan-repository.js';
 import { PostgresCommentHistoryRepository } from './comments/postgres-comment-history-repository.js';
-import { createApp } from './http/app.js';
+import {
+  createApp,
+  type RequestLogEntry,
+} from './http/app.js';
 import { SyncBatchService } from './sync/batch-service.js';
 import { SyncCursorCodec } from './sync/cursor.js';
 import { IncrementalSyncService } from './sync/incremental-service.js';
@@ -41,6 +44,8 @@ export interface RuntimeAppOptions {
   createSmtpSession?: () => SmtpSession;
   createId?: () => string;
   now?: () => Date;
+  nowMilliseconds?: () => number;
+  logRequest?: (entry: RequestLogEntry) => void;
 }
 
 export function createRuntimeApp(
@@ -146,6 +151,12 @@ export function createRuntimeApp(
   const authenticate = (token: string) => accountService.authenticate(token);
   return createApp({
     createRequestId: createId,
+    ...(options.nowMilliseconds === undefined
+      ? {}
+      : { nowMilliseconds: options.nowMilliseconds }),
+    ...(options.logRequest === undefined
+      ? {}
+      : { logRequest: options.logRequest }),
     checkReady: async () => {
       await client.query('select 1');
       return true;

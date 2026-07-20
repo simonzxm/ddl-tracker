@@ -4,6 +4,7 @@ import { createUuidV7 } from '@ddl-tracker/contracts';
 
 import type { MailDelivery } from './auth/email-challenge-service.js';
 import type { SmtpSession } from './auth/smtp-mail-delivery.js';
+import { createApp, type RequestLogEntry } from './http/app.js';
 import { PostgresRetentionService } from './maintenance/postgres-retention-service.js';
 import { createRuntimeApp } from './runtime-app.js';
 
@@ -16,6 +17,7 @@ export interface WorkerHandlerOptions {
   createRetentionRunner?: (client: Client) => RetentionRunner;
   mailDelivery?: MailDelivery;
   createSmtpSession?: () => SmtpSession;
+  logRequest?: (entry: RequestLogEntry) => void;
 }
 
 export interface WorkerFetchHandler {
@@ -37,7 +39,12 @@ export function createWorkerHandler(
   return {
     async fetch(request, env, context): Promise<Response> {
       if (new URL(request.url).pathname === '/health/live') {
-        return Response.json({ status: 'live' });
+        return createApp({
+          checkReady: () => Promise.resolve(false),
+          ...(options.logRequest === undefined
+            ? {}
+            : { logRequest: options.logRequest }),
+        }).fetch(request, env, context);
       }
 
       const client = options.createClient(env.HYPERDRIVE.connectionString);
@@ -52,6 +59,9 @@ export function createWorkerHandler(
           ...(options.createSmtpSession === undefined
             ? {}
             : { createSmtpSession: options.createSmtpSession }),
+          ...(options.logRequest === undefined
+            ? {}
+            : { logRequest: options.logRequest }),
         }).fetch(request, env, context);
       } finally {
         if (connected) await client.end();

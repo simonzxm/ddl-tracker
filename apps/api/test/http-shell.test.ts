@@ -47,9 +47,53 @@ describe('HTTP shell', () => {
     expect(response.headers.get('x-request-id')).toBe(REQUEST_ID);
   });
 
-  it('maps failed readiness to a generic unavailable error', async () => {
+  it('logs only normalized request metadata', async () => {
+    const entries: unknown[] = [];
+    const times = [10, 17];
     const app = createApp({
       createRequestId: () => REQUEST_ID,
+      nowMilliseconds: () => times.shift() ?? 17,
+      logRequest: (entry) => {
+        entries.push(entry);
+      },
+      checkReady: async () => true,
+    });
+
+    const response = await app.request(
+      '/health/ready?email=student@school.example',
+      {
+        headers: {
+          authorization: 'Bearer secret-session-token',
+          'x-private-note': 'private body text',
+        },
+      },
+    );
+
+    expect(response.status).toBe(200);
+    expect(entries).toEqual([
+      {
+        request_id: REQUEST_ID,
+        method: 'GET',
+        route: '/health/ready',
+        status: 200,
+        duration_ms: 7,
+      },
+    ]);
+    const serialized = JSON.stringify(entries);
+    expect(serialized).not.toContain('secret-session-token');
+    expect(serialized).not.toContain('student@school.example');
+    expect(serialized).not.toContain('private body text');
+  });
+
+  it('maps and logs failed readiness as a generic unavailable error', async () => {
+    const entries: unknown[] = [];
+    const times = [20, 25];
+    const app = createApp({
+      createRequestId: () => REQUEST_ID,
+      nowMilliseconds: () => times.shift() ?? 25,
+      logRequest: (entry) => {
+        entries.push(entry);
+      },
       checkReady: async () => false,
     });
 
@@ -63,6 +107,15 @@ describe('HTTP shell', () => {
       retryable: true,
       request_id: REQUEST_ID,
     });
+    expect(entries).toEqual([
+      {
+        request_id: REQUEST_ID,
+        method: 'GET',
+        route: '/health/ready',
+        status: 503,
+        duration_ms: 5,
+      },
+    ]);
   });
 
   it('returns structured not found errors', async () => {

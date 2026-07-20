@@ -1,6 +1,7 @@
 import { createUuidV7 } from '@ddl-tracker/contracts';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
+import { routePath } from 'hono/route';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
 
 import {
@@ -25,8 +26,18 @@ export interface AppVariables {
   requestId: string;
 }
 
+export interface RequestLogEntry {
+  request_id: string;
+  method: string;
+  route: string;
+  status: number;
+  duration_ms: number;
+}
+
 export interface AppDependencies {
   createRequestId?: () => string;
+  nowMilliseconds?: () => number;
+  logRequest?: (entry: RequestLogEntry) => void;
   checkReady: () => Promise<boolean>;
   auth?: AuthRouteDependencies;
   catalog?: CatalogRouteDependencies;
@@ -41,6 +52,8 @@ export function createApp(dependencies: AppDependencies): Hono<{
 }> {
   const app = new Hono<{ Variables: AppVariables }>();
   const createRequestId = dependencies.createRequestId ?? createUuidV7;
+  const nowMilliseconds =
+    dependencies.nowMilliseconds ?? (() => globalThis.performance.now());
 
   app.use('*', async (context, next) => {
     const incoming = context.req.header('x-request-id');
@@ -55,6 +68,27 @@ export function createApp(dependencies: AppDependencies): Hono<{
     await next();
     context.header('x-request-id', requestId);
   });
+
+  if (dependencies.logRequest !== undefined) {
+    app.use('*', async (context, next) => {
+      const startedAt = nowMilliseconds();
+      await next();
+      const entry: RequestLogEntry = {
+        request_id: context.get('requestId'),
+        method: context.req.method,
+        // Hono's helper intentionally accepts an any-parameterized Context.
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+        route: routePath(context, -1),
+        status: context.res.status,
+        duration_ms: Math.max(0, Math.round(nowMilliseconds() - startedAt)),
+      };
+      try {
+        dependencies.logRequest?.(entry);
+      } catch {
+        // Logging failures must never change an API response.
+      }
+    });
+  }
 
   app.use(
     '*',

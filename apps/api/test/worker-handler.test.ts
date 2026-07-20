@@ -42,9 +42,16 @@ const mailDelivery: MailDelivery = {
 const context = {} as ExecutionContext;
 
 describe('createWorkerHandler', () => {
-  it('serves liveness without constructing a database client', async () => {
+  it('serves and logs liveness without constructing a database client', async () => {
     const createClient = vi.fn(() => fakeClient() as unknown as Client);
-    const handler = createWorkerHandler({ createClient, mailDelivery });
+    const entries: unknown[] = [];
+    const handler = createWorkerHandler({
+      createClient,
+      mailDelivery,
+      logRequest: (entry) => {
+        entries.push(entry);
+      },
+    });
 
     const response = await handler.fetch(
       new Request('https://api.example/health/live'),
@@ -53,6 +60,16 @@ describe('createWorkerHandler', () => {
     );
 
     expect(response.status).toBe(200);
+    expect(response.headers.get('x-request-id')).toMatch(
+      /^[0-9a-f-]{36}$/u,
+    );
+    expect(entries).toEqual([
+      expect.objectContaining({
+        method: 'GET',
+        route: '/health/live',
+        status: 200,
+      }),
+    ]);
     expect(createClient).not.toHaveBeenCalled();
   });
 

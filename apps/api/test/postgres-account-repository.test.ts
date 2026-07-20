@@ -134,11 +134,15 @@ describePostgres('PostgresAccountRepository', () => {
       }),
     ).resolves.toBe('username_taken');
 
-    const token = await client.query<{ consumed_at: Date | null }>(
-      'select consumed_at from registration_tokens where token_hash = $1',
+    const token = await client.query<{
+      consumed_at: Date | null;
+      attempts: number;
+    }>(
+      `select consumed_at, attempts
+       from registration_tokens where token_hash = $1`,
       ['registration-hash'],
     );
-    expect(token.rows[0]?.consumed_at).toBeNull();
+    expect(token.rows[0]).toEqual({ consumed_at: null, attempts: 1 });
   });
 
   it('uses fresh session and account state and supports revocation', async () => {

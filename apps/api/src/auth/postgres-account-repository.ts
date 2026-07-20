@@ -148,6 +148,7 @@ export class PostgresAccountRepository implements AccountRepository {
         [record.id],
       );
 
+      await this.#client.query('savepoint username_registration');
       try {
         await this.#client.query(
           `insert into users (
@@ -163,9 +164,12 @@ export class PostgresAccountRepository implements AccountRepository {
             input.now,
           ],
         );
+        await this.#client.query('release savepoint username_registration');
       } catch (error) {
         if (isUniqueViolation(error, 'users_username_key_unique')) {
-          await this.#client.query('rollback');
+          await this.#client.query('rollback to savepoint username_registration');
+          await this.#client.query('release savepoint username_registration');
+          await this.#client.query('commit');
           return 'username_taken';
         }
         throw error;

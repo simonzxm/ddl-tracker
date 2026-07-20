@@ -19,7 +19,7 @@ interface CommentRow {
   author_id: string | null;
   current_revision: number;
   body: string;
-  moderation_state: 'visible' | 'hidden';
+  state: 'visible' | 'hidden';
   deleted_at: Date | null;
   created_at: Date;
   updated_at: Date;
@@ -28,7 +28,7 @@ interface CommentRow {
 interface WritableTaskRow {
   id: string;
   class_section_id: string;
-  visibility_state: 'visible' | 'hidden' | 'merged';
+  state: 'visible' | 'hidden' | 'merged';
   term_status_override: 'active' | 'archived' | null;
   term_ends_on: string | null;
   section_active: boolean;
@@ -41,13 +41,13 @@ interface ProposalRow {
   author_id: string | null;
   title: string;
   deadline: Date;
-  note: string | null;
-  source_url: string | null;
+  description: string | null;
+  evidence_note: string | null;
+  evidence_url: string | null;
   content_fingerprint: string;
-  visibility_state: 'visible' | 'hidden' | 'redirected';
+  state: 'visible' | 'hidden' | 'redirected';
   revision: number;
   created_at: Date;
-  updated_at: Date;
 }
 
 interface PersonalTaskDetailsRow {
@@ -149,7 +149,7 @@ function commentPayload(row: CommentRow) {
     author_id: row.author_id,
     body: row.body,
     revision: row.current_revision,
-    moderation_state: row.moderation_state,
+    state: row.state,
     deleted_at: row.deleted_at?.toISOString() ?? null,
     created_at: row.created_at.toISOString(),
     updated_at: row.updated_at.toISOString(),
@@ -163,13 +163,13 @@ function proposalPayload(row: ProposalRow) {
     author_id: row.author_id,
     title: row.title,
     deadline: row.deadline.toISOString(),
-    note: row.note,
-    source_url: row.source_url,
+    description: row.description,
+    evidence_note: row.evidence_note,
+    evidence_url: row.evidence_url,
     content_fingerprint: row.content_fingerprint,
-    visibility_state: row.visibility_state,
+    state: row.state,
     revision: requireRow(row).revision,
     created_at: row.created_at.toISOString(),
-    updated_at: row.updated_at.toISOString(),
   };
 }
 
@@ -370,7 +370,7 @@ export class PostgresStudentOperationExecutor {
     const now = this.#now();
     const inserted = await this.#client.query(
       `insert into followed_class_sections (
-         user_id, class_section_id, followed_at
+         user_id, class_section_id, created_at
        ) values ($1, $2, $3)
        on conflict (user_id, class_section_id) do nothing
        returning user_id`,
@@ -380,7 +380,7 @@ export class PostgresStudentOperationExecutor {
       await this.#appendPrivateEvent(
         userId,
         'class_section_followed',
-        { class_section_id: classSectionId, followed_at: now.toISOString() },
+        { class_section_id: classSectionId, created_at: now.toISOString() },
         now,
       );
     }
@@ -580,7 +580,7 @@ export class PostgresStudentOperationExecutor {
 
   async #loadWritableTask(taskId: string): Promise<WritableTaskRow> {
     const result = await this.#client.query<WritableTaskRow>(
-      `select ct.id, ct.class_section_id, ct.visibility_state,
+      `select ct.id, ct.class_section_id, ct.state,
               t.status_override as term_status_override,
               t.ends_on::text as term_ends_on,
               s.active as section_active,
@@ -600,7 +600,7 @@ export class PostgresStudentOperationExecutor {
         message: 'Course task not found.',
       });
     }
-    if (row.visibility_state !== 'visible') {
+    if (row.state !== 'visible') {
       throw new SyncOperationRejection({
         code: 'content_hidden',
         message: 'Course task is not writable.',
@@ -634,24 +634,25 @@ export class PostgresStudentOperationExecutor {
     proposal: CanonicalProposal;
     now: Date;
   }): Promise<ProposalRow> {
-    const fingerprint = fingerprintProposal(input.proposal);
+    const fingerprint = await fingerprintProposal(input.proposal);
     try {
       const inserted = await this.#client.query<ProposalRow>(
         `insert into task_proposals (
-           id, task_id, author_id, title, deadline, note, source_url,
-           content_fingerprint, visibility_state, revision, created_at,
-           updated_at
-         ) values ($1, $2, $3, $4, $5, $6, $7, $8,
-                   'visible', 1, $9, $9)
-         returning id, task_id, author_id, title, deadline, note, source_url,
-                   content_fingerprint, visibility_state, revision,
-                   created_at, updated_at`,
+           id, task_id, author_id, title, deadline, description,
+           evidence_note, evidence_url, content_fingerprint, state,
+           revision, created_at
+         ) values ($1, $2, $3, $4, $5, $6, $7, $8, $9,
+                   'visible', 1, $10)
+         returning id, task_id, author_id, title, deadline, description,
+                   evidence_note, evidence_url, content_fingerprint, state,
+                   revision, created_at`,
         [
           input.proposalId,
           input.taskId,
           input.authorId,
           input.proposal.title,
           input.proposal.deadline,
+          input.proposal.description,
           input.proposal.evidence_note,
           input.proposal.evidence_url,
           fingerprint,
@@ -802,7 +803,7 @@ export class PostgresStudentOperationExecutor {
     try {
       await this.#client.query(
         `insert into course_tasks (
-           id, class_section_id, created_by, visibility_state, revision,
+           id, class_section_id, created_by, state, revision,
            created_at, updated_at
          ) values ($1, $2, $3, 'visible', 1, $4, $4)`,
         [taskId, classSectionId, userId, now],
@@ -842,7 +843,7 @@ export class PostgresStudentOperationExecutor {
         id: taskId,
         class_section_id: classSectionId,
         created_by: userId,
-        visibility_state: 'visible',
+        state: 'visible',
         revision: 1,
         created_at: now.toISOString(),
         updated_at: now.toISOString(),
@@ -912,10 +913,10 @@ export class PostgresStudentOperationExecutor {
     const value = stringField(payload, 'value');
     const proposal = await this.#client.query<{
       id: string;
-      visibility_state: 'visible' | 'hidden' | 'redirected';
+      state: 'visible' | 'hidden' | 'redirected';
       task_id: string;
     }>(
-      `select id, visibility_state, task_id
+      `select id, state, task_id
        from task_proposals where id = $1 limit 1`,
       [proposalId],
     );
@@ -926,7 +927,7 @@ export class PostgresStudentOperationExecutor {
         message: 'Proposal not found.',
       });
     }
-    if (proposalRow.visibility_state !== 'visible') {
+    if (proposalRow.state !== 'visible') {
       throw new SyncOperationRejection({
         code: 'content_hidden',
         message: 'Proposal is not writable.',
@@ -989,7 +990,7 @@ export class PostgresStudentOperationExecutor {
       class_section_id: string;
     }>(
       `select tc.id, tc.task_id, tc.author_id, tc.current_revision,
-              cr.body, tc.moderation_state, tc.deleted_at, tc.created_at,
+              cr.body, tc.state, tc.deleted_at, tc.created_at,
               tc.updated_at, ct.class_section_id
        from task_comments tc
        join course_tasks ct on ct.id = tc.task_id
@@ -1021,7 +1022,7 @@ export class PostgresStudentOperationExecutor {
     try {
       await this.#client.query(
         `insert into task_comments (
-           id, task_id, author_id, current_revision, moderation_state,
+           id, task_id, author_id, current_revision, state,
            created_at, updated_at
          ) values ($1, $2, $3, 1, 'visible', $4, $4)`,
         [commentId, taskId, userId, now],
@@ -1047,7 +1048,7 @@ export class PostgresStudentOperationExecutor {
       author_id: userId,
       current_revision: 1,
       body,
-      moderation_state: 'visible',
+      state: 'visible',
       deleted_at: null,
       created_at: now,
       updated_at: now,
@@ -1075,7 +1076,7 @@ export class PostgresStudentOperationExecutor {
         message: 'Comment not found.',
       });
     }
-    if (current.row.moderation_state !== 'visible') {
+    if (current.row.state !== 'visible') {
       throw new SyncOperationRejection({
         code: 'content_hidden',
         message: 'Comment is not editable.',
@@ -1181,9 +1182,9 @@ export class PostgresStudentOperationExecutor {
   ): Promise<void> {
     const queries: Record<string, string> = {
       course_task:
-        `select 1 from course_tasks where id = $1 and visibility_state <> 'merged' limit 1`,
+        `select 1 from course_tasks where id = $1 and state <> 'merged' limit 1`,
       proposal:
-        `select 1 from task_proposals where id = $1 and visibility_state <> 'redirected' limit 1`,
+        `select 1 from task_proposals where id = $1 and state <> 'redirected' limit 1`,
       comment:
         `select 1 from task_comments where id = $1 and deleted_at is null limit 1`,
       user: `select 1 from users where id = $1 and status <> 'deleted' limit 1`,
@@ -1216,8 +1217,8 @@ export class PostgresStudentOperationExecutor {
       await this.#client.query(
         `insert into content_reports (
            id, reporter_id, target_type, target_id, reason, details, status,
-           created_at, updated_at
-         ) values ($1, $2, $3, $4, $5, $6, 'open', $7, $7)`,
+           created_at
+         ) values ($1, $2, $3, $4, $5, $6, 'open', $7)`,
         [reportId, userId, targetType, targetId, reason, details, now],
       );
     } catch (error) {
@@ -1254,7 +1255,7 @@ export class PostgresStudentOperationExecutor {
   async #assertTaskExists(taskId: string): Promise<void> {
     const task = await this.#client.query(
       `select 1 from course_tasks
-       where id = $1 and visibility_state <> 'merged'
+       where id = $1 and state <> 'merged'
        limit 1`,
       [taskId],
     );

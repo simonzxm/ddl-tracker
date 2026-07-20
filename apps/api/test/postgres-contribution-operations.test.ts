@@ -33,8 +33,9 @@ function proposal(title = 'Assignment') {
   return {
     title,
     deadline: '2026-07-20T12:00:00.000Z',
-    note: 'Read chapters 1-2',
-    source_url: 'https://example.edu/tasks/1',
+    description: 'Read chapters 1-2',
+    evidence_note: 'Published in the course portal',
+    evidence_url: 'https://example.edu/tasks/1',
   };
 }
 
@@ -280,7 +281,7 @@ describePostgres('PostgresStudentOperationExecutor shared contributions', () => 
       }),
     );
     await client.query(
-      `update course_tasks set visibility_state = 'hidden' where id = $1`,
+      `update course_tasks set state = 'hidden' where id = $1`,
       [TASK_ID],
     );
     await expect(

@@ -345,6 +345,15 @@ export class PostgresTaskMergeRepository {
             },
             input.now,
           );
+          if (sourceState !== undefined) {
+            await this.#privateStateDeletedEvent(
+              userId,
+              input.sourceTaskId,
+              sourceState.revision + 1,
+              'task_merge_conflict',
+              input.now,
+            );
+          }
           recovered += 1;
           continue;
         }
@@ -393,6 +402,17 @@ export class PostgresTaskMergeRepository {
           },
           input.now,
         );
+        await this.#privateEvent(
+          userId,
+          'personal_task_details_deleted',
+          {
+            course_task_id: input.sourceTaskId,
+            revision,
+            deleted_at: input.now.toISOString(),
+            reason: 'task_merge_moved',
+          },
+          input.now,
+        );
       }
 
       if (sourceState === undefined) continue;
@@ -418,6 +438,13 @@ export class PostgresTaskMergeRepository {
           sourceState.created_at,
           input.now,
         );
+        await this.#privateStateDeletedEvent(
+          userId,
+          input.sourceTaskId,
+          revision,
+          'task_merge_moved',
+          input.now,
+        );
         continue;
       }
       const state = preferredState(targetState.state, sourceState.state);
@@ -441,6 +468,13 @@ export class PostgresTaskMergeRepository {
         targetState.created_at,
         input.now,
       );
+      await this.#privateStateDeletedEvent(
+        userId,
+        input.sourceTaskId,
+        sourceState.revision + 1,
+        'task_merge_merged',
+        input.now,
+      );
     }
     return recovered;
   }
@@ -462,6 +496,26 @@ export class PostgresTaskMergeRepository {
         revision,
         created_at: createdAt.toISOString(),
         updated_at: now.toISOString(),
+      },
+      now,
+    );
+  }
+
+  async #privateStateDeletedEvent(
+    userId: string,
+    taskId: string,
+    revision: number,
+    reason: string,
+    now: Date,
+  ): Promise<void> {
+    await this.#privateEvent(
+      userId,
+      'personal_task_state_deleted',
+      {
+        course_task_id: taskId,
+        revision,
+        deleted_at: now.toISOString(),
+        reason,
       },
       now,
     );

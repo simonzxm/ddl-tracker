@@ -27,6 +27,7 @@ export const syncEventTypeSchema = z.enum([
   'personal_task_details_upserted',
   'personal_task_details_deleted',
   'personal_task_state_upserted',
+  'personal_task_state_deleted',
   'task_comment_upserted',
   'task_comment_deleted',
   'task_comment_hidden',

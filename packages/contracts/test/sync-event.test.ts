@@ -18,6 +18,22 @@ describe('sync event registry', () => {
     }
   });
 
+  it('accepts private task-state deletion tombstones', () => {
+    expect(
+      syncEventSchema.parse({
+        event_id: EVENT_ID,
+        schema_version: 1,
+        type: 'personal_task_state_deleted',
+        occurred_at: '2026-09-01T00:30:00Z',
+        payload: {
+          course_task_id: EVENT_ID,
+          revision: 5,
+          deleted_at: '2026-09-01T00:30:00Z',
+        },
+      }),
+    ).toMatchObject({ type: 'personal_task_state_deleted' });
+  });
+
   it('canonicalizes versioned transport events without exposing sequence', () => {
     expect(
       syncEventSchema.parse({

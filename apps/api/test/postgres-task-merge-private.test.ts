@@ -171,6 +171,17 @@ describePostgres('PostgresTaskMergeRepository private overlays', () => {
       [CONFLICT_USER, SOURCE_TASK],
     );
     expect(conflictState.rowCount).toBe(0);
+    const stateTombstone = await client.query<{
+      payload: { course_task_id: string; reason: string };
+    }>(
+      `select payload from sync_events
+       where scope_user_id = $1 and type = 'personal_task_state_deleted'`,
+      [CONFLICT_USER],
+    );
+    expect(stateTombstone.rows[0]?.payload).toMatchObject({
+      course_task_id: SOURCE_TASK,
+      reason: 'task_merge_conflict',
+    });
   });
 
   it('moves non-conflicting details and merges states by deterministic priority', async () => {
@@ -223,6 +234,45 @@ describePostgres('PostgresTaskMergeRepository private overlays', () => {
     );
     expect(privateEvents.rows.map(({ type }) => type)).toContain(
       'personal_task_state_upserted',
+    );
+    expect(privateEvents.rows.map(({ type }) => type)).toContain(
+      'personal_task_details_deleted',
+    );
+    expect(privateEvents.rows.map(({ type }) => type)).toContain(
+      'personal_task_state_deleted',
+    );
+
+    const tombstones = await client.query<{
+      scope_user_id: string;
+      type: string;
+      payload: { course_task_id: string };
+    }>(
+      `select scope_user_id, type, payload
+       from sync_events
+       where type in (
+         'personal_task_details_deleted',
+         'personal_task_state_deleted'
+       )
+       order by scope_user_id, type`,
+    );
+    expect(tombstones.rows).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          scope_user_id: MOVE_USER,
+          type: 'personal_task_details_deleted',
+          payload: expect.objectContaining({ course_task_id: SOURCE_TASK }),
+        }),
+        expect.objectContaining({
+          scope_user_id: MOVE_USER,
+          type: 'personal_task_state_deleted',
+          payload: expect.objectContaining({ course_task_id: SOURCE_TASK }),
+        }),
+        expect.objectContaining({
+          scope_user_id: STATE_USER,
+          type: 'personal_task_state_deleted',
+          payload: expect.objectContaining({ course_task_id: SOURCE_TASK }),
+        }),
+      ]),
     );
   });
 });

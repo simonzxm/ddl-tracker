@@ -36,7 +36,8 @@ describePostgres('PostgresAccountLifecycleRepository', () => {
   beforeEach(async () => {
     await client.query(`
       truncate table
-        sync_events, operation_receipts, accuracy_votes, proposal_vote_totals,
+        sync_events, operation_receipts, rate_limit_counters, accuracy_votes,
+        proposal_vote_totals,
         task_proposals, course_tasks, personal_todos, followed_class_sections,
         sessions, institutional_identities, user_roles, class_sections, courses,
         academic_terms, users
@@ -178,6 +179,12 @@ describePostgres('PostgresAccountLifecycleRepository', () => {
       ],
     );
     await client.query(
+      `insert into rate_limit_counters (
+         scope, subject_key, window_start, count, expires_at
+       ) values ('sync_user_minute', $1, $2, 1, $3)`,
+      [USER_ID, NOW, new Date(NOW.getTime() + 60_000)],
+    );
+    await client.query(
       `insert into sync_events (
          event_id, scope, scope_user_id, type, schema_version, payload
        ) values ($1, 'private_user', $2, 'personal_todo_upserted', 1, '{}'::jsonb)`,
@@ -205,13 +212,15 @@ describePostgres('PostgresAccountLifecycleRepository', () => {
       todos: string;
       receipts: string;
       private_events: string;
+      rate_limits: string;
     }>(
       `select
          (select count(*) from institutional_identities where user_id = $1)::text as identities,
          (select count(*) from sessions where user_id = $1)::text as sessions,
          (select count(*) from personal_todos where user_id = $1)::text as todos,
          (select count(*) from operation_receipts where user_id = $1)::text as receipts,
-         (select count(*) from sync_events where scope_user_id = $1)::text as private_events`,
+         (select count(*) from sync_events where scope_user_id = $1)::text as private_events,
+         (select count(*) from rate_limit_counters where subject_key = $1::text)::text as rate_limits`,
       [USER_ID],
     );
     expect(privateCounts.rows[0]).toEqual({
@@ -220,6 +229,7 @@ describePostgres('PostgresAccountLifecycleRepository', () => {
       todos: '0',
       receipts: '0',
       private_events: '0',
+      rate_limits: '0',
     });
 
     const proposal = await client.query<{ author_id: string | null }>(

@@ -183,6 +183,7 @@ export class PostgresAccountLifecycleRepository
         'delete from content_reports where reporter_id = $1',
         "delete from sync_events where scope = 'private_user' and scope_user_id = $1",
         'delete from operation_receipts where user_id = $1',
+        'delete from rate_limit_counters where subject_key = $1',
         'delete from personal_task_states where user_id = $1',
         'delete from personal_task_details where user_id = $1',
         'delete from personal_todos where user_id = $1',

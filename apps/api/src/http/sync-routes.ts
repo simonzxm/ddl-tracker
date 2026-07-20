@@ -13,6 +13,7 @@ const SYNC_BODY_LIMIT = 512 * 1024;
 
 export interface SyncRouteDependencies {
   authenticate(token: string): Promise<AuthenticatedPrincipal>;
+  rateLimit(userId: string): Promise<void>;
   handle(input: {
     userId: string;
     maintainer: boolean;
@@ -30,6 +31,7 @@ export function registerSyncRoutes(
       context.req.header('authorization'),
       (token) => dependencies.authenticate(token),
     );
+    await dependencies.rateLimit(principal.user.id);
     const request = await readValidatedJson(
       context.req.raw,
       syncRequestSchema,

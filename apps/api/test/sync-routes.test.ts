@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import type { AuthenticatedPrincipal } from '../src/auth/account-service.js';
 import { createApp } from '../src/http/app.js';
+import { HttpError } from '../src/http/errors.js';
 import type { SyncRouteDependencies } from '../src/http/sync-routes.js';
 
 const REQUEST_ID = '018f0000-0000-7000-8000-000000002401';
@@ -35,10 +36,12 @@ function principal(): AuthenticatedPrincipal {
 }
 
 function dependencies(): SyncRouteDependencies & {
+  rateLimit: ReturnType<typeof vi.fn>;
   handle: ReturnType<typeof vi.fn>;
 } {
   return {
     authenticate: vi.fn(async () => principal()),
+    rateLimit: vi.fn(async () => undefined),
     handle: vi.fn(async () => ({
       protocol_version: 1,
       request_id: REQUEST_ID,
@@ -99,6 +102,42 @@ describe('sync route', () => {
       requestId: REQUEST_ID,
       request: expect.objectContaining({ mode: 'incremental' }),
     });
+  });
+
+  it('returns retry metadata before reading or dispatching a limited request', async () => {
+    const deps = dependencies();
+    deps.rateLimit.mockRejectedValue(
+      new HttpError({
+        code: 'rate_limited',
+        message: 'Too many requests.',
+        retryable: true,
+        retryAfter: 9,
+        status: 429,
+      }),
+    );
+    const response = await app(deps).request('/v1/sync', {
+      method: 'POST',
+      headers: {
+        authorization: 'Bearer token',
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        protocol_version: 1,
+        mode: 'incremental',
+        cursor: CURSOR,
+        event_limit: 200,
+        operations: [],
+      }),
+    });
+
+    expect(response.status).toBe(429);
+    expect(response.headers.get('retry-after')).toBe('9');
+    await expect(response.json()).resolves.toMatchObject({
+      code: 'rate_limited',
+      retry_after: 9,
+    });
+    expect(deps.rateLimit).toHaveBeenCalledWith(USER_ID);
+    expect(deps.handle).not.toHaveBeenCalled();
   });
 
   it('rejects mixed snapshot and incremental fields', async () => {

@@ -30,6 +30,7 @@ import {
   type RequestLogEntry,
 } from './http/app.js';
 import { PostgresRateLimiter } from './security/postgres-rate-limiter.js';
+import { RequestRateLimitService } from './security/request-rate-limit-service.js';
 import { SyncBatchService } from './sync/batch-service.js';
 import { SyncCursorCodec } from './sync/cursor.js';
 import { IncrementalSyncService } from './sync/incremental-service.js';
@@ -57,6 +58,7 @@ export function createRuntimeApp(
   const createId = options.createId ?? createUuidV7;
   const now = options.now ?? (() => new Date());
   const rateLimiter = new PostgresRateLimiter(client);
+  const requestRateLimits = new RequestRateLimitService(rateLimiter, { now });
   const accountRepository = new PostgresAccountRepository(client);
   const accountService = new AccountService({
     repository: accountRepository,
@@ -214,6 +216,7 @@ export function createRuntimeApp(
     },
     sync: {
       authenticate,
+      rateLimit: (userId) => requestRateLimits.consumeSync(userId),
       handle: (input) => syncService.execute(input),
     },
     admin: {

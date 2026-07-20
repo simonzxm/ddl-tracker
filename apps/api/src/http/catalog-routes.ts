@@ -13,6 +13,7 @@ import { HttpError } from './errors.js';
 
 export interface CatalogRouteDependencies {
   authenticate(token: string): Promise<AuthenticatedPrincipal>;
+  rateLimit(userId: string): Promise<void>;
   listTerms(): Promise<TermWire[]>;
   listCourses(termId: string): Promise<CourseWire[]>;
   listClassSections(courseId: string): Promise<ClassSectionWire[]>;
@@ -34,9 +35,10 @@ async function requirePrincipal(
   authorization: string | undefined,
   dependencies: CatalogRouteDependencies,
 ): Promise<void> {
-  await authenticateBearer(authorization, (token) =>
+  const principal = await authenticateBearer(authorization, (token) =>
     dependencies.authenticate(token),
   );
+  await dependencies.rateLimit(principal.user.id);
 }
 
 export function registerCatalogRoutes(

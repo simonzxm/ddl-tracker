@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { AuthenticatedPrincipal } from '../src/auth/account-service.js';
 import { createApp } from '../src/http/app.js';
 import type { CatalogRouteDependencies } from '../src/http/catalog-routes.js';
+import { HttpError } from '../src/http/errors.js';
 
 const REQUEST_ID = '018f0000-0000-7000-8000-000000000001';
 const TERM_ID = '018f0000-0000-7000-8000-000000000002';
@@ -34,6 +35,7 @@ const principal: AuthenticatedPrincipal = {
 function dependencies(): CatalogRouteDependencies {
   return {
     authenticate: vi.fn(async () => principal),
+    rateLimit: vi.fn(async () => undefined),
     listTerms: vi.fn(async () => [
       {
         id: TERM_ID,
@@ -86,6 +88,26 @@ describe('catalog routes', () => {
     await expect(response.json()).resolves.toMatchObject({
       terms: [{ id: TERM_ID }],
     });
+  });
+
+  it('stops before querying when the read allowance is exhausted', async () => {
+    const catalog = dependencies();
+    catalog.rateLimit = vi.fn(async () => {
+      throw new HttpError({
+        code: 'rate_limited',
+        message: 'Too many requests.',
+        retryable: true,
+        retryAfter: 12,
+        status: 429,
+      });
+    });
+    const response = await app(catalog).request('/v1/terms', {
+      headers: { authorization: 'Bearer token' },
+    });
+
+    expect(response.status).toBe(429);
+    expect(response.headers.get('retry-after')).toBe('12');
+    expect(catalog.listTerms).not.toHaveBeenCalled();
   });
 
   it('scopes course listing to a canonical term ID', async () => {

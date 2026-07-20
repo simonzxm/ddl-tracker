@@ -8,6 +8,7 @@ import { HttpError } from './errors.js';
 
 export interface CommentHistoryRouteDependencies {
   authenticate(token: string): Promise<AuthenticatedPrincipal>;
+  rateLimit(userId: string): Promise<void>;
   list(input: {
     commentId: string;
     userId: string;
@@ -64,6 +65,7 @@ export function registerCommentHistoryRoutes(
       context.req.header('authorization'),
       (token) => dependencies.authenticate(token),
     );
+    await dependencies.rateLimit(principal.user.id);
     return context.json(
       await dependencies.list({
         commentId: pathId(context.req.param('comment_id')),

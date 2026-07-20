@@ -46,6 +46,7 @@ export interface AuthRouteDependencies {
     user: PublicUser;
   }>;
   authenticate(token: string): Promise<AuthenticatedPrincipal>;
+  rateLimit(userId: string): Promise<void>;
   listSessions(userId: string): Promise<SessionRecord[]>;
   revokeSession(userId: string, sessionId: string): Promise<boolean>;
   revokeAllSessions(userId: string): Promise<number>;
@@ -58,6 +59,17 @@ export interface AuthRouteDependencies {
     },
   ): Promise<PublicUser>;
   deleteAccount(userId: string): Promise<void>;
+}
+
+async function requirePrincipal(
+  authorization: string | undefined,
+  dependencies: AuthRouteDependencies,
+): Promise<AuthenticatedPrincipal> {
+  const principal = await authenticateBearer(authorization, (token) =>
+    dependencies.authenticate(token),
+  );
+  await dependencies.rateLimit(principal.user.id);
+  return principal;
 }
 
 function toPublicUser(user: PublicUser): PublicUserWire {
@@ -141,17 +153,17 @@ export function registerAuthRoutes(
   });
 
   app.get('/v1/me', async (context) => {
-    const principal = await authenticateBearer(
+    const principal = await requirePrincipal(
       context.req.header('authorization'),
-      (token) => dependencies.authenticate(token),
+      dependencies,
     );
     return context.json(toPublicUser(principal.user));
   });
 
   app.patch('/v1/me/profile', async (context) => {
-    const principal = await authenticateBearer(
+    const principal = await requirePrincipal(
       context.req.header('authorization'),
-      (token) => dependencies.authenticate(token),
+      dependencies,
     );
     const body = await readValidatedJson(
       context.req.raw,
@@ -167,27 +179,27 @@ export function registerAuthRoutes(
   });
 
   app.delete('/v1/me', async (context) => {
-    const principal = await authenticateBearer(
+    const principal = await requirePrincipal(
       context.req.header('authorization'),
-      (token) => dependencies.authenticate(token),
+      dependencies,
     );
     await dependencies.deleteAccount(principal.user.id);
     return context.body(null, 204);
   });
 
   app.get('/v1/sessions', async (context) => {
-    const principal = await authenticateBearer(
+    const principal = await requirePrincipal(
       context.req.header('authorization'),
-      (token) => dependencies.authenticate(token),
+      dependencies,
     );
     const sessions = await dependencies.listSessions(principal.user.id);
     return context.json({ sessions: sessions.map(toSession) });
   });
 
   app.delete('/v1/sessions/:session_id', async (context) => {
-    const principal = await authenticateBearer(
+    const principal = await requirePrincipal(
       context.req.header('authorization'),
-      (token) => dependencies.authenticate(token),
+      dependencies,
     );
     let sessionId: string;
     try {
@@ -214,9 +226,9 @@ export function registerAuthRoutes(
   });
 
   app.delete('/v1/sessions', async (context) => {
-    const principal = await authenticateBearer(
+    const principal = await requirePrincipal(
       context.req.header('authorization'),
-      (token) => dependencies.authenticate(token),
+      dependencies,
     );
     await dependencies.revokeAllSessions(principal.user.id);
     return context.body(null, 204);

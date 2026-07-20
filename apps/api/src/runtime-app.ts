@@ -181,6 +181,7 @@ export function createRuntimeApp(
       },
       registerAccount: (input) => accountService.register(input),
       authenticate,
+      rateLimit: (userId) => requestRateLimits.consumeRead(userId),
       listSessions: (userId) => accountService.listSessions(userId),
       revokeSession: (userId, sessionId) =>
         accountService.revokeSession(userId, sessionId),
@@ -191,6 +192,7 @@ export function createRuntimeApp(
     },
     catalog: {
       authenticate,
+      rateLimit: (userId) => requestRateLimits.consumeRead(userId),
       listTerms: () => catalogService.listTerms(),
       listCourses: (termId) => catalogService.listCourses(termId),
       listClassSections: (courseId) =>
@@ -212,6 +214,7 @@ export function createRuntimeApp(
     },
     comments: {
       authenticate,
+      rateLimit: (userId) => requestRateLimits.consumeRead(userId),
       list: (input) => commentHistory.list(input),
     },
     sync: {

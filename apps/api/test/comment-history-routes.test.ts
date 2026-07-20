@@ -33,6 +33,7 @@ function dependencies(maintainer = false) {
           revokedAt: null,
         },
       })),
+      rateLimit: vi.fn(async () => undefined),
       list: vi.fn(async () => ({
         comment_id: COMMENT_ID,
         revisions: [],
@@ -57,6 +58,7 @@ describe('comment history routes', () => {
       { headers: { authorization: 'Bearer session-token' } },
     );
     expect(response.status).toBe(200);
+    expect(deps.comments.rateLimit).toHaveBeenCalledWith(USER_ID);
     expect(deps.comments.list).toHaveBeenCalledWith({
       commentId: COMMENT_ID,
       userId: USER_ID,

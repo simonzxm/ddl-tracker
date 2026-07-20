@@ -7,6 +7,7 @@ import type {
 } from '../src/auth/account-service.js';
 import { createApp } from '../src/http/app.js';
 import type { AuthRouteDependencies } from '../src/http/auth-routes.js';
+import { HttpError } from '../src/http/errors.js';
 
 const REQUEST_ID = '018f0000-0000-7000-8000-000000000001';
 const USER_ID = '018f0000-0000-7000-8000-000000000002';
@@ -57,6 +58,7 @@ function dependencies(): AuthRouteDependencies {
       }
       return principal;
     }),
+    rateLimit: vi.fn(async () => undefined),
     listSessions: vi.fn(async () => [session]),
     revokeSession: vi.fn(async () => true),
     revokeAllSessions: vi.fn(async () => 1),
@@ -150,6 +152,26 @@ describe('authentication routes', () => {
       request_id: REQUEST_ID,
     });
     expect(auth.authenticate).not.toHaveBeenCalled();
+  });
+
+  it('stops protected account work when the read allowance is exhausted', async () => {
+    const auth = dependencies();
+    auth.rateLimit = vi.fn(async () => {
+      throw new HttpError({
+        code: 'rate_limited',
+        message: 'Too many requests.',
+        retryable: true,
+        retryAfter: 8,
+        status: 429,
+      });
+    });
+    const response = await app(auth).request('/v1/sessions', {
+      headers: { authorization: 'Bearer session-token' },
+    });
+
+    expect(response.status).toBe(429);
+    expect(response.headers.get('retry-after')).toBe('8');
+    expect(auth.listSessions).not.toHaveBeenCalled();
   });
 
   it('returns the current user and never exposes token hashes', async () => {

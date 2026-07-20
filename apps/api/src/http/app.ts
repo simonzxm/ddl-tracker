@@ -1,5 +1,6 @@
 import { createUuidV7 } from '@ddl-tracker/contracts';
 import { Hono } from 'hono';
+import { cors } from 'hono/cors';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
 
 import {
@@ -54,6 +55,17 @@ export function createApp(dependencies: AppDependencies): Hono<{
     await next();
     context.header('x-request-id', requestId);
   });
+
+  app.use(
+    '*',
+    cors({
+      origin: '*',
+      allowHeaders: ['Authorization', 'Content-Type', 'X-Request-ID'],
+      allowMethods: ['GET', 'HEAD', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
+      exposeHeaders: ['X-Request-ID', 'Retry-After'],
+      maxAge: 86_400,
+    }),
+  );
 
   app.get('/health/live', (context) => context.json({ status: 'live' }));
   app.get('/openapi.json', (context) => context.json(openApiDocument));

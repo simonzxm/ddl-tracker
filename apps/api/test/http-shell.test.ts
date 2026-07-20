@@ -20,6 +20,33 @@ describe('HTTP shell', () => {
     await expect(response.json()).resolves.toEqual({ status: 'live' });
   });
 
+  it('serves non-credentialed CORS preflight for bearer clients', async () => {
+    const app = createApp({
+      createRequestId: () => REQUEST_ID,
+      checkReady: async () => true,
+    });
+
+    const response = await app.request('/v1/sync', {
+      method: 'OPTIONS',
+      headers: {
+        origin: 'https://client.example',
+        'access-control-request-method': 'POST',
+        'access-control-request-headers': 'authorization,content-type',
+      },
+    });
+
+    expect(response.status).toBe(204);
+    expect(response.headers.get('access-control-allow-origin')).toBe('*');
+    expect(response.headers.get('access-control-allow-methods')).toContain(
+      'POST',
+    );
+    expect(response.headers.get('access-control-allow-headers')).toContain(
+      'Authorization',
+    );
+    expect(response.headers.has('access-control-allow-credentials')).toBe(false);
+    expect(response.headers.get('x-request-id')).toBe(REQUEST_ID);
+  });
+
   it('maps failed readiness to a generic unavailable error', async () => {
     const app = createApp({
       createRequestId: () => REQUEST_ID,

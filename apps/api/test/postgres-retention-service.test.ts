@@ -93,6 +93,15 @@ async function seed(client: Client): Promise<void> {
     [USER_ID],
   );
   await client.query(
+    `insert into rate_limit_counters (
+       scope, subject_key, window_start, count, expires_at
+     ) values
+       ('test_old', 'subject', '2026-07-19T10:00:00Z', 1,
+        '2026-07-19T10:01:00Z'),
+       ('test_new', 'subject', '2026-07-19T11:59:00Z', 1,
+        '2026-07-19T12:01:00Z')`,
+  );
+  await client.query(
     `insert into sync_events (
        event_id, scope, class_section_id, type, schema_version, payload,
        occurred_at
@@ -119,8 +128,9 @@ describePostgres('PostgresRetentionService', () => {
 
   beforeEach(async () => {
     await client.query(`
-      truncate table audit_log, operation_receipts, sync_event_retention,
-        sync_events, sessions, registration_tokens, auth_challenges,
+      truncate table audit_log, operation_receipts, rate_limit_counters,
+        sync_event_retention, sync_events, sessions, registration_tokens,
+        auth_challenges,
         class_sections, courses, academic_terms, users restart identity cascade
     `);
     await seed(client);
@@ -142,6 +152,7 @@ describePostgres('PostgresRetentionService', () => {
       registration_tokens: 1,
       sessions: 1,
       operation_receipts: 1,
+      rate_limit_counters: 1,
       sync_events: 1,
     });
     const counts = await client.query<{
@@ -149,6 +160,7 @@ describePostgres('PostgresRetentionService', () => {
       registrations: string;
       sessions: string;
       receipts: string;
+      rate_limits: string;
       events: string;
       audits: string;
     }>(
@@ -157,6 +169,7 @@ describePostgres('PostgresRetentionService', () => {
          (select count(*) from registration_tokens)::text as registrations,
          (select count(*) from sessions)::text as sessions,
          (select count(*) from operation_receipts)::text as receipts,
+         (select count(*) from rate_limit_counters)::text as rate_limits,
          (select count(*) from sync_events)::text as events,
          (select count(*) from audit_log
           where action = 'retention_cleanup')::text as audits`,
@@ -166,6 +179,7 @@ describePostgres('PostgresRetentionService', () => {
       registrations: '1',
       sessions: '1',
       receipts: '1',
+      rate_limits: '1',
       events: '1',
       audits: '1',
     });

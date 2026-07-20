@@ -11,6 +11,7 @@ export interface RetentionBatchResult {
   registration_tokens: number;
   sessions: number;
   operation_receipts: number;
+  rate_limit_counters: number;
   sync_events: number;
 }
 
@@ -70,12 +71,17 @@ export class PostgresRetentionService {
         input.now,
         input.limit,
       );
+      const rateLimitCounters = await this.#deleteRateLimitCounters(
+        input.now,
+        input.limit,
+      );
       const syncEvents = await this.#deleteEvents(eventCutoff, input.limit);
       const result: RetentionBatchResult = {
         auth_challenges: authChallenges,
         registration_tokens: registrationTokens,
         sessions,
         operation_receipts: operationReceipts,
+        rate_limit_counters: rateLimitCounters,
         sync_events: syncEvents.count,
       };
       await this.#client.query(
@@ -136,6 +142,29 @@ export class PostgresRetentionService {
        where target.user_id = selected.user_id
          and target.operation_id = selected.operation_id
        returning target.operation_id`,
+      [now, limit],
+    );
+    return result.rowCount ?? 0;
+  }
+
+  async #deleteRateLimitCounters(
+    now: Date,
+    limit: number,
+  ): Promise<number> {
+    const result = await this.#client.query(
+      `with selected as (
+         select scope, subject_key, window_start
+         from rate_limit_counters
+         where expires_at <= $1
+         order by expires_at, scope, subject_key, window_start
+         limit $2
+       )
+       delete from rate_limit_counters target
+       using selected
+       where target.scope = selected.scope
+         and target.subject_key = selected.subject_key
+         and target.window_start = selected.window_start
+       returning target.scope`,
       [now, limit],
     );
     return result.rowCount ?? 0;

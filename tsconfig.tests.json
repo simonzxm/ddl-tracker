@@ -9,6 +9,7 @@
     "apps/**/test/**/*.ts",
     "packages/**/test/**/*.ts",
     "vitest.config.ts",
+    "vitest.worker.config.mts",
     "apps/api/worker-configuration.d.ts"
   ]
 }

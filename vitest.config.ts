@@ -10,6 +10,7 @@ export default defineConfig({
       'apps/**/test/**/*.test.ts',
       'packages/**/test/**/*.test.ts',
     ],
+    exclude: ['apps/api/test/worker-runtime.test.ts'],
     passWithNoTests: false,
     restoreMocks: true,
   },

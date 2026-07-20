@@ -40,6 +40,7 @@ export default tseslint.config(
       '**/*.mjs',
       '**/test/**/*.ts',
       'vitest.config.ts',
+      'vitest.worker.config.mts',
     ],
     extends: [tseslint.configs.disableTypeChecked],
   },

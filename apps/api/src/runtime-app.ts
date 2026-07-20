@@ -29,6 +29,7 @@ import {
   createApp,
   type RequestLogEntry,
 } from './http/app.js';
+import { PostgresRateLimiter } from './security/postgres-rate-limiter.js';
 import { SyncBatchService } from './sync/batch-service.js';
 import { SyncCursorCodec } from './sync/cursor.js';
 import { IncrementalSyncService } from './sync/incremental-service.js';
@@ -55,6 +56,7 @@ export function createRuntimeApp(
 ) {
   const createId = options.createId ?? createUuidV7;
   const now = options.now ?? (() => new Date());
+  const rateLimiter = new PostgresRateLimiter(client);
   const accountRepository = new PostgresAccountRepository(client);
   const accountService = new AccountService({
     repository: accountRepository,
@@ -74,6 +76,7 @@ export function createRuntimeApp(
       createMailDelivery(env, options.createSmtpSession),
     allowedDomains: parseAllowedDomains(env.ALLOWED_EMAIL_DOMAINS),
     hmacSecret: env.OTP_HMAC_SECRET,
+    rateLimiter,
     createId,
     now,
   });

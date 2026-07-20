@@ -6,6 +6,10 @@ import {
   type ChallengeRepository,
   type MailDelivery,
 } from '../src/auth/email-challenge-service.js';
+import type {
+  RateLimitConsumer,
+  RateLimitDecision,
+} from '../src/security/postgres-rate-limiter.js';
 
 const NOW = new Date('2026-07-19T12:00:00.000Z');
 const CHALLENGE_ID = '018f0000-0000-7000-8000-000000000001';
@@ -61,6 +65,23 @@ class FakeChallengeRepository implements ChallengeRepository {
   }
 }
 
+class FakeRateLimiter implements RateLimitConsumer {
+  decision: RateLimitDecision = { allowed: true };
+  inputs: { subjectKey: string; scopes: string[] }[] = [];
+
+  async consume(input: {
+    subjectKey: string;
+    rules: readonly { scope: string }[];
+    now: Date;
+  }): Promise<RateLimitDecision> {
+    this.inputs.push({
+      subjectKey: input.subjectKey,
+      scopes: input.rules.map(({ scope }) => scope),
+    });
+    return this.decision;
+  }
+}
+
 function mailDelivery(): MailDelivery {
   return {
     sendVerificationCode: vi.fn(async () => undefined),
@@ -70,12 +91,14 @@ function mailDelivery(): MailDelivery {
 function service(
   repository: FakeChallengeRepository,
   mail: MailDelivery,
+  rateLimiter: FakeRateLimiter = new FakeRateLimiter(),
 ): EmailChallengeService {
   return new EmailChallengeService({
     repository,
     mailDelivery: mail,
     allowedDomains: ['example.edu'],
     hmacSecret: 'test-secret',
+    rateLimiter,
     now: () => NOW,
     createId: () => CHALLENGE_ID,
     createCode: () => '123456',
@@ -86,8 +109,9 @@ describe('EmailChallengeService', () => {
   it('creates, sends, then activates a challenge', async () => {
     const repository = new FakeChallengeRepository();
     const mail = mailDelivery();
+    const rateLimiter = new FakeRateLimiter();
 
-    const result = await service(repository, mail).requestChallenge(
+    const result = await service(repository, mail, rateLimiter).requestChallenge(
       'Student@example.edu',
     );
 
@@ -99,6 +123,39 @@ describe('EmailChallengeService', () => {
       code: '123456',
       expiresAt: new Date('2026-07-19T12:10:00.000Z'),
     });
+    expect(rateLimiter.inputs).toEqual([
+      {
+        subjectKey: expect.stringMatching(/^[A-Za-z0-9_-]{43}$/u),
+        scopes: ['auth_email_minute', 'auth_email_hour', 'auth_email_day'],
+      },
+    ]);
+    expect(JSON.stringify(rateLimiter.inputs)).not.toContain(
+      'student@example.edu',
+    );
+  });
+
+  it('returns a generic persistent rate-limit response before delivery', async () => {
+    const repository = new FakeChallengeRepository();
+    const mail = mailDelivery();
+    const rateLimiter = new FakeRateLimiter();
+    rateLimiter.decision = {
+      allowed: false,
+      retryAfter: 300,
+      scope: 'auth_email_hour',
+    };
+
+    await expect(
+      service(repository, mail, rateLimiter).requestChallenge(
+        'student@example.edu',
+      ),
+    ).rejects.toMatchObject({
+      code: 'rate_limited',
+      message: 'Too many verification attempts.',
+      retryAfter: 300,
+      details: {},
+    });
+    expect(repository.pendingIds).toEqual([]);
+    expect(mail.sendVerificationCode).not.toHaveBeenCalled();
   });
 
   it('abandons the pending challenge when delivery fails', async () => {

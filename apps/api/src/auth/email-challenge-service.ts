@@ -1,6 +1,7 @@
 import { createUuidV7 } from '@ddl-tracker/contracts';
 
 import { HttpError } from '../http/errors.js';
+import type { RateLimitConsumer } from '../security/postgres-rate-limiter.js';
 import {
   constantTimeEqual,
   createNumericCode,
@@ -11,6 +12,11 @@ import {
 const CHALLENGE_TTL_MS = 10 * 60 * 1000;
 const RESEND_COOLDOWN_MS = 60 * 1000;
 const MAXIMUM_ATTEMPTS = 5;
+const EMAIL_RATE_LIMIT_RULES = [
+  { scope: 'auth_email_minute', limit: 1, windowSeconds: 60 },
+  { scope: 'auth_email_hour', limit: 5, windowSeconds: 60 * 60 },
+  { scope: 'auth_email_day', limit: 10, windowSeconds: 24 * 60 * 60 },
+] as const;
 
 export interface MailDelivery {
   sendVerificationCode(input: {
@@ -66,6 +72,7 @@ export class EmailChallengeService {
   readonly #mailDelivery: MailDelivery;
   readonly #allowedDomains: readonly string[];
   readonly #hmacSecret: string;
+  readonly #rateLimiter: RateLimitConsumer;
   readonly #now: () => Date;
   readonly #createId: () => string;
   readonly #createCode: () => string;
@@ -75,6 +82,7 @@ export class EmailChallengeService {
     mailDelivery: MailDelivery;
     allowedDomains: readonly string[];
     hmacSecret: string;
+    rateLimiter: RateLimitConsumer;
     now?: () => Date;
     createId?: () => string;
     createCode?: () => string;
@@ -83,6 +91,7 @@ export class EmailChallengeService {
     this.#mailDelivery = options.mailDelivery;
     this.#allowedDomains = options.allowedDomains;
     this.#hmacSecret = options.hmacSecret;
+    this.#rateLimiter = options.rateLimiter;
     this.#now = options.now ?? (() => new Date());
     this.#createId = options.createId ?? createUuidV7;
     this.#createCode = options.createCode ?? createNumericCode;
@@ -104,6 +113,25 @@ export class EmailChallengeService {
     }
 
     const now = this.#now();
+    const subjectKey = await hmacSha256(
+      this.#hmacSecret,
+      `email-rate-limit\u0000${identity.normalized}`,
+    );
+    const rateLimit = await this.#rateLimiter.consume({
+      subjectKey,
+      rules: EMAIL_RATE_LIMIT_RULES,
+      now,
+    });
+    if (!rateLimit.allowed) {
+      throw new HttpError({
+        code: 'rate_limited',
+        message: 'Too many verification attempts.',
+        retryable: true,
+        retryAfter: rateLimit.retryAfter,
+        status: 429,
+      });
+    }
+
     const latestCreatedAt = await this.#repository.findLatestCreatedAt(
       'email',
       identity.normalized,

@@ -228,6 +228,17 @@ describePostgres('PostgresTaskMergeRepository public graph', () => {
       reconsider: '1',
       audits: '1',
     });
+    const reconsider = await client.query<{
+      payload: { proposal_id: string; value: string; reason: string };
+    }>(
+      `select payload from sync_events
+       where type = 'accuracy_vote_updated' and scope = 'private_user'`,
+    );
+    expect(reconsider.rows[0]?.payload).toEqual({
+      proposal_id: TARGET_PROPOSAL,
+      value: 'none',
+      reason: 'task_merge_conflict',
+    });
   });
 
   it('rejects cross-section merges', async () => {

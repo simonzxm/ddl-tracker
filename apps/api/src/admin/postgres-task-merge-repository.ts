@@ -548,7 +548,7 @@ export class PostgresTaskMergeRepository {
           sourceVote.user_id,
           JSON.stringify({
             proposal_id: input.canonicalProposalId,
-            direction: 'none',
+            value: 'none',
             reason: 'task_merge_conflict',
           }),
           input.now,

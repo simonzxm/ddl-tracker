@@ -2,6 +2,7 @@ import type { Client } from 'pg';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { MailDelivery } from '../src/auth/email-challenge-service.js';
+import { latestMigrationHash } from '../src/db/latest-migration.js';
 import { createRuntimeApp } from '../src/runtime-app.js';
 
 function environment(overrides: Partial<Env> = {}): Env {
@@ -27,7 +28,10 @@ function environment(overrides: Partial<Env> = {}): Env {
 
 function client() {
   return {
-    query: vi.fn(async () => ({ rows: [{ ready: 1 }], rowCount: 1 })),
+    query: vi.fn(async () => ({
+      rows: [{ hash: latestMigrationHash }],
+      rowCount: 1,
+    })),
   } as unknown as Client;
 }
 
@@ -46,7 +50,9 @@ describe('createRuntimeApp', () => {
 
     const ready = await app.request('/health/ready');
     expect(ready.status).toBe(200);
-    expect(database.query).toHaveBeenCalledWith('select 1');
+    expect(database.query).toHaveBeenCalledWith(
+      expect.stringContaining('drizzle.__drizzle_migrations'),
+    );
   });
 
   it('rejects missing institutional domains during composition', () => {

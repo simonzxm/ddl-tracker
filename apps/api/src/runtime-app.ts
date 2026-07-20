@@ -25,6 +25,8 @@ import { PostgresCatalogRepository } from './catalog/postgres-catalog-repository
 import { PostgresCatalogImportApplyRepository } from './catalog/postgres-import-apply-repository.js';
 import { PostgresCatalogImportRepository } from './catalog/postgres-import-plan-repository.js';
 import { PostgresCommentHistoryRepository } from './comments/postgres-comment-history-repository.js';
+import { latestMigrationHash } from './db/latest-migration.js';
+import { PostgresReadinessRepository } from './db/postgres-readiness-repository.js';
 import {
   createApp,
   type RequestLogEntry,
@@ -59,6 +61,10 @@ export function createRuntimeApp(
   const now = options.now ?? (() => new Date());
   const rateLimiter = new PostgresRateLimiter(client);
   const requestRateLimits = new RequestRateLimitService(rateLimiter, { now });
+  const readinessRepository = new PostgresReadinessRepository(
+    client,
+    latestMigrationHash,
+  );
   const accountRepository = new PostgresAccountRepository(client);
   const accountService = new AccountService({
     repository: accountRepository,
@@ -162,10 +168,7 @@ export function createRuntimeApp(
     ...(options.logRequest === undefined
       ? {}
       : { logRequest: options.logRequest }),
-    checkReady: async () => {
-      await client.query('select 1');
-      return true;
-    },
+    checkReady: () => readinessRepository.isReady(),
     auth: {
       requestChallenge: (email) => challengeService.requestChallenge(email),
       verifyChallenge: async (input) => {

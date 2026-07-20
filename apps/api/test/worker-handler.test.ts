@@ -2,6 +2,7 @@ import type { Client } from 'pg';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { MailDelivery } from '../src/auth/email-challenge-service.js';
+import { latestMigrationHash } from '../src/db/latest-migration.js';
 import { createWorkerHandler } from '../src/worker-handler.js';
 
 function environment(): Env {
@@ -30,7 +31,7 @@ function fakeClient(options?: { queryError?: Error }) {
     end: vi.fn(async () => undefined),
     query: vi.fn(async () => {
       if (options?.queryError !== undefined) throw options.queryError;
-      return { rows: [{ ready: 1 }], rowCount: 1 };
+      return { rows: [{ hash: latestMigrationHash }], rowCount: 1 };
     }),
   };
 }

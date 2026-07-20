@@ -16,6 +16,7 @@ import {
   registerCommentHistoryRoutes,
   type CommentHistoryRouteDependencies,
 } from './comment-history-routes.js';
+import { openApiDocument } from '../openapi.js';
 import { HttpError, toApiError } from './errors.js';
 import { registerSyncRoutes, type SyncRouteDependencies } from './sync-routes.js';
 
@@ -55,6 +56,7 @@ export function createApp(dependencies: AppDependencies): Hono<{
   });
 
   app.get('/health/live', (context) => context.json({ status: 'live' }));
+  app.get('/openapi.json', (context) => context.json(openApiDocument));
 
   app.get('/health/ready', async (context) => {
     const ready = await dependencies.checkReady().catch(() => false);

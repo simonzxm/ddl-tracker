@@ -91,6 +91,14 @@ describePostgres('PostgresSyncEventReader', () => {
       );
     }
 
+    const bounds = await client.query<{ minimum: string; maximum: string }>(
+      `select min(sequence)::text as minimum,
+              max(sequence)::text as maximum
+       from sync_events`,
+    );
+    const minimumSequence = Number(bounds.rows[0]?.minimum);
+    const maximumSequence = Number(bounds.rows[0]?.maximum);
+
     const first = await reader.pull({
       userId: USER_ID,
       maintainer: false,
@@ -102,7 +110,7 @@ describePostgres('PostgresSyncEventReader', () => {
       'public_user_profile_updated',
     ]);
     expect(first.hasMore).toBe(true);
-    expect(first.nextSequence).toBe(3);
+    expect(first.nextSequence).toBe(minimumSequence + 2);
 
     const second = await reader.pull({
       userId: USER_ID,
@@ -114,7 +122,7 @@ describePostgres('PostgresSyncEventReader', () => {
       'personal_task_state_upserted',
     ]);
     expect(second.hasMore).toBe(false);
-    expect(second.nextSequence).toBe(6);
+    expect(second.nextSequence).toBe(maximumSequence);
   });
 
   it('includes maintainer-private events only for maintainers', async () => {

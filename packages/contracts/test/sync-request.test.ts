@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { syncRequestSchema } from '../src/sync/request.js';
 
 const ID = '018f0000-0000-7000-8000-000000000000';
+const SECTION_ID = '018f0000-0000-7000-8000-000000000100';
 
 describe('sync request modes', () => {
   it('accepts account snapshots without cursors or operations', () => {
@@ -44,7 +45,7 @@ describe('sync request modes', () => {
           type: 'follow_class_section',
           schema_version: 1,
           depends_on: [],
-          payload: { class_section_id: ID },
+          payload: { class_section_id: SECTION_ID },
         })),
       }).mode,
     ).toBe('incremental');

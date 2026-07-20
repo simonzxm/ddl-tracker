@@ -19,7 +19,7 @@ function environment(overrides: Partial<Env> = {}): Env {
     OTP_HMAC_SECRET: 'o'.repeat(64),
     TOKEN_PEPPER: 'p'.repeat(64),
     SYNC_TOKEN_SECRET: 's'.repeat(64),
-    MAINTAINER_BOOTSTRAP_TOKEN: 'bootstrap-secret',
+    MAINTAINER_BOOTSTRAP_TOKEN: 'b'.repeat(64),
     SMTP_USERNAME: 'mailer@example.edu',
     SMTP_PASSWORD: 'smtp-password',
     ...overrides,
@@ -63,6 +63,19 @@ describe('createRuntimeApp', () => {
         { mailDelivery },
       ),
     ).toThrow('allowed institutional email domain');
+  });
+
+  it.each([
+    'OTP_HMAC_SECRET',
+    'TOKEN_PEPPER',
+    'SYNC_TOKEN_SECRET',
+    'MAINTAINER_BOOTSTRAP_TOKEN',
+  ] as const)('rejects a short %s during composition', (name) => {
+    expect(() =>
+      createRuntimeApp(client(), environment({ [name]: 'short' }), {
+        mailDelivery,
+      }),
+    ).toThrow(`${name} must contain at least 32 characters.`);
   });
 
   it('rejects non-TLS SMTP ports in the production adapter', () => {

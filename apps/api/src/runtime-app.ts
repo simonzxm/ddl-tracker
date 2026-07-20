@@ -59,6 +59,19 @@ export function createRuntimeApp(
 ) {
   const createId = options.createId ?? createUuidV7;
   const now = options.now ?? (() => new Date());
+  const otpHmacSecret = requiredSecret(
+    'OTP_HMAC_SECRET',
+    env.OTP_HMAC_SECRET,
+  );
+  const tokenPepper = requiredSecret('TOKEN_PEPPER', env.TOKEN_PEPPER);
+  const syncTokenSecret = requiredSecret(
+    'SYNC_TOKEN_SECRET',
+    env.SYNC_TOKEN_SECRET,
+  );
+  const bootstrapToken = requiredSecret(
+    'MAINTAINER_BOOTSTRAP_TOKEN',
+    env.MAINTAINER_BOOTSTRAP_TOKEN,
+  );
   const rateLimiter = new PostgresRateLimiter(client);
   const requestRateLimits = new RequestRateLimitService(rateLimiter, { now });
   const readinessRepository = new PostgresReadinessRepository(
@@ -68,7 +81,7 @@ export function createRuntimeApp(
   const accountRepository = new PostgresAccountRepository(client);
   const accountService = new AccountService({
     repository: accountRepository,
-    tokenPepper: env.TOKEN_PEPPER,
+    tokenPepper,
     createId,
     now,
   });
@@ -83,7 +96,7 @@ export function createRuntimeApp(
       options.mailDelivery ??
       createMailDelivery(env, options.createSmtpSession),
     allowedDomains: parseAllowedDomains(env.ALLOWED_EMAIL_DOMAINS),
-    hmacSecret: env.OTP_HMAC_SECRET,
+    hmacSecret: otpHmacSecret,
     rateLimiter,
     createId,
     now,
@@ -121,11 +134,11 @@ export function createRuntimeApp(
     now,
   });
   const cursorCodec = new SyncCursorCodec(
-    env.SYNC_TOKEN_SECRET,
+    syncTokenSecret,
     env.APP_ENVIRONMENT,
   );
   const snapshotCodec = new SnapshotTokenCodec(
-    env.SYNC_TOKEN_SECRET,
+    syncTokenSecret,
     env.APP_ENVIRONMENT,
   );
   const incrementalService = new IncrementalSyncService({
@@ -147,7 +160,7 @@ export function createRuntimeApp(
   });
   const accessService = new MaintainerAccessService(
     accessRepository,
-    env.MAINTAINER_BOOTSTRAP_TOKEN,
+    bootstrapToken,
   );
   const moderationRepository = new PostgresModerationRepository(client, {
     createId,
@@ -265,6 +278,13 @@ function createMailDelivery(
         throw new Error('SMTP session factory is not configured.');
       }),
   });
+}
+
+function requiredSecret(name: string, value: string): string {
+  if (value.length < 32) {
+    throw new Error(`${name} must contain at least 32 characters.`);
+  }
+  return value;
 }
 
 function parseAllowedDomains(value: string): string[] {

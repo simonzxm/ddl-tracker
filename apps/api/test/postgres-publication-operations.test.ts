@@ -34,8 +34,9 @@ function proposal(title: string) {
   return {
     title,
     deadline: '2026-07-21T12:00:00.000Z',
-    note: 'Explicit public note',
-    source_url: null,
+    description: 'Explicit public description',
+    evidence_note: 'Explicit public evidence',
+    evidence_url: null,
   };
 }
 
@@ -125,22 +126,27 @@ describePostgres('PostgresStudentOperationExecutor publication operations', () =
 
     const publicProposal = await client.query<{
       title: string;
-      note: string | null;
-    }>('select title, note from task_proposals where id = $1', [PROPOSAL_ID]);
+      description: string | null;
+    }>('select title, description from task_proposals where id = $1', [
+      PROPOSAL_ID,
+    ]);
     expect(publicProposal.rows[0]).toEqual({
       title: 'Public title',
-      note: 'Explicit public note',
+      description: 'Explicit public description',
     });
     expect(JSON.stringify(publicProposal.rows[0])).not.toContain('Private secret');
 
-    const details = await client.query<{ title: string; note: string | null }>(
-      `select title, note from personal_task_details
+    const details = await client.query<{
+      private_title: string | null;
+      private_note: string | null;
+    }>(
+      `select private_title, private_note from personal_task_details
        where user_id = $1 and task_id = $2`,
       [USER_ID, TASK_ID],
     );
     expect(details.rows[0]).toEqual({
-      title: 'Private title',
-      note: 'Private secret',
+      private_title: 'Private title',
+      private_note: 'Private secret',
     });
     const todo = await client.query<{ deleted_at: Date | null }>(
       'select deleted_at from personal_todos where id = $1',
@@ -157,7 +163,8 @@ describePostgres('PostgresStudentOperationExecutor publication operations', () =
     );
     await client.query(
       `insert into personal_task_details (
-         user_id, task_id, title, deadline, note, revision
+         user_id, task_id, private_title, private_deadline, private_note,
+         revision
        ) values ($1, $2, 'Private title', null, 'Private secret', 2)`,
       [USER_ID, TASK_ID],
     );
@@ -167,7 +174,7 @@ describePostgres('PostgresStudentOperationExecutor publication operations', () =
         USER_ID,
         operation('publish_personal_task_details_as_proposal', {
           course_task_id: TASK_ID,
-          expected_personal_task_details_revision: 2,
+          expected_details_revision: 2,
           proposal_id: PROPOSAL_2_ID,
           proposal: proposal('Explicit public title'),
         }),
@@ -177,13 +184,15 @@ describePostgres('PostgresStudentOperationExecutor publication operations', () =
       proposal_id: PROPOSAL_2_ID,
     });
 
-    const proposalRow = await client.query<{ title: string; note: string | null }>(
-      'select title, note from task_proposals where id = $1',
-      [PROPOSAL_2_ID],
-    );
+    const proposalRow = await client.query<{
+      title: string;
+      description: string | null;
+    }>('select title, description from task_proposals where id = $1', [
+      PROPOSAL_2_ID,
+    ]);
     expect(proposalRow.rows[0]).toEqual({
       title: 'Explicit public title',
-      note: 'Explicit public note',
+      description: 'Explicit public description',
     });
     const privateRow = await client.query<{ revision: number }>(
       `select revision from personal_task_details

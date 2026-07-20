@@ -53,9 +53,9 @@ interface ProposalRow {
 interface PersonalTaskDetailsRow {
   user_id: string;
   task_id: string;
-  title: string;
-  deadline: Date | null;
-  note: string | null;
+  private_title: string | null;
+  private_deadline: Date | null;
+  private_note: string | null;
   revision: number;
   created_at: Date;
   updated_at: Date;
@@ -188,9 +188,9 @@ function integerFieldFrom(
 function detailsPayload(row: PersonalTaskDetailsRow) {
   return {
     course_task_id: row.task_id,
-    title: row.title,
-    deadline: row.deadline?.toISOString() ?? null,
-    note: row.note,
+    private_title: row.private_title,
+    private_deadline: row.private_deadline?.toISOString() ?? null,
+    private_note: row.private_note,
     revision: requireRow(row).revision,
     created_at: row.created_at.toISOString(),
     updated_at: row.updated_at.toISOString(),
@@ -744,6 +744,8 @@ export class PostgresStudentOperationExecutor {
       personal_todo_id: personalTodoId,
       course_task_id: stringField(payload, 'course_task_id'),
       expected_personal_todo_revision: expectedRevision,
+      expected_details_revision: 0,
+      expected_state_revision: 0,
     });
     return {
       ...created,
@@ -758,12 +760,13 @@ export class PostgresStudentOperationExecutor {
   ): Promise<SyncOperationExecution> {
     const taskId = stringField(payload, 'course_task_id');
     const expectedRevision = integerFieldFrom(payload, [
+      'expected_details_revision',
       'expected_personal_task_details_revision',
       'expected_revision',
     ]);
     const current = await this.#client.query<PersonalTaskDetailsRow>(
-      `select user_id, task_id, title, deadline, note, revision,
-              created_at, updated_at
+      `select user_id, task_id, private_title, private_deadline,
+              private_note, revision, created_at, updated_at
        from personal_task_details
        where user_id = $1 and task_id = $2
        for update`,
@@ -1280,17 +1283,17 @@ export class PostgresStudentOperationExecutor {
       try {
         const inserted = await this.#client.query<PersonalTaskDetailsRow>(
           `insert into personal_task_details (
-             user_id, task_id, title, deadline, note, revision,
-             created_at, updated_at
+             user_id, task_id, private_title, private_deadline, private_note,
+             revision, created_at, updated_at
            ) values ($1, $2, $3, $4, $5, 1, $6, $6)
-           returning user_id, task_id, title, deadline, note, revision,
-                     created_at, updated_at`,
+           returning user_id, task_id, private_title, private_deadline,
+                     private_note, revision, created_at, updated_at`,
           [
             userId,
             taskId,
-            stringField(payload, 'title'),
-            nullableStringField(payload, 'deadline'),
-            nullableStringField(payload, 'note'),
+            nullableStringField(payload, 'private_title'),
+            nullableStringField(payload, 'private_deadline'),
+            nullableStringField(payload, 'private_note'),
             now,
           ],
         );
@@ -1303,18 +1306,18 @@ export class PostgresStudentOperationExecutor {
     } else {
       const updated = await this.#client.query<PersonalTaskDetailsRow>(
         `update personal_task_details
-         set title = $4, deadline = $5, note = $6,
+         set private_title = $4, private_deadline = $5, private_note = $6,
              revision = revision + 1, updated_at = $7
          where user_id = $1 and task_id = $2 and revision = $3
-         returning user_id, task_id, title, deadline, note, revision,
-                   created_at, updated_at`,
+         returning user_id, task_id, private_title, private_deadline,
+                   private_note, revision, created_at, updated_at`,
         [
           userId,
           taskId,
           expectedRevision,
-          stringField(payload, 'title'),
-          nullableStringField(payload, 'deadline'),
-          nullableStringField(payload, 'note'),
+          nullableStringField(payload, 'private_title'),
+          nullableStringField(payload, 'private_deadline'),
+          nullableStringField(payload, 'private_note'),
           now,
         ],
       );
@@ -1341,8 +1344,8 @@ export class PostgresStudentOperationExecutor {
     const deleted = await this.#client.query<PersonalTaskDetailsRow>(
       `delete from personal_task_details
        where user_id = $1 and task_id = $2 and revision = $3
-       returning user_id, task_id, title, deadline, note, revision,
-                 created_at, updated_at`,
+       returning user_id, task_id, private_title, private_deadline,
+                 private_note, revision, created_at, updated_at`,
       [userId, taskId, expectedRevision],
     );
     const row = deleted.rows[0];
@@ -1425,6 +1428,11 @@ export class PostgresStudentOperationExecutor {
       'expected_personal_todo_revision',
       'expected_revision',
     ]);
+    const expectedDetailsRevision = integerField(
+      payload,
+      'expected_details_revision',
+    );
+    const expectedStateRevision = integerField(payload, 'expected_state_revision');
     await this.#assertTaskExists(taskId);
     const todoResult = await this.#client.query<PersonalTodoRow>(
       `select id, user_id, class_section_id, title, deadline, note, state,
@@ -1452,32 +1460,82 @@ export class PostgresStudentOperationExecutor {
         },
       });
     }
+    const currentDetails = await this.#client.query<PersonalTaskDetailsRow>(
+      `select user_id, task_id, private_title, private_deadline,
+              private_note, revision, created_at, updated_at
+       from personal_task_details
+       where user_id = $1 and task_id = $2
+       for update`,
+      [userId, taskId],
+    );
+    const currentState = await this.#client.query<PersonalTaskStateRow>(
+      `select user_id, task_id, state, revision, created_at, updated_at
+       from personal_task_states
+       where user_id = $1 and task_id = $2
+       for update`,
+      [userId, taskId],
+    );
+    const existingDetails = currentDetails.rows[0];
+    const existingState = currentState.rows[0];
+    if ((existingDetails?.revision ?? 0) !== expectedDetailsRevision) {
+      await this.#throwDetailsConflict(
+        userId,
+        taskId,
+        expectedDetailsRevision,
+      );
+    }
+    if ((existingState?.revision ?? 0) !== expectedStateRevision) {
+      await this.#throwStateConflict(userId, taskId, expectedStateRevision);
+    }
+
     const now = this.#now();
-    const details = await this.#client.query<PersonalTaskDetailsRow>(
-      `insert into personal_task_details (
-         user_id, task_id, title, deadline, note, revision,
-         created_at, updated_at
-       ) values ($1, $2, $3, $4, $5, 1, $6, $6)
-       on conflict (user_id, task_id) do update
-       set title = excluded.title, deadline = excluded.deadline,
-           note = excluded.note,
-           revision = personal_task_details.revision + 1,
-           updated_at = excluded.updated_at
-       returning user_id, task_id, title, deadline, note, revision,
-                 created_at, updated_at`,
-      [userId, taskId, todo.title, todo.deadline, todo.note, now],
-    );
-    const state = await this.#client.query<PersonalTaskStateRow>(
-      `insert into personal_task_states (
-         user_id, task_id, state, revision, created_at, updated_at
-       ) values ($1, $2, $3, 1, $4, $4)
-       on conflict (user_id, task_id) do update
-       set state = excluded.state,
-           revision = personal_task_states.revision + 1,
-           updated_at = excluded.updated_at
-       returning user_id, task_id, state, revision, created_at, updated_at`,
-      [userId, taskId, todo.state, now],
-    );
+    const details =
+      existingDetails === undefined
+        ? await this.#client.query<PersonalTaskDetailsRow>(
+            `insert into personal_task_details (
+               user_id, task_id, private_title, private_deadline,
+               private_note, revision, created_at, updated_at
+             ) values ($1, $2, $3, $4, $5, 1, $6, $6)
+             returning user_id, task_id, private_title, private_deadline,
+                       private_note, revision, created_at, updated_at`,
+            [userId, taskId, todo.title, todo.deadline, todo.note, now],
+          )
+        : await this.#client.query<PersonalTaskDetailsRow>(
+            `update personal_task_details
+             set private_title = $4, private_deadline = $5,
+                 private_note = $6, revision = revision + 1,
+                 updated_at = $7
+             where user_id = $1 and task_id = $2 and revision = $3
+             returning user_id, task_id, private_title, private_deadline,
+                       private_note, revision, created_at, updated_at`,
+            [
+              userId,
+              taskId,
+              expectedDetailsRevision,
+              todo.title,
+              todo.deadline,
+              todo.note,
+              now,
+            ],
+          );
+    const state =
+      existingState === undefined
+        ? await this.#client.query<PersonalTaskStateRow>(
+            `insert into personal_task_states (
+               user_id, task_id, state, revision, created_at, updated_at
+             ) values ($1, $2, $3, 1, $4, $4)
+             returning user_id, task_id, state, revision,
+                       created_at, updated_at`,
+            [userId, taskId, todo.state, now],
+          )
+        : await this.#client.query<PersonalTaskStateRow>(
+            `update personal_task_states
+             set state = $4, revision = revision + 1, updated_at = $5
+             where user_id = $1 and task_id = $2 and revision = $3
+             returning user_id, task_id, state, revision,
+                       created_at, updated_at`,
+            [userId, taskId, expectedStateRevision, todo.state, now],
+          );
     const deleted = await this.#client.query<PersonalTodoRow>(
       `update personal_todos
        set revision = revision + 1, deleted_at = $4, updated_at = $4
@@ -1533,8 +1591,8 @@ export class PostgresStudentOperationExecutor {
     expectedRevision: number,
   ): Promise<never> {
     const current = await this.#client.query<PersonalTaskDetailsRow>(
-      `select user_id, task_id, title, deadline, note, revision,
-              created_at, updated_at
+      `select user_id, task_id, private_title, private_deadline,
+              private_note, revision, created_at, updated_at
        from personal_task_details
        where user_id = $1 and task_id = $2
        limit 1`,

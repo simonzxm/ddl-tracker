@@ -94,9 +94,9 @@ describePostgres('PostgresStudentOperationExecutor private task data', () => {
         USER_ID,
         operation('upsert_personal_task_details', {
           course_task_id: TASK_ID,
-          title: 'Private title',
-          deadline: '2026-07-20T12:00:00.000Z',
-          note: 'Private note',
+          private_title: 'Private title',
+          private_deadline: '2026-07-20T12:00:00.000Z',
+          private_note: 'Private note',
           expected_revision: 0,
         }),
       ),
@@ -107,9 +107,9 @@ describePostgres('PostgresStudentOperationExecutor private task data', () => {
         USER_ID,
         operation('upsert_personal_task_details', {
           course_task_id: TASK_ID,
-          title: 'Updated title',
-          deadline: null,
-          note: null,
+          private_title: 'Updated title',
+          private_deadline: null,
+          private_note: null,
           expected_revision: 1,
         }),
       ),
@@ -186,6 +186,8 @@ describePostgres('PostgresStudentOperationExecutor private task data', () => {
           personal_todo_id: TODO_ID,
           course_task_id: TASK_ID,
           expected_personal_todo_revision: 1,
+          expected_details_revision: 0,
+          expected_state_revision: 0,
         }),
       ),
     ).resolves.toMatchObject({
@@ -195,17 +197,17 @@ describePostgres('PostgresStudentOperationExecutor private task data', () => {
     });
 
     const details = await client.query<{
-      title: string;
-      note: string | null;
+      private_title: string | null;
+      private_note: string | null;
       revision: number;
     }>(
-      `select title, note, revision from personal_task_details
+      `select private_title, private_note, revision from personal_task_details
        where user_id = $1 and task_id = $2`,
       [USER_ID, TASK_ID],
     );
     expect(details.rows[0]).toEqual({
-      title: 'Todo title',
-      note: 'Todo note',
+      private_title: 'Todo title',
+      private_note: 'Todo note',
       revision: 1,
     });
     const state = await client.query<{ state: string; revision: number }>(
@@ -223,6 +225,64 @@ describePostgres('PostgresStudentOperationExecutor private task data', () => {
     expect(todo.rows[0]?.deleted_at).not.toBeNull();
   });
 
+  it('checks target detail and state revisions before merging a todo', async () => {
+    await client.query(
+      `insert into personal_todos (
+         id, user_id, class_section_id, title, state, revision
+       ) values ($1, $2, $3, 'Todo title', 'pending', 1)`,
+      [TODO_ID, USER_ID, SECTION_ID],
+    );
+    await client.query(
+      `insert into personal_task_details (
+         user_id, task_id, private_title, revision
+       ) values ($1, $2, 'Existing', 1)`,
+      [USER_ID, TASK_ID],
+    );
+    await client.query(
+      `insert into personal_task_states (user_id, task_id, state, revision)
+       values ($1, $2, 'completed', 1)`,
+      [USER_ID, TASK_ID],
+    );
+
+    await expect(
+      executor.execute(
+        USER_ID,
+        operation('merge_personal_todo_into_course_task', {
+          personal_todo_id: TODO_ID,
+          course_task_id: TASK_ID,
+          expected_personal_todo_revision: 1,
+          expected_details_revision: 0,
+          expected_state_revision: 1,
+        }),
+      ),
+    ).rejects.toMatchObject({
+      code: 'revision_conflict',
+      details: { current_revision: 1 },
+    });
+
+    await expect(
+      executor.execute(
+        USER_ID,
+        operation('merge_personal_todo_into_course_task', {
+          personal_todo_id: TODO_ID,
+          course_task_id: TASK_ID,
+          expected_personal_todo_revision: 1,
+          expected_details_revision: 1,
+          expected_state_revision: 0,
+        }),
+      ),
+    ).rejects.toMatchObject({
+      code: 'revision_conflict',
+      details: { current_revision: 1 },
+    });
+
+    const todo = await client.query<{ deleted_at: Date | null }>(
+      'select deleted_at from personal_todos where id = $1',
+      [TODO_ID],
+    );
+    expect(todo.rows[0]?.deleted_at).toBeNull();
+  });
+
   it('emits complete private records and tombstones', async () => {
     await executor.execute(
       USER_ID,
@@ -236,9 +296,9 @@ describePostgres('PostgresStudentOperationExecutor private task data', () => {
       USER_ID,
       operation('upsert_personal_task_details', {
         course_task_id: TASK_ID,
-        title: 'Private',
-        deadline: null,
-        note: null,
+        private_title: 'Private',
+        private_deadline: null,
+        private_note: null,
         expected_revision: 0,
       }),
     );

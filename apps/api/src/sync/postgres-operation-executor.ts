@@ -355,18 +355,7 @@ export class PostgresStudentOperationExecutor {
     payload: Record<string, unknown>,
   ): Promise<SyncOperationExecution> {
     const classSectionId = stringField(payload, 'class_section_id');
-    const section = await this.#client.query(
-      `select 1 from class_sections
-       where id = $1 and active = true
-       limit 1`,
-      [classSectionId],
-    );
-    if (section.rowCount !== 1) {
-      throw new SyncOperationRejection({
-        code: 'not_found',
-        message: 'Class section not found.',
-      });
-    }
+    await this.#loadWritableClassSection(classSectionId);
     const now = this.#now();
     const inserted = await this.#client.query(
       `insert into followed_class_sections (
@@ -384,7 +373,11 @@ export class PostgresStudentOperationExecutor {
         now,
       );
     }
-    return { class_section_id: classSectionId, followed: true };
+    return {
+      class_section_id: classSectionId,
+      followed: true,
+      class_section_snapshot_required: true,
+    };
   }
 
   async #unfollowClassSection(

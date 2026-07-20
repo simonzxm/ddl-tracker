@@ -88,7 +88,11 @@ describePostgres('PostgresStudentOperationExecutor private basics', () => {
         USER_ID,
         operation('follow_class_section', { class_section_id: SECTION_ID }),
       ),
-    ).resolves.toMatchObject({ class_section_id: SECTION_ID, followed: true });
+    ).resolves.toMatchObject({
+      class_section_id: SECTION_ID,
+      followed: true,
+      class_section_snapshot_required: true,
+    });
     await executor.execute(
       USER_ID,
       operation('follow_class_section', { class_section_id: SECTION_ID }),
@@ -107,6 +111,25 @@ describePostgres('PostgresStudentOperationExecutor private basics', () => {
       { type: 'class_section_followed' },
       { type: 'class_section_unfollowed' },
     ]);
+  });
+
+  it('rejects following a class section in an archived term', async () => {
+    await client.query(
+      `update academic_terms set status_override = 'archived' where id = $1`,
+      [TERM_ID],
+    );
+
+    await expect(
+      executor.execute(
+        USER_ID,
+        operation('follow_class_section', { class_section_id: SECTION_ID }),
+      ),
+    ).rejects.toMatchObject({ code: 'inactive_term' });
+
+    const follows = await client.query<{ count: string }>(
+      `select count(*)::text as count from followed_class_sections`,
+    );
+    expect(follows.rows[0]?.count).toBe('0');
   });
 
   it('creates, updates, and tombstones a personal todo with monotonic revisions', async () => {

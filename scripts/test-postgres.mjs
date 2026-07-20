@@ -18,8 +18,18 @@ function run(command, args, extraEnv = {}) {
   if (result.status !== 0) process.exit(result.status ?? 1);
 }
 
-run('node', ['scripts/reset-test-database.mjs']);
+run('pnpm', [
+  '--filter',
+  '@ddl-tracker/api',
+  'exec',
+  'node',
+  'scripts/reset-test-database.mjs',
+]);
 run('pnpm', ['--filter', '@ddl-tracker/api', 'db:migrate'], {
   DATABASE_URL: connectionString,
 });
-run('pnpm', ['vitest', 'run'], { TEST_DATABASE_URL: connectionString });
+run(
+  'pnpm',
+  ['vitest', 'run', '--no-file-parallelism', '--maxWorkers', '1'],
+  { TEST_DATABASE_URL: connectionString },
+);

@@ -19,7 +19,7 @@ function environment(): Env {
     OTP_HMAC_SECRET: 'o'.repeat(64),
     TOKEN_PEPPER: 'p'.repeat(64),
     SYNC_TOKEN_SECRET: 's'.repeat(64),
-    MAINTAINER_BOOTSTRAP_TOKEN: 'bootstrap-secret',
+    MAINTAINER_BOOTSTRAP_TOKEN: 'b'.repeat(64),
     SMTP_USERNAME: 'mailer@example.edu',
     SMTP_PASSWORD: 'smtp-password',
   };

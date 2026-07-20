@@ -148,6 +148,44 @@ describePostgres('PostgresModerationRepository', () => {
     });
   });
 
+  it('audits an idempotent moderation request without duplicate events', async () => {
+    await repository.setContentHidden({
+      actorId: ACTOR_ID,
+      targetType: 'proposal',
+      targetId: PROPOSAL_ID,
+      hidden: true,
+      reason: 'Confirmed inaccurate.',
+      requestId: REQUEST_ID,
+    });
+    await expect(
+      repository.setContentHidden({
+        actorId: ACTOR_ID,
+        targetType: 'proposal',
+        targetId: PROPOSAL_ID,
+        hidden: true,
+        reason: 'Confirm hidden disposition.',
+        requestId: REQUEST_ID,
+      }),
+    ).resolves.toMatchObject({ state: 'hidden', revision: 2, changed: false });
+
+    const counts = await client.query<{
+      actions: string;
+      audits: string;
+      events: string;
+    }>(
+      `select
+         (select count(*) from moderation_actions)::text as actions,
+         (select count(*) from audit_log)::text as audits,
+         (select count(*) from sync_events
+          where type = 'task_proposal_hidden')::text as events`,
+    );
+    expect(counts.rows[0]).toEqual({
+      actions: '1',
+      audits: '2',
+      events: '1',
+    });
+  });
+
   it('lists and resolves a report without exposing it publicly', async () => {
     const listed = await repository.listReports({ status: 'open', limit: 20 });
     expect(listed.reports[0]).toMatchObject({

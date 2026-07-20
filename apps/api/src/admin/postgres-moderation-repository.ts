@@ -40,6 +40,20 @@ export class PostgresModerationRepository {
       const desired = input.hidden ? 'hidden' : 'visible';
       const current = await this.#loadContent(input.targetType, input.targetId);
       if (current.state === desired) {
+        await this.#audit({
+          actorId: input.actorId,
+          action: `${input.targetType}_${input.hidden ? 'hidden' : 'restored'}`,
+          targetType: input.targetType,
+          targetId: input.targetId,
+          reason: input.reason,
+          requestId: input.requestId,
+          result: {
+            state: desired,
+            revision: current.revision,
+            changed: false,
+          },
+          now: this.#now(),
+        });
         return { state: desired, revision: current.revision, changed: false };
       }
       if (current.state === 'merged' || current.state === 'redirected') {

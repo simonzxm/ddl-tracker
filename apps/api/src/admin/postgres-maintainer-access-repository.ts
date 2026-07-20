@@ -69,6 +69,17 @@ export class PostgresMaintainerAccessRepository {
       );
       const hasRole = current.rowCount === 1;
       if (input.maintainer === hasRole) {
+        await this.#audit({
+          actorId: input.actorId,
+          action: input.maintainer
+            ? 'maintainer_granted'
+            : 'maintainer_revoked',
+          targetType: 'user',
+          targetId: input.targetUserId,
+          reason: input.reason,
+          requestId: input.requestId,
+          result: { maintainer: input.maintainer, changed: false },
+        });
         return { maintainer: input.maintainer, changed: false };
       }
       if (input.maintainer) {
@@ -134,6 +145,15 @@ export class PostgresMaintainerAccessRepository {
       }
       const desired = input.suspended ? 'suspended' : 'active';
       if (row.status === desired) {
+        await this.#audit({
+          actorId: input.actorId,
+          action: input.suspended ? 'user_suspended' : 'user_restored',
+          targetType: 'user',
+          targetId: input.targetUserId,
+          reason: input.reason,
+          requestId: input.requestId,
+          result: { status: desired, changed: false },
+        });
         return { status: desired, changed: false };
       }
       if (input.suspended && row.maintainer) {

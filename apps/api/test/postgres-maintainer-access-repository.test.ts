@@ -99,6 +99,48 @@ describePostgres('PostgresMaintainerAccessRepository', () => {
     ).rejects.toMatchObject({ code: 'conflict' });
   });
 
+  it('audits idempotent role and account disposition requests', async () => {
+    await repository.bootstrap({ actorId: FIRST_ID, requestId: REQUEST_ID });
+    await expect(
+      repository.setMaintainerRole({
+        actorId: FIRST_ID,
+        targetUserId: FIRST_ID,
+        maintainer: true,
+        reason: 'Confirm existing role.',
+        requestId: REQUEST_ID,
+      }),
+    ).resolves.toEqual({ maintainer: true, changed: false });
+    await expect(
+      repository.setUserSuspended({
+        actorId: FIRST_ID,
+        targetUserId: SECOND_ID,
+        suspended: false,
+        reason: 'Confirm active status.',
+        requestId: REQUEST_ID,
+      }),
+    ).resolves.toEqual({ status: 'active', changed: false });
+
+    const audit = await client.query<{
+      action: string;
+      result: { changed?: boolean };
+    }>(
+      `select action, result
+       from audit_log
+       order by created_at, id`,
+    );
+    expect(audit.rows).toEqual([
+      expect.objectContaining({ action: 'maintainer_bootstrap' }),
+      {
+        action: 'maintainer_granted',
+        result: { maintainer: true, changed: false },
+      },
+      {
+        action: 'user_restored',
+        result: { status: 'active', changed: false },
+      },
+    ]);
+  });
+
   it('allows rotation, revokes sessions on suspension, and restores the user', async () => {
     await repository.bootstrap({ actorId: FIRST_ID, requestId: REQUEST_ID });
     await repository.setMaintainerRole({

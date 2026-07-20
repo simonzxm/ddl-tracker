@@ -56,6 +56,16 @@ const response = (description: string, schemaRef?: string) => ({
 });
 
 const bearer = [{ bearerAuth: [] }];
+const rateLimitedResponse = {
+  description: 'Persistent request limit exceeded.',
+  headers: {
+    'Retry-After': {
+      description: 'Whole seconds before another request should be attempted.',
+      schema: { type: 'integer', minimum: 1 },
+    },
+  },
+  content: jsonContent('ApiError'),
+};
 const uuidParameter = (name: string, description: string) => ({
   name,
   in: 'path',
@@ -72,7 +82,7 @@ const paginationParameters = [
   },
 ];
 
-export const openApiDocument = {
+export const openApiDocument = addRateLimitResponses({
   openapi: '3.1.0',
   info: {
     title: 'DDL Tracker API',
@@ -441,7 +451,34 @@ export const openApiDocument = {
       GenericPage: { type: 'object', additionalProperties: true },
     },
   },
-} as const;
+});
+
+function addRateLimitResponses<
+  Document extends { paths: Record<string, Record<string, unknown>> },
+>(document: Document): Document {
+  for (const pathItem of Object.values(document.paths)) {
+    for (const operation of Object.values(pathItem)) {
+      if (isProtectedOperation(operation)) {
+        operation.responses['429'] ??= rateLimitedResponse;
+      }
+    }
+  }
+  return document;
+}
+
+function isProtectedOperation(value: unknown): value is {
+  security: unknown;
+  responses: Record<string, unknown>;
+} {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'security' in value &&
+    'responses' in value &&
+    typeof value.responses === 'object' &&
+    value.responses !== null
+  );
+}
 
 function adminContentOperation(summary: string) {
   return {

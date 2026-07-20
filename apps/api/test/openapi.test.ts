@@ -46,6 +46,29 @@ describe('OpenAPI document', () => {
     expect(openApiDocument.components.schemas).toHaveProperty('ApiError');
   });
 
+  it('documents retry metadata on every bearer-protected operation', () => {
+    for (const pathItem of Object.values(openApiDocument.paths)) {
+      for (const operation of Object.values(pathItem)) {
+        if (
+          typeof operation === 'object' &&
+          operation !== null &&
+          'security' in operation &&
+          'responses' in operation
+        ) {
+          expect(operation.responses).toMatchObject({
+            '429': {
+              headers: {
+                'Retry-After': {
+                  schema: { type: 'integer', minimum: 1 },
+                },
+              },
+            },
+          });
+        }
+      }
+    }
+  });
+
   it('contains no runtime secret names or configured values', () => {
     const serialized = JSON.stringify(openApiDocument);
     for (const forbidden of [

@@ -37,6 +37,8 @@ function principal(maintainer: boolean): AuthenticatedPrincipal {
 function dependencies(maintainer = true): AdminRouteDependencies {
   return {
     authenticate: vi.fn(async () => principal(maintainer)),
+    rateLimitRead: vi.fn(async () => undefined),
+    rateLimitMutation: vi.fn(async () => undefined),
     bootstrap: vi.fn(async () => ({ maintainer: true as const })),
     setContentHidden: vi.fn(async (input) => ({
       state: input.hidden ? ('hidden' as const) : ('visible' as const),
@@ -86,6 +88,7 @@ describe('maintainer routes', () => {
       body: JSON.stringify({ bootstrap_token: 'one-time-secret' }),
     });
     expect(response.status).toBe(200);
+    expect(deps.rateLimitMutation).toHaveBeenCalledWith(USER_ID);
     expect(deps.bootstrap).toHaveBeenCalledWith({
       actorId: USER_ID,
       requestId: REQUEST_ID,
@@ -210,6 +213,7 @@ describe('maintainer routes', () => {
       headers: { authorization: 'Bearer token' },
     });
     expect(reports.status).toBe(200);
+    expect(deps.rateLimitRead).toHaveBeenCalledWith(USER_ID);
     expect(deps.listReports).toHaveBeenCalledWith({ status: 'open', limit: 20 });
 
     const invalid = await app(deps).request('/v1/admin/audit?limit=101', {

@@ -19,6 +19,8 @@ const ADMIN_BODY_LIMIT = 512 * 1024;
 export interface AdminCatalogRouteDependencies {
   environment: string;
   authenticate(token: string): Promise<AuthenticatedPrincipal>;
+  rateLimitRead(userId: string): Promise<void>;
+  rateLimitMutation(userId: string): Promise<void>;
   planBatch(
     actorId: string,
     request: CatalogPlanBatchRequest,
@@ -58,6 +60,7 @@ export interface AdminCatalogRouteDependencies {
 async function requireMaintainer(
   authorization: string | undefined,
   dependencies: AdminCatalogRouteDependencies,
+  kind: 'read' | 'mutation',
 ): Promise<AuthenticatedPrincipal> {
   const principal = await authenticateBearer(authorization, (token) =>
     dependencies.authenticate(token),
@@ -68,6 +71,11 @@ async function requireMaintainer(
       message: 'Maintainer role is required.',
       status: 403,
     });
+  }
+  if (kind === 'read') {
+    await dependencies.rateLimitRead(principal.user.id);
+  } else {
+    await dependencies.rateLimitMutation(principal.user.id);
   }
   return principal;
 }
@@ -92,6 +100,7 @@ export function registerAdminCatalogRoutes(
     const principal = await requireMaintainer(
       context.req.header('authorization'),
       dependencies,
+      'mutation',
     );
     const body = await readValidatedJson(
       context.req.raw,
@@ -112,6 +121,7 @@ export function registerAdminCatalogRoutes(
     const principal = await requireMaintainer(
       context.req.header('authorization'),
       dependencies,
+      'mutation',
     );
     const importId = parseImportId(context.req.param('import_id'));
     const body = await readValidatedJson(
@@ -133,6 +143,7 @@ export function registerAdminCatalogRoutes(
     await requireMaintainer(
       context.req.header('authorization'),
       dependencies,
+      'read',
     );
     const importId = parseImportId(context.req.param('import_id'));
     return context.json(await dependencies.getStatus(importId));

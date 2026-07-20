@@ -22,6 +22,8 @@ type ReportStatus = 'open' | 'resolved' | 'dismissed';
 
 export interface AdminRouteDependencies {
   authenticate(token: string): Promise<AuthenticatedPrincipal>;
+  rateLimitRead(userId: string): Promise<void>;
+  rateLimitMutation(userId: string): Promise<void>;
   bootstrap(input: {
     actorId: string;
     requestId: string;
@@ -88,6 +90,7 @@ async function principal(
 async function maintainer(
   authorization: string | undefined,
   dependencies: AdminRouteDependencies,
+  kind: 'read' | 'mutation',
 ): Promise<AuthenticatedPrincipal> {
   const value = await principal(authorization, dependencies);
   if (!value.roles.includes('maintainer')) {
@@ -96,6 +99,11 @@ async function maintainer(
       message: 'Maintainer role is required.',
       status: 403,
     });
+  }
+  if (kind === 'read') {
+    await dependencies.rateLimitRead(value.user.id);
+  } else {
+    await dependencies.rateLimitMutation(value.user.id);
   }
   return value;
 }
@@ -179,6 +187,7 @@ export function registerAdminRoutes(
       context.req.header('authorization'),
       dependencies,
     );
+    await dependencies.rateLimitMutation(actor.user.id);
     const body = await readValidatedJson(
       context.req.raw,
       adminBootstrapRequestSchema,
@@ -194,7 +203,11 @@ export function registerAdminRoutes(
   });
 
   app.get('/v1/admin/reports', async (context) => {
-    await maintainer(context.req.header('authorization'), dependencies);
+    await maintainer(
+      context.req.header('authorization'),
+      dependencies,
+      'read',
+    );
     const status = reportStatus(context.req.query('status'));
     return context.json(
       await dependencies.listReports({
@@ -208,6 +221,7 @@ export function registerAdminRoutes(
     const actor = await maintainer(
       context.req.header('authorization'),
       dependencies,
+      'mutation',
     );
     const body = await readValidatedJson(
       context.req.raw,
@@ -231,6 +245,7 @@ export function registerAdminRoutes(
       const actor = await maintainer(
         context.req.header('authorization'),
         dependencies,
+        'mutation',
       );
       const body = await readValidatedJson(
         context.req.raw,
@@ -256,6 +271,7 @@ export function registerAdminRoutes(
       const actor = await maintainer(
         context.req.header('authorization'),
         dependencies,
+        'mutation',
       );
       const body = await readValidatedJson(
         context.req.raw,
@@ -278,6 +294,7 @@ export function registerAdminRoutes(
     const actor = await maintainer(
       context.req.header('authorization'),
       dependencies,
+      'mutation',
     );
     const body = await readValidatedJson(
       context.req.raw,
@@ -299,6 +316,7 @@ export function registerAdminRoutes(
     const actor = await maintainer(
       context.req.header('authorization'),
       dependencies,
+      'mutation',
     );
     const body = await readValidatedJson(
       context.req.raw,
@@ -320,7 +338,11 @@ export function registerAdminRoutes(
   });
 
   app.get('/v1/admin/audit', async (context) => {
-    await maintainer(context.req.header('authorization'), dependencies);
+    await maintainer(
+      context.req.header('authorization'),
+      dependencies,
+      'read',
+    );
     return context.json(await dependencies.listAudit(pagination(context.req)));
   });
 }

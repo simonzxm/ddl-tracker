@@ -38,6 +38,8 @@ function dependencies(maintainer = true): AdminCatalogRouteDependencies {
   return {
     environment: 'staging',
     authenticate: vi.fn(async () => principal(maintainer)),
+    rateLimitRead: vi.fn(async () => undefined),
+    rateLimitMutation: vi.fn(async () => undefined),
     planBatch: vi.fn(async () => ({
       import_id: IMPORT_ID,
       batch_index: 0,
@@ -145,6 +147,7 @@ describe('admin catalog routes', () => {
     );
 
     expect(response.status).toBe(200);
+    expect(dependenciesValue.rateLimitMutation).toHaveBeenCalledWith(USER_ID);
     expect(dependenciesValue.planBatch).toHaveBeenCalledWith(
       USER_ID,
       expect.objectContaining({ environment: 'staging' }),
@@ -203,6 +206,7 @@ describe('admin catalog routes', () => {
     );
 
     expect(response.status).toBe(200);
+    expect(dependenciesValue.rateLimitRead).toHaveBeenCalledWith(USER_ID);
     expect(dependenciesValue.getStatus).toHaveBeenCalledWith(IMPORT_ID);
   });
 });

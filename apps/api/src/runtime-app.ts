@@ -201,6 +201,9 @@ export function createRuntimeApp(
     adminCatalog: {
       environment: env.APP_ENVIRONMENT,
       authenticate,
+      rateLimitRead: (userId) => requestRateLimits.consumeRead(userId),
+      rateLimitMutation: (userId) =>
+        requestRateLimits.consumeAdminMutation(userId),
       planBatch: (actorId, request) =>
         catalogImportService.planBatch(actorId, request),
       applyBatch: (actorId, importId, requestId, request) =>
@@ -224,6 +227,9 @@ export function createRuntimeApp(
     },
     admin: {
       authenticate,
+      rateLimitRead: (userId) => requestRateLimits.consumeRead(userId),
+      rateLimitMutation: (userId) =>
+        requestRateLimits.consumeAdminMutation(userId),
       bootstrap: (input) => accessService.bootstrap(input),
       setContentHidden: (input) =>
         moderationRepository.setContentHidden(input),

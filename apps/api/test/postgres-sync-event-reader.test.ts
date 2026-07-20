@@ -172,5 +172,13 @@ describePostgres('PostgresSyncEventReader', () => {
 
     expect(error).toBeInstanceOf(SyncCursorExpiredError);
     expect(error).toMatchObject({ minimumSequence: 10 });
+    await expect(
+      reader.pull({
+        userId: USER_ID,
+        maintainer: false,
+        afterSequence: 10,
+        limit: 10,
+      }),
+    ).resolves.toMatchObject({ events: [], nextSequence: 10 });
   });
 });

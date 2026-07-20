@@ -188,7 +188,7 @@ describePostgres('PostgresRetentionService', () => {
        from sync_event_retention where singleton_id = 1`,
     );
     expect(retention.rows[0]?.minimum_sequence).toBe(
-      String(Number(oldSequence.rows[0]?.sequence ?? '0') + 1),
+      String(Number(oldSequence.rows[0]?.sequence ?? '0')),
     );
   });
 

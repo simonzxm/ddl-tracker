@@ -205,7 +205,7 @@ export class PostgresRetentionService {
                excluded.minimum_sequence
              ),
              updated_at = excluded.updated_at`,
-        [maximumSequence + 1],
+        [maximumSequence],
       );
     }
     return { count: result.rowCount ?? 0, maximumSequence };

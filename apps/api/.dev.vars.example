@@ -1,0 +1,6 @@
+OTP_HMAC_SECRET=replace-with-at-least-32-random-characters
+TOKEN_PEPPER=replace-with-at-least-32-random-characters
+SYNC_TOKEN_SECRET=replace-with-at-least-32-random-characters
+MAINTAINER_BOOTSTRAP_TOKEN=replace-with-at-least-32-random-characters
+SMTP_USERNAME=replace-with-smtp-username
+SMTP_PASSWORD=replace-with-smtp-password

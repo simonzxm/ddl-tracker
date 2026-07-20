@@ -11,8 +11,13 @@
     "check": "pnpm lint && pnpm typecheck && pnpm test",
     "lint": "eslint .",
     "test": "vitest run",
+    "test:postgres": "node scripts/test-postgres.mjs",
+    "test:postgres:docker": "sh scripts/test-postgres-docker.sh",
     "test:watch": "vitest",
-    "typecheck": "tsc -b --pretty false && tsc -p tsconfig.tests.json --pretty false"
+    "typecheck": "tsc -b --pretty false && tsc -p tsconfig.tests.json --pretty false",
+    "verify": "pnpm verify:generated && pnpm lint && pnpm typecheck && pnpm test:postgres:docker && pnpm build",
+    "verify:ci": "pnpm verify:generated && pnpm lint && pnpm typecheck && pnpm test:postgres && pnpm build",
+    "verify:generated": "node scripts/verify-generated.mjs"
   },
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "0.18.6",

@@ -982,28 +982,39 @@ export class PostgresStudentOperationExecutor {
     userId: string,
     commentId: string,
   ): Promise<{ row: CommentRow; classSectionId: string }> {
-    const result = await this.#client.query<CommentRow & {
-      class_section_id: string;
-    }>(
+    const result = await this.#client.query<
+      Omit<CommentRow, 'body'> & { class_section_id: string }
+    >(
       `select tc.id, tc.task_id, tc.author_id, tc.current_revision,
-              cr.body, tc.state, tc.deleted_at, tc.created_at,
-              tc.updated_at, ct.class_section_id
+              tc.state, tc.deleted_at, tc.created_at, tc.updated_at,
+              ct.class_section_id
        from task_comments tc
        join course_tasks ct on ct.id = tc.task_id
-       join comment_revisions cr
-         on cr.comment_id = tc.id and cr.revision = tc.current_revision
        where tc.id = $1 and tc.author_id = $2
-       limit 1`,
+       limit 1
+       for update of tc`,
       [commentId, userId],
     );
-    const row = result.rows[0];
-    if (row === undefined) {
+    const locked = result.rows[0];
+    if (locked === undefined) {
       throw new SyncOperationRejection({
         code: 'not_found',
         message: 'Comment not found.',
       });
     }
-    return { row, classSectionId: row.class_section_id };
+    const revision = await this.#client.query<{ body: string }>(
+      `select body from comment_revisions
+       where comment_id = $1 and revision = $2`,
+      [commentId, locked.current_revision],
+    );
+    const body = revision.rows[0]?.body;
+    if (body === undefined) {
+      throw new Error('Current comment revision is missing.');
+    }
+    return {
+      row: { ...locked, body },
+      classSectionId: locked.class_section_id,
+    };
   }
 
   async #createTaskComment(

@@ -68,11 +68,6 @@ export class IncrementalSyncService {
       });
     }
 
-    const operationResults = await this.#batchExecutor.execute(
-      input.userId,
-      input.request.operations,
-    );
-
     let page: SyncEventPage;
     try {
       page = await this.#eventReader.pull({
@@ -92,6 +87,11 @@ export class IncrementalSyncService {
       }
       throw error;
     }
+
+    const operationResults = await this.#batchExecutor.execute(
+      input.userId,
+      input.request.operations,
+    );
 
     return {
       protocol_version: 1,

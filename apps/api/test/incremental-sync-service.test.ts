@@ -73,7 +73,7 @@ function eventReader(): SyncEventReader & {
 }
 
 describe('IncrementalSyncService', () => {
-  it('pushes operations, pulls visible events, and signs the next cursor', async () => {
+  it('pulls visible events before pushing operations and signs that cursor', async () => {
     const cursorCodec = new SyncCursorCodec(SECRET, 'staging');
     const cursor = await cursorCodec.encode(USER_ID, 7);
     const batches = batchExecutor();
@@ -91,16 +91,19 @@ describe('IncrementalSyncService', () => {
       request: request(cursor),
     });
 
-    expect(batches.execute).toHaveBeenCalledWith(
-      USER_ID,
-      expect.any(Array),
-    );
     expect(events.pull).toHaveBeenCalledWith({
       userId: USER_ID,
       maintainer: false,
       afterSequence: 7,
       limit: 200,
     });
+    expect(batches.execute).toHaveBeenCalledWith(
+      USER_ID,
+      expect.any(Array),
+    );
+    expect(events.pull.mock.invocationCallOrder[0]).toBeLessThan(
+      batches.execute.mock.invocationCallOrder[0] ?? Number.MAX_SAFE_INTEGER,
+    );
     expect(response).toMatchObject({
       protocol_version: 1,
       request_id: REQUEST_ID,
@@ -140,8 +143,9 @@ describe('IncrementalSyncService', () => {
     const cursor = await cursorCodec.encode(USER_ID, 7);
     const events = eventReader();
     events.pull.mockRejectedValueOnce(new SyncCursorExpiredError(10));
+    const batches = batchExecutor();
     const service = new IncrementalSyncService({
-      batchExecutor: batchExecutor(),
+      batchExecutor: batches,
       eventReader: events,
       cursorCodec,
     });
@@ -157,9 +161,10 @@ describe('IncrementalSyncService', () => {
       code: 'cursor_expired',
       details: { minimum_sequence: 10 },
     });
+    expect(batches.execute).not.toHaveBeenCalled();
   });
 
-  it('does not pull events when the operation transaction fails', async () => {
+  it('keeps the pre-push cursor when the operation transaction fails', async () => {
     const cursorCodec = new SyncCursorCodec(SECRET, 'staging');
     const cursor = await cursorCodec.encode(USER_ID, 7);
     const batches = batchExecutor();
@@ -179,6 +184,6 @@ describe('IncrementalSyncService', () => {
         request: request(cursor),
       }),
     ).rejects.toThrow('commit failed');
-    expect(events.pull).not.toHaveBeenCalled();
+    expect(events.pull).toHaveBeenCalledOnce();
   });
 });

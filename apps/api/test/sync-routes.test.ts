@@ -63,7 +63,7 @@ function app(sync: SyncRouteDependencies) {
 
 describe('sync route', () => {
   it('requires bearer authentication', async () => {
-    const response = await app(dependencies()).request('/v1/sync', {
+    const response = await app(dependencies()).request('/api/v1/sync', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
@@ -80,7 +80,7 @@ describe('sync route', () => {
 
   it('validates and dispatches an incremental request with fresh roles', async () => {
     const deps = dependencies();
-    const response = await app(deps).request('/v1/sync', {
+    const response = await app(deps).request('/api/v1/sync', {
       method: 'POST',
       headers: {
         authorization: 'Bearer token',
@@ -115,7 +115,7 @@ describe('sync route', () => {
         status: 429,
       }),
     );
-    const response = await app(deps).request('/v1/sync', {
+    const response = await app(deps).request('/api/v1/sync', {
       method: 'POST',
       headers: {
         authorization: 'Bearer token',
@@ -142,7 +142,7 @@ describe('sync route', () => {
 
   it('rejects mixed snapshot and incremental fields', async () => {
     const deps = dependencies();
-    const response = await app(deps).request('/v1/sync', {
+    const response = await app(deps).request('/api/v1/sync', {
       method: 'POST',
       headers: {
         authorization: 'Bearer token',
@@ -172,7 +172,7 @@ describe('sync route', () => {
       operations: [],
       padding: 'x'.repeat(513 * 1024),
     });
-    const response = await app(deps).request('/v1/sync', {
+    const response = await app(deps).request('/api/v1/sync', {
       method: 'POST',
       headers: {
         authorization: 'Bearer token',

@@ -46,7 +46,7 @@ function dependencies(maintainer = false) {
 describe('comment history routes', () => {
   it('requires bearer authentication', async () => {
     const response = await createApp(dependencies()).request(
-      `/v1/comments/${COMMENT_ID}/revisions`,
+      `/api/v1/comments/${COMMENT_ID}/revisions`,
     );
     expect(response.status).toBe(401);
   });
@@ -54,7 +54,7 @@ describe('comment history routes', () => {
   it('forwards pagination and fresh maintainer role', async () => {
     const deps = dependencies(true);
     const response = await createApp(deps).request(
-      `/v1/comments/${COMMENT_ID}/revisions?after_revision=2&limit=25`,
+      `/api/v1/comments/${COMMENT_ID}/revisions?after_revision=2&limit=25`,
       { headers: { authorization: 'Bearer session-token' } },
     );
     expect(response.status).toBe(200);
@@ -70,13 +70,13 @@ describe('comment history routes', () => {
 
   it('rejects invalid identifiers and pagination', async () => {
     const app = createApp(dependencies());
-    const invalidId = await app.request('/v1/comments/not-an-id/revisions', {
+    const invalidId = await app.request('/api/v1/comments/not-an-id/revisions', {
       headers: { authorization: 'Bearer session-token' },
     });
     expect(invalidId.status).toBe(400);
 
     const invalidLimit = await app.request(
-      `/v1/comments/${COMMENT_ID}/revisions?limit=101`,
+      `/api/v1/comments/${COMMENT_ID}/revisions?limit=101`,
       { headers: { authorization: 'Bearer session-token' } },
     );
     expect(invalidLimit.status).toBe(400);

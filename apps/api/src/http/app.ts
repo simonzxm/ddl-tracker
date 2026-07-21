@@ -50,7 +50,7 @@ export interface AppDependencies {
 export function createApp(dependencies: AppDependencies): Hono<{
   Variables: AppVariables;
 }> {
-  const app = new Hono<{ Variables: AppVariables }>();
+  const app = new Hono<{ Variables: AppVariables }>().basePath('/api');
   const createRequestId = dependencies.createRequestId ?? createUuidV7;
   const nowMilliseconds =
     dependencies.nowMilliseconds ?? (() => globalThis.performance.now());

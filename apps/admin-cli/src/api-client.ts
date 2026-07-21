@@ -53,7 +53,7 @@ export class AdminApiClient {
 
   planBatch(request: CatalogPlanBatchRequest) {
     return this.#request(
-      '/v1/admin/catalog/imports/plan',
+      '/api/v1/admin/catalog/imports/plan',
       {
         method: 'POST',
         body: JSON.stringify(request),
@@ -64,7 +64,7 @@ export class AdminApiClient {
 
   applyBatch(importId: string, request: CatalogApplyRequest) {
     return this.#request(
-      `/v1/admin/catalog/imports/${encodeURIComponent(importId)}/apply`,
+      `/api/v1/admin/catalog/imports/${encodeURIComponent(importId)}/apply`,
       {
         method: 'POST',
         body: JSON.stringify(request),
@@ -75,7 +75,7 @@ export class AdminApiClient {
 
   getStatus(importId: string) {
     return this.#request(
-      `/v1/admin/catalog/imports/${encodeURIComponent(importId)}`,
+      `/api/v1/admin/catalog/imports/${encodeURIComponent(importId)}`,
       { method: 'GET' },
       catalogImportStatusSchema,
     );

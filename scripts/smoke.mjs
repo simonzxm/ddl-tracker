@@ -33,35 +33,35 @@ function expectStatus(path, actual, expected) {
   }
 }
 
-const live = await request('/health/live');
-expectStatus('/health/live', live.response.status, 200);
-if (live.body?.status !== 'live') throw new Error('/health/live payload is invalid.');
+const live = await request('/api/health/live');
+expectStatus('/api/health/live', live.response.status, 200);
+if (live.body?.status !== 'live') throw new Error('/api/health/live payload is invalid.');
 
-const ready = await request('/health/ready');
-expectStatus('/health/ready', ready.response.status, 200);
-if (ready.body?.status !== 'ready') throw new Error('/health/ready payload is invalid.');
+const ready = await request('/api/health/ready');
+expectStatus('/api/health/ready', ready.response.status, 200);
+if (ready.body?.status !== 'ready') throw new Error('/api/health/ready payload is invalid.');
 
-const openapi = await request('/openapi.json');
-expectStatus('/openapi.json', openapi.response.status, 200);
+const openapi = await request('/api/openapi.json');
+expectStatus('/api/openapi.json', openapi.response.status, 200);
 if (openapi.body?.openapi !== '3.1.0') throw new Error('OpenAPI document is invalid.');
 
-const invalidAuth = await request('/v1/auth/email/challenges', {
+const invalidAuth = await request('/api/v1/auth/email/challenges', {
   method: 'POST',
   headers: { 'content-type': 'application/json' },
   body: JSON.stringify({ email: 'not-an-email' }),
 });
-expectStatus('/v1/auth/email/challenges', invalidAuth.response.status, 400);
+expectStatus('/api/v1/auth/email/challenges', invalidAuth.response.status, 400);
 if (invalidAuth.body?.code !== 'invalid_request') {
   throw new Error('Invalid auth parameter did not return invalid_request.');
 }
 
 if (token !== undefined && token.length > 0) {
   const headers = { authorization: `Bearer ${token}` };
-  const terms = await request('/v1/terms', { headers });
-  expectStatus('/v1/terms', terms.response.status, 200);
+  const terms = await request('/api/v1/terms', { headers });
+  expectStatus('/api/v1/terms', terms.response.status, 200);
   if (!Array.isArray(terms.body?.terms)) throw new Error('Terms response is invalid.');
 
-  const snapshot = await request('/v1/sync', {
+  const snapshot = await request('/api/v1/sync', {
     method: 'POST',
     headers: { ...headers, 'content-type': 'application/json' },
     body: JSON.stringify({
@@ -73,7 +73,7 @@ if (token !== undefined && token.length > 0) {
       operations: [],
     }),
   });
-  expectStatus('/v1/sync', snapshot.response.status, 200);
+  expectStatus('/api/v1/sync', snapshot.response.status, 200);
   if (snapshot.body?.mode !== 'account_snapshot') {
     throw new Error('Account snapshot response is invalid.');
   }

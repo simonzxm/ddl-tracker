@@ -55,7 +55,7 @@ describe('createWorkerHandler', () => {
     });
 
     const response = await handler.fetch(
-      new Request('https://api.example/health/live'),
+      new Request('https://api.example/api/health/live'),
       environment(),
       context,
     );
@@ -67,7 +67,7 @@ describe('createWorkerHandler', () => {
     expect(entries).toEqual([
       expect.objectContaining({
         method: 'GET',
-        route: '/health/live',
+        route: '/api/health/live',
         status: 200,
       }),
     ]);
@@ -80,7 +80,7 @@ describe('createWorkerHandler', () => {
     const handler = createWorkerHandler({ createClient, mailDelivery });
 
     const response = await handler.fetch(
-      new Request('https://api.example/health/ready'),
+      new Request('https://api.example/api/health/ready'),
       environment(),
       context,
     );
@@ -127,7 +127,7 @@ describe('createWorkerHandler', () => {
     });
 
     const response = await handler.fetch(
-      new Request('https://api.example/health/ready'),
+      new Request('https://api.example/api/health/ready'),
       environment(),
       context,
     );

@@ -14,7 +14,7 @@
 
 ## 传输约定
 
-- Endpoint：`POST /v1/sync`。
+- Endpoint：`POST /api/v1/sync`。
 - Authentication：`Authorization: Bearer <opaque-token>`。
 - Content-Type：`application/json; charset=utf-8`。
 - 字段名与枚举使用 `snake_case`。
@@ -26,7 +26,7 @@
 
 ## 同步模式
 
-同一个 `/v1/sync` 支持三种互斥模式。
+同一个 `/api/v1/sync` 支持三种互斥模式。
 
 ### 账户 bootstrap
 

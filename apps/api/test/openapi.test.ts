@@ -36,6 +36,7 @@ const expectedPaths = [
 describe('OpenAPI document', () => {
   it('documents every implemented path with contract components', () => {
     expect(openApiDocument.openapi).toBe('3.1.0');
+    expect(openApiDocument.servers).toEqual([{ url: '/api' }]);
     expect(Object.keys(openApiDocument.paths).sort()).toEqual(
       expectedPaths.sort(),
     );
@@ -90,7 +91,7 @@ describe('OpenAPI document', () => {
         readyCalls += 1;
         return true;
       },
-    }).request('/openapi.json');
+    }).request('/api/openapi.json');
 
     expect(response.status).toBe(200);
     expect((await response.json()) as { openapi: string }).toMatchObject({

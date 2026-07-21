@@ -195,8 +195,8 @@ Worker 开启 Workers Logs 与 traces，使用结构化 JSON。每个请求生�
 
 健康检查：
 
-- `/health/live` 只证明 Worker handler 可运行，不查数据库。
-- `/health/ready` 用 fresh Hyperdrive 执行轻量 `SELECT 1` 和 schema version 检查，只返回通用 ready/not-ready，不暴露依赖信息。
+- `/api/health/live` 只证明 Worker handler 可运行，不查数据库。
+- `/api/health/ready` 用 fresh Hyperdrive 执行轻量 `SELECT 1` 和 schema version 检查，只返回通用 ready/not-ready，不暴露依赖信息。
 
 初始告警至少覆盖 5xx rate、P95/P99 latency、数据库连接失败、SMTP 失败率、验证码异常量、sync rejection spike、Tunnel disconnected 和备份失败。
 

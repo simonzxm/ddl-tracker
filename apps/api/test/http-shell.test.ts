@@ -13,11 +13,14 @@ describe('HTTP shell', () => {
       },
     });
 
-    const response = await app.request('/health/live');
+    const response = await app.request('/api/health/live');
 
     expect(response.status).toBe(200);
     expect(response.headers.get('x-request-id')).toBe(REQUEST_ID);
     await expect(response.json()).resolves.toEqual({ status: 'live' });
+
+    const legacyResponse = await app.request('/health/live');
+    expect(legacyResponse.status).toBe(404);
   });
 
   it('serves non-credentialed CORS preflight for bearer clients', async () => {
@@ -26,7 +29,7 @@ describe('HTTP shell', () => {
       checkReady: async () => true,
     });
 
-    const response = await app.request('/v1/sync', {
+    const response = await app.request('/api/v1/sync', {
       method: 'OPTIONS',
       headers: {
         origin: 'https://client.example',
@@ -60,7 +63,7 @@ describe('HTTP shell', () => {
     });
 
     const response = await app.request(
-      '/health/ready?email=student@school.example',
+      '/api/health/ready?email=student@school.example',
       {
         headers: {
           authorization: 'Bearer secret-session-token',
@@ -74,7 +77,7 @@ describe('HTTP shell', () => {
       {
         request_id: REQUEST_ID,
         method: 'GET',
-        route: '/health/ready',
+        route: '/api/health/ready',
         status: 200,
         duration_ms: 7,
       },
@@ -97,7 +100,7 @@ describe('HTTP shell', () => {
       checkReady: async () => false,
     });
 
-    const response = await app.request('/health/ready');
+    const response = await app.request('/api/health/ready');
 
     expect(response.status).toBe(503);
     await expect(response.json()).resolves.toEqual({
@@ -111,7 +114,7 @@ describe('HTTP shell', () => {
       {
         request_id: REQUEST_ID,
         method: 'GET',
-        route: '/health/ready',
+        route: '/api/health/ready',
         status: 503,
         duration_ms: 5,
       },
@@ -124,7 +127,7 @@ describe('HTTP shell', () => {
       checkReady: async () => true,
     });
 
-    const response = await app.request('/missing');
+    const response = await app.request('/api/missing');
 
     expect(response.status).toBe(404);
     await expect(response.json()).resolves.toMatchObject({
@@ -141,7 +144,7 @@ describe('HTTP shell', () => {
       },
     });
 
-    const response = await app.request('/health/ready');
+    const response = await app.request('/api/health/ready');
     const body = await response.text();
 
     expect(response.status).toBe(503);

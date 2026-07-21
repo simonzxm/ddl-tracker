@@ -69,7 +69,7 @@ function app(catalog: CatalogRouteDependencies) {
 
 describe('catalog routes', () => {
   it('requires authentication for terms', async () => {
-    const response = await app(dependencies()).request('/v1/terms');
+    const response = await app(dependencies()).request('/api/v1/terms');
 
     expect(response.status).toBe(401);
     await expect(response.json()).resolves.toMatchObject({
@@ -79,7 +79,7 @@ describe('catalog routes', () => {
 
   it('returns terms to an authenticated user', async () => {
     const catalog = dependencies();
-    const response = await app(catalog).request('/v1/terms', {
+    const response = await app(catalog).request('/api/v1/terms', {
       headers: { authorization: 'Bearer token' },
     });
 
@@ -101,7 +101,7 @@ describe('catalog routes', () => {
         status: 429,
       });
     });
-    const response = await app(catalog).request('/v1/terms', {
+    const response = await app(catalog).request('/api/v1/terms', {
       headers: { authorization: 'Bearer token' },
     });
 
@@ -113,7 +113,7 @@ describe('catalog routes', () => {
   it('scopes course listing to a canonical term ID', async () => {
     const catalog = dependencies();
     const response = await app(catalog).request(
-      `/v1/terms/${TERM_ID}/courses`,
+      `/api/v1/terms/${TERM_ID}/courses`,
       { headers: { authorization: 'Bearer token' } },
     );
 
@@ -124,7 +124,7 @@ describe('catalog routes', () => {
   it('scopes section listing to a canonical course ID', async () => {
     const catalog = dependencies();
     const response = await app(catalog).request(
-      `/v1/courses/${COURSE_ID}/class-sections`,
+      `/api/v1/courses/${COURSE_ID}/class-sections`,
       { headers: { authorization: 'Bearer token' } },
     );
 
@@ -134,7 +134,7 @@ describe('catalog routes', () => {
 
   it('rejects invalid path identifiers before querying', async () => {
     const catalog = dependencies();
-    const response = await app(catalog).request('/v1/terms/not-a-uuid/courses', {
+    const response = await app(catalog).request('/api/v1/terms/not-a-uuid/courses', {
       headers: { authorization: 'Bearer token' },
     });
 

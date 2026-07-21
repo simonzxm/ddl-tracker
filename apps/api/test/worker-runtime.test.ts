@@ -17,11 +17,11 @@ describe('Workers runtime API shell', () => {
       checkReady: () => Promise.resolve(true),
     });
 
-    const live = await app.request('/health/live');
+    const live = await app.request('/api/health/live');
     expect(live.status).toBe(200);
     expect(live.headers.get('x-request-id')).toBe(REQUEST_ID);
 
-    const preflight = await app.request('/v1/sync', {
+    const preflight = await app.request('/api/v1/sync', {
       method: 'OPTIONS',
       headers: {
         origin: 'https://client.example',
@@ -35,7 +35,7 @@ describe('Workers runtime API shell', () => {
       false,
     );
 
-    const openapi = await app.request('/openapi.json');
+    const openapi = await app.request('/api/openapi.json');
     expect(openapi.status).toBe(200);
     await expect(openapi.json()).resolves.toMatchObject({ openapi: '3.1.0' });
   });

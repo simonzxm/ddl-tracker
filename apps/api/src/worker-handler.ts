@@ -38,7 +38,7 @@ export function createWorkerHandler(
 ): WorkerFetchHandler {
   return {
     async fetch(request, env, context): Promise<Response> {
-      if (new URL(request.url).pathname === '/health/live') {
+      if (new URL(request.url).pathname === '/api/health/live') {
         return createApp({
           checkReady: () => Promise.resolve(false),
           ...(options.logRequest === undefined

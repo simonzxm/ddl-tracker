@@ -83,7 +83,7 @@ function app(auth: AuthRouteDependencies) {
 describe('authentication routes', () => {
   it('validates and requests an email challenge', async () => {
     const auth = dependencies();
-    const response = await app(auth).request('/v1/auth/email/challenges', {
+    const response = await app(auth).request('/api/v1/auth/email/challenges', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ email: 'student@example.edu' }),
@@ -95,7 +95,7 @@ describe('authentication routes', () => {
 
   it('verifies a challenge with device metadata', async () => {
     const auth = dependencies();
-    const response = await app(auth).request('/v1/auth/email/verifications', {
+    const response = await app(auth).request('/api/v1/auth/email/verifications', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
@@ -119,7 +119,7 @@ describe('authentication routes', () => {
 
   it('registers an account and maps the public user to snake case', async () => {
     const auth = dependencies();
-    const response = await app(auth).request('/v1/accounts/registrations', {
+    const response = await app(auth).request('/api/v1/accounts/registrations', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
@@ -144,7 +144,7 @@ describe('authentication routes', () => {
 
   it('requires a bearer token for protected account routes', async () => {
     const auth = dependencies();
-    const response = await app(auth).request('/v1/me');
+    const response = await app(auth).request('/api/v1/me');
 
     expect(response.status).toBe(401);
     await expect(response.json()).resolves.toMatchObject({
@@ -165,7 +165,7 @@ describe('authentication routes', () => {
         status: 429,
       });
     });
-    const response = await app(auth).request('/v1/sessions', {
+    const response = await app(auth).request('/api/v1/sessions', {
       headers: { authorization: 'Bearer session-token' },
     });
 
@@ -176,7 +176,7 @@ describe('authentication routes', () => {
 
   it('returns the current user and never exposes token hashes', async () => {
     const auth = dependencies();
-    const response = await app(auth).request('/v1/me', {
+    const response = await app(auth).request('/api/v1/me', {
       headers: { authorization: 'Bearer session-token' },
     });
     const body = await response.text();
@@ -191,7 +191,7 @@ describe('authentication routes', () => {
 
   it('updates only the authenticated user profile with expected revision', async () => {
     const auth = dependencies();
-    const response = await app(auth).request('/v1/me/profile', {
+    const response = await app(auth).request('/api/v1/me/profile', {
       method: 'PATCH',
       headers: {
         authorization: 'Bearer session-token',
@@ -219,7 +219,7 @@ describe('authentication routes', () => {
 
   it('deletes only the authenticated account', async () => {
     const auth = dependencies();
-    const response = await app(auth).request('/v1/me', {
+    const response = await app(auth).request('/api/v1/me', {
       method: 'DELETE',
       headers: { authorization: 'Bearer session-token' },
     });
@@ -232,11 +232,11 @@ describe('authentication routes', () => {
     const auth = dependencies();
     const headers = { authorization: 'Bearer session-token' };
 
-    const list = await app(auth).request('/v1/sessions', { headers });
+    const list = await app(auth).request('/api/v1/sessions', { headers });
     expect(list.status).toBe(200);
     expect(auth.listSessions).toHaveBeenCalledWith(USER_ID);
 
-    const revoke = await app(auth).request(`/v1/sessions/${SESSION_ID}`, {
+    const revoke = await app(auth).request(`/api/v1/sessions/${SESSION_ID}`, {
       method: 'DELETE',
       headers,
     });

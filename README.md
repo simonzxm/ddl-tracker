@@ -73,7 +73,7 @@ cp apps/api/.dev.vars.example apps/api/.dev.vars
 pnpm --filter @ddl-tracker/api dev
 ```
 
-`/health/live` 不访问数据库；`/health/ready` 使用 fresh Hyperdrive 连接执行数据库检查。OpenAPI 位于 `/openapi.json`。
+`/api/health/live` 不访问数据库；`/api/health/ready` 使用 fresh Hyperdrive 连接执行数据库检查。OpenAPI 位于 `/api/openapi.json`。
 
 ## 维护者 CLI
 

@@ -117,7 +117,7 @@ function app(adminCatalog: AdminCatalogRouteDependencies) {
 describe('admin catalog routes', () => {
   it('requires a fresh maintainer role', async () => {
     const response = await app(dependencies(false)).request(
-      '/v1/admin/catalog/imports/plan',
+      '/api/v1/admin/catalog/imports/plan',
       {
         method: 'POST',
         headers: {
@@ -135,7 +135,7 @@ describe('admin catalog routes', () => {
   it('plans a validated batch for the authenticated maintainer', async () => {
     const dependenciesValue = dependencies();
     const response = await app(dependenciesValue).request(
-      '/v1/admin/catalog/imports/plan',
+      '/api/v1/admin/catalog/imports/plan',
       {
         method: 'POST',
         headers: {
@@ -157,7 +157,7 @@ describe('admin catalog routes', () => {
   it('rejects client attempts to target another environment', async () => {
     const dependenciesValue = dependencies();
     const response = await app(dependenciesValue).request(
-      '/v1/admin/catalog/imports/plan',
+      '/api/v1/admin/catalog/imports/plan',
       {
         method: 'POST',
         headers: {
@@ -175,7 +175,7 @@ describe('admin catalog routes', () => {
   it('applies a batch with the actual request ID', async () => {
     const dependenciesValue = dependencies();
     const response = await app(dependenciesValue).request(
-      `/v1/admin/catalog/imports/${IMPORT_ID}/apply`,
+      `/api/v1/admin/catalog/imports/${IMPORT_ID}/apply`,
       {
         method: 'POST',
         headers: {
@@ -201,7 +201,7 @@ describe('admin catalog routes', () => {
   it('returns status for a canonical import ID', async () => {
     const dependenciesValue = dependencies();
     const response = await app(dependenciesValue).request(
-      `/v1/admin/catalog/imports/${IMPORT_ID}`,
+      `/api/v1/admin/catalog/imports/${IMPORT_ID}`,
       { headers: { authorization: 'Bearer token' } },
     );
 

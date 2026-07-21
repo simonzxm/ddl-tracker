@@ -82,7 +82,7 @@ const jsonHeaders = {
 describe('maintainer routes', () => {
   it('allows an authenticated non-maintainer to attempt bootstrap', async () => {
     const deps = dependencies(false);
-    const response = await app(deps).request('/v1/admin/bootstrap', {
+    const response = await app(deps).request('/api/v1/admin/bootstrap', {
       method: 'POST',
       headers: jsonHeaders,
       body: JSON.stringify({ bootstrap_token: 'one-time-secret' }),
@@ -98,7 +98,7 @@ describe('maintainer routes', () => {
 
   it('requires a fresh maintainer role for management operations', async () => {
     const response = await app(dependencies(false)).request(
-      `/v1/admin/users/${TARGET_ID}/suspend`,
+      `/api/v1/admin/users/${TARGET_ID}/suspend`,
       {
         method: 'POST',
         headers: jsonHeaders,
@@ -111,7 +111,7 @@ describe('maintainer routes', () => {
   it('maps content hide and report resolution requests with request IDs', async () => {
     const deps = dependencies();
     const hidden = await app(deps).request(
-      `/v1/admin/content/${TARGET_ID}/hide`,
+      `/api/v1/admin/content/${TARGET_ID}/hide`,
       {
         method: 'POST',
         headers: jsonHeaders,
@@ -132,7 +132,7 @@ describe('maintainer routes', () => {
     });
 
     const resolved = await app(deps).request(
-      `/v1/admin/reports/${REPORT_ID}/resolve`,
+      `/api/v1/admin/reports/${REPORT_ID}/resolve`,
       {
         method: 'POST',
         headers: jsonHeaders,
@@ -155,7 +155,7 @@ describe('maintainer routes', () => {
   it('maps user status and role mutations', async () => {
     const deps = dependencies();
     const suspended = await app(deps).request(
-      `/v1/admin/users/${TARGET_ID}/suspend`,
+      `/api/v1/admin/users/${TARGET_ID}/suspend`,
       {
         method: 'POST',
         headers: jsonHeaders,
@@ -168,7 +168,7 @@ describe('maintainer routes', () => {
     );
 
     const role = await app(deps).request(
-      `/v1/admin/users/${TARGET_ID}/roles`,
+      `/api/v1/admin/users/${TARGET_ID}/roles`,
       {
         method: 'POST',
         headers: jsonHeaders,
@@ -187,7 +187,7 @@ describe('maintainer routes', () => {
   it('maps task merge commands with the actual request ID', async () => {
     const deps = dependencies();
     const response = await app(deps).request(
-      `/v1/admin/tasks/${TARGET_ID}/merge`,
+      `/api/v1/admin/tasks/${TARGET_ID}/merge`,
       {
         method: 'POST',
         headers: jsonHeaders,
@@ -209,14 +209,14 @@ describe('maintainer routes', () => {
 
   it('validates report and audit query bounds', async () => {
     const deps = dependencies();
-    const reports = await app(deps).request('/v1/admin/reports?status=open&limit=20', {
+    const reports = await app(deps).request('/api/v1/admin/reports?status=open&limit=20', {
       headers: { authorization: 'Bearer token' },
     });
     expect(reports.status).toBe(200);
     expect(deps.rateLimitRead).toHaveBeenCalledWith(USER_ID);
     expect(deps.listReports).toHaveBeenCalledWith({ status: 'open', limit: 20 });
 
-    const invalid = await app(deps).request('/v1/admin/audit?limit=101', {
+    const invalid = await app(deps).request('/api/v1/admin/audit?limit=101', {
       headers: { authorization: 'Bearer token' },
     });
     expect(invalid.status).toBe(400);

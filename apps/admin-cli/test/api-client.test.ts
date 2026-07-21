@@ -63,7 +63,7 @@ describe('AdminApiClient', () => {
       throw new Error('Expected one fetch call.');
     }
     const [url, init] = call;
-    expect(url).toBe('https://api.example.test/v1/admin/catalog/imports/plan');
+    expect(url).toBe('https://api.example.test/api/v1/admin/catalog/imports/plan');
     expect(init).toMatchObject({ method: 'POST' });
     expect(new Headers(init.headers).get('authorization')).toBe(
       'Bearer secret-token',

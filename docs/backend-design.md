@@ -80,44 +80,44 @@ docs/
 
 ## HTTP 表面
 
-所有业务路径位于 `/v1`。具体 schema 由 `packages/contracts` 生成 OpenAPI；稳定错误 code 是客户端逻辑契约，英文 message 仅用于诊断。
+所有 HTTP 接口位于 `/api`，业务路径位于 `/api/v1`。具体 schema 由 `packages/contracts` 生成 OpenAPI；稳定错误 code 是客户端逻辑契约，英文 message 仅用于诊断。
 
 ```text
-GET    /health/live
-GET    /health/ready
+GET    /api/health/live
+GET    /api/health/ready
 
-POST   /v1/auth/email/challenges
-POST   /v1/auth/email/verifications
-POST   /v1/accounts/registrations
-GET    /v1/sessions
-DELETE /v1/sessions/:session_id
-DELETE /v1/sessions
-GET    /v1/me
-PATCH  /v1/me/profile
-DELETE /v1/me
+POST   /api/v1/auth/email/challenges
+POST   /api/v1/auth/email/verifications
+POST   /api/v1/accounts/registrations
+GET    /api/v1/sessions
+DELETE /api/v1/sessions/:session_id
+DELETE /api/v1/sessions
+GET    /api/v1/me
+PATCH  /api/v1/me/profile
+DELETE /api/v1/me
 
-GET    /v1/terms
-GET    /v1/terms/:term_id/courses
-GET    /v1/courses/:course_id/class-sections
-GET    /v1/comments/:comment_id/revisions
+GET    /api/v1/terms
+GET    /api/v1/terms/:term_id/courses
+GET    /api/v1/courses/:course_id/class-sections
+GET    /api/v1/comments/:comment_id/revisions
 
-POST   /v1/sync
+POST   /api/v1/sync
 
-POST   /v1/admin/bootstrap
-POST   /v1/admin/catalog/imports/plan
-POST   /v1/admin/catalog/imports/:import_id/apply
-GET    /v1/admin/reports
-POST   /v1/admin/reports/:report_id/resolve
-POST   /v1/admin/tasks/:source_task_id/merge
-POST   /v1/admin/content/:content_id/hide
-POST   /v1/admin/content/:content_id/restore
-POST   /v1/admin/users/:user_id/suspend
-POST   /v1/admin/users/:user_id/restore
-POST   /v1/admin/users/:user_id/roles
-GET    /v1/admin/audit
+POST   /api/v1/admin/bootstrap
+POST   /api/v1/admin/catalog/imports/plan
+POST   /api/v1/admin/catalog/imports/:import_id/apply
+GET    /api/v1/admin/reports
+POST   /api/v1/admin/reports/:report_id/resolve
+POST   /api/v1/admin/tasks/:source_task_id/merge
+POST   /api/v1/admin/content/:content_id/hide
+POST   /api/v1/admin/content/:content_id/restore
+POST   /api/v1/admin/users/:user_id/suspend
+POST   /api/v1/admin/users/:user_id/restore
+POST   /api/v1/admin/users/:user_id/roles
+GET    /api/v1/admin/audit
 ```
 
-普通学生写操作进入 `/v1/sync`，不同时提供另一套 CRUD 写接口。管理、认证、目录查询和按需历史读取使用独立接口。
+普通学生写操作进入 `/api/v1/sync`，不同时提供另一套 CRUD 写接口。管理、认证、目录查询和按需历史读取使用独立接口。
 
 Bearer API 不使用 cookie。为第三方客户端支持 CORS 时不得启用 credentialed CORS；所有权限仍由 bearer session 决定，client metadata 只用于排错而不是认证。
 

@@ -90,7 +90,7 @@ export const openApiDocument = addRateLimitResponses({
     description:
       'Passwordless course deadline tracking, offline synchronization, catalog administration, and moderation API.',
   },
-  servers: [{ url: '/' }],
+  servers: [{ url: '/api' }],
   tags: [
     { name: 'health' },
     { name: 'auth' },

@@ -44,11 +44,11 @@ describe('createRuntimeApp', () => {
     const database = client();
     const app = createRuntimeApp(database, environment(), { mailDelivery });
 
-    const live = await app.request('/health/live');
+    const live = await app.request('/api/health/live');
     expect(live.status).toBe(200);
     expect(database.query).not.toHaveBeenCalled();
 
-    const ready = await app.request('/health/ready');
+    const ready = await app.request('/api/health/ready');
     expect(ready.status).toBe(200);
     expect(database.query).toHaveBeenCalledWith(
       expect.stringContaining('drizzle.__drizzle_migrations'),

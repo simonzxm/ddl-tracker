@@ -130,11 +130,25 @@ describe('parseCatalogCsv', () => {
     });
   });
 
+  it('canonicalizes credits to the database scale', () => {
+    const whole = parseCatalogCsv(csv(row({ XF: '3' })), manifest);
+    const fractional = parseCatalogCsv(csv(row({ XF: '3.5' })), manifest);
+
+    expect(whole.courses[0]?.credits).toBe('3.00');
+    expect(fractional.courses[0]?.credits).toBe('3.50');
+  });
+
   it('rejects missing required headers and invalid numerics', () => {
     const missing = new TextEncoder().encode('XNXQDM,KCH\n2026-2027-1,0010\n');
     expect(() => parseCatalogCsv(missing, manifest)).toThrow('Missing required');
     expect(() =>
       parseCatalogCsv(csv(row({ XF: 'three' })), manifest),
+    ).toThrow('XF');
+    expect(() =>
+      parseCatalogCsv(csv(row({ XF: '3.555' })), manifest),
+    ).toThrow('XF');
+    expect(() =>
+      parseCatalogCsv(csv(row({ XF: '1000' })), manifest),
     ).toThrow('XF');
     expect(() =>
       parseCatalogCsv(csv(row({ XKZRS: '-1' })), manifest),

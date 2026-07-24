@@ -104,10 +104,15 @@ function parseDecimal(
   if (value === null || value === undefined) {
     return null;
   }
-  if (!/^\d+(?:\.\d+)?$/u.test(value)) {
+  if (!/^\d+(?:\.\d{1,2})?$/u.test(value)) {
     throw new Error(`Row ${String(rowNumber)} has an invalid ${field} decimal.`);
   }
-  return value;
+  const [whole = '0', fraction = ''] = value.split('.');
+  const normalizedWhole = whole.replace(/^0+(?=\d)/u, '');
+  if (normalizedWhole.length > 3) {
+    throw new Error(`Row ${String(rowNumber)} has an invalid ${field} decimal.`);
+  }
+  return `${normalizedWhole}.${fraction.padEnd(2, '0')}`;
 }
 
 function parseInteger(

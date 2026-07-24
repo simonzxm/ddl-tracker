@@ -405,6 +405,60 @@ describePostgres('PostgresCatalogImportApplyRepository', () => {
     expect(counts.rows[0]).toEqual({ events: '1', audits: '1' });
   });
 
+  it('atomically finishes every remaining batch after a partial apply', async () => {
+    const baselineHash = await seedCatalog(client);
+    await seedPlan(client, baselineHash, {
+      totalBatches: 2,
+      receivedBatches: 2,
+    });
+    const createId = idFactory();
+
+    await repository.applyBatch({
+      actorId: ACTOR_ID,
+      importId: IMPORT_ID,
+      requestId: REQUEST_ID,
+      batchIndex: 0,
+      confirmDeactivations: true,
+      now: NOW,
+      createId,
+    });
+
+    await expect(
+      repository.applyAll({
+        actorId: ACTOR_ID,
+        importId: IMPORT_ID,
+        requestId: '018f0000-0000-7000-8000-000000000809',
+        confirmDeactivations: true,
+        now: NOW,
+        createId,
+      }),
+    ).resolves.toEqual({
+      kind: 'applied',
+      appliedBatches: 2,
+      totalBatches: 2,
+      complete: true,
+    });
+
+    const state = await client.query<{
+      status: string;
+      applied_batches: number;
+      pending_batches: string;
+    }>(
+      `select i.status, i.applied_batches,
+              count(*) filter (where b.applied_at is null)::text as pending_batches
+       from catalog_imports i
+       join catalog_import_batches b on b.import_id = i.id
+       where i.id = $1
+       group by i.id`,
+      [IMPORT_ID],
+    );
+    expect(state.rows[0]).toEqual({
+      status: 'applied',
+      applied_batches: 2,
+      pending_batches: '0',
+    });
+  });
+
   it('rejects out-of-order and incomplete plan batches', async () => {
     const baselineHash = await seedCatalog(client);
     await seedPlan(client, baselineHash, { totalBatches: 2, receivedBatches: 2 });

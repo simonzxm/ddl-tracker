@@ -36,7 +36,6 @@ interface ExistingCourseRow {
   id: string;
   name: string;
   credits: string | null;
-  department: string | null;
   active: boolean;
   revision: number;
 }
@@ -330,31 +329,26 @@ export class PostgresCatalogImportApplyRepository
     createId: () => string,
   ): Promise<void> {
     const existing = await this.#client.query<ExistingCourseRow>(
-      `select id, name, credits::text, department, active, revision
+      `select id, name, credits::text, active, revision
        from courses
        where term_id = $1 and external_course_code = $2
        for update`,
       [termId, course.external_course_code],
     );
     const current = existing.rows[0];
-    const sourceMetadata = {
-      import_id: importId,
-      department_code: course.department_code,
-      department_name: course.department_name,
-    };
+    const sourceMetadata = { import_id: importId };
     if (current === undefined) {
       await this.#client.query(
         `insert into courses (
-           id, term_id, external_course_code, name, credits, department,
-           active, revision, source_metadata, created_at, updated_at
-         ) values ($1, $2, $3, $4, $5, $6, true, 1, $7::jsonb, $8, $8)`,
+           id, term_id, external_course_code, name, credits, active, revision,
+           source_metadata, created_at, updated_at
+         ) values ($1, $2, $3, $4, $5, true, 1, $6::jsonb, $7, $7)`,
         [
           createId(),
           termId,
           course.external_course_code,
           course.name,
           course.credits,
-          course.department_name,
           JSON.stringify(sourceMetadata),
           now,
         ],
@@ -364,19 +358,17 @@ export class PostgresCatalogImportApplyRepository
     const changed =
       current.name !== course.name ||
       current.credits !== course.credits ||
-      current.department !== course.department_name ||
       !current.active;
     await this.#client.query(
       `update courses
-       set name = $2, credits = $3, department = $4, active = true,
-           revision = revision + $5,
-           source_metadata = $6::jsonb, updated_at = $7
+       set name = $2, credits = $3, active = true,
+           revision = revision + $4,
+           source_metadata = $5::jsonb, updated_at = $6
        where id = $1`,
       [
         current.id,
         course.name,
         course.credits,
-        course.department_name,
         changed ? 1 : 0,
         JSON.stringify(sourceMetadata),
         now,

@@ -26,6 +26,13 @@ if (config.main !== 'src/index.ts') errors.push('main must be src/index.ts');
 if (!config.compatibility_flags?.includes('nodejs_compat')) {
   errors.push('nodejs_compat compatibility flag is required');
 }
+if (
+  !Number.isInteger(config.limits?.cpu_ms) ||
+  config.limits.cpu_ms < 1_000 ||
+  config.limits.cpu_ms > 30_000
+) {
+  errors.push('limits.cpu_ms must be an integer from 1000 through 30000');
+}
 if (vars.APP_ENVIRONMENT !== 'production') {
   errors.push('APP_ENVIRONMENT must be production');
 }

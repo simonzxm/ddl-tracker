@@ -4,6 +4,9 @@
   "main": "src/index.ts",
   "compatibility_date": "2026-07-19",
   "compatibility_flags": ["nodejs_compat"],
+  "limits": {
+    "cpu_ms": 5000
+  },
   "triggers": {
     "crons": ["17 3 * * *"]
   },

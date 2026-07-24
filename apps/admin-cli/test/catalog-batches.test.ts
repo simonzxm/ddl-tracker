@@ -16,6 +16,8 @@ function section(index: number, payload = '') {
     external_course_code: String(index).padStart(4, '0'),
     name: `Section ${String(index)}`,
     section_number: '01',
+    department_code: null,
+    department_name: null,
     instructors: [],
     campus_code: null,
     campus_name: null,
@@ -54,14 +56,14 @@ describe('splitCatalogBatches', () => {
 
     const batches = splitCatalogBatches(courses, sections, {
       maximumRecordsPerType: 500,
-      maximumPayloadBytes: 1_000,
+      maximumPayloadBytes: 1_200,
     });
 
     expect(batches.length).toBeGreaterThan(1);
     for (const batch of batches) {
       expect(
         new TextEncoder().encode(JSON.stringify(batch)).byteLength,
-      ).toBeLessThanOrEqual(1_000);
+      ).toBeLessThanOrEqual(1_200);
     }
   });
 

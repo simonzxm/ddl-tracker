@@ -82,15 +82,11 @@ const desired: DesiredCatalog = {
       external_course_code: '0010',
       name: 'New Course',
       credits: '3.00',
-      department_code: '001',
-      department_name: 'Department',
     },
     {
       external_course_code: '0020',
       name: 'Added Course',
       credits: null,
-      department_code: null,
-      department_name: null,
     },
   ],
   classSections: [
@@ -189,8 +185,6 @@ describe('catalog import diff', () => {
           external_course_code: '0010',
           name: 'Old Course',
           credits: '3.00',
-          department_code: null,
-          department_name: 'Department',
         },
       ],
       classSections: [

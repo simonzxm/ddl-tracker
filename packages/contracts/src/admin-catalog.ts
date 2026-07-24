@@ -15,8 +15,6 @@ export const normalizedCatalogCourseSchema = z
     external_course_code: z.string().trim().min(1).max(100),
     name: normalizedTextSchema(1, 300),
     credits: decimalSchema,
-    department_code: z.string().trim().min(1).max(100).nullable().optional(),
-    department_name: nullableNormalizedTextSchema(300).optional(),
   })
   .strict();
 
@@ -26,8 +24,8 @@ export const normalizedCatalogClassSectionSchema = z
     external_course_code: z.string().trim().min(1).max(100),
     name: normalizedTextSchema(1, 300),
     section_number: z.string().trim().min(1).max(100),
-    department_code: z.string().trim().min(1).max(100).nullable().optional(),
-    department_name: nullableNormalizedTextSchema(300).optional(),
+    department_code: z.string().trim().min(1).max(100).nullable(),
+    department_name: nullableNormalizedTextSchema(300),
     instructors: z.array(normalizedTextSchema(1, 200)).max(100),
     campus_code: z.string().trim().min(1).max(100).nullable(),
     campus_name: nullableNormalizedTextSchema(300),

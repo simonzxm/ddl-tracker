@@ -33,15 +33,11 @@ const batchPayload = {
       external_course_code: '0010',
       name: 'Updated Course',
       credits: '3.50',
-      department_code: '001',
-      department_name: 'Department',
     },
     {
       external_course_code: '0020',
       name: 'Added Course',
       credits: null,
-      department_code: null,
-      department_name: null,
     },
   ],
   class_sections: [

@@ -45,8 +45,6 @@ function request(
         external_course_code: '0010',
         name: 'Course',
         credits: null,
-        department_code: null,
-        department_name: null,
       },
     ],
     class_sections: [
@@ -55,6 +53,8 @@ function request(
         external_course_code: '0010',
         name: 'Section',
         section_number: '01',
+        department_code: null,
+        department_name: null,
         instructors: [],
         campus_code: null,
         campus_name: null,

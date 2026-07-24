@@ -131,17 +131,17 @@ Plan 保存为 `catalog_imports` 记录并返回 import ID。它绑定 checksum�
 命令名可以在实现时调整，但能力必须对应：
 
 ```text
-catalog validate <csv> --manifest <json>
-catalog plan <csv> --manifest <json>
+catalog validate <csv|csv.gz> --manifest <json>
+catalog plan <csv|csv.gz> --manifest <json>
 catalog apply <import-id> [--confirm-deactivations]
 catalog status <import-id>
 ```
 
-CLI 使用普通邮箱认证获得的 maintainer bearer session，不使用数据库连接串。输出默认人类可读，同时支持 `--json` 供自动化处理。
+CLI 按 gzip magic 自动解压 `.csv.gz`，解压后的 CSV 与未压缩输入使用完全相同的校验、checksum 和规范化流程。CLI 使用普通邮箱认证获得的 maintainer bearer session，不使用数据库连接串。输出默认人类可读，同时支持 `--json` 供自动化处理。
 
 ## 仓库与敏感信息
 
-- `*.csv` 课程原始文件默认 gitignore。
+- `*.csv` 和 `*.csv.gz` 课程原始文件默认 gitignore。
 - 仓库只保留最小假数据 fixture，不能复制真实学生、教师邮箱或其他额外个人信息。
 - 数据库保留 source payload 是为了字段迁移，不向普通客户端完整同步。
 - import 日志不得输出整行原始 payload，只输出外部键和字段级错误。

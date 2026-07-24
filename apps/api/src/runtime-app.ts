@@ -230,6 +230,13 @@ export function createRuntimeApp(
           requestId,
           request,
         ),
+      applyAll: (actorId, importId, requestId, request) =>
+        catalogApplyService.applyAll(
+          actorId,
+          importId,
+          requestId,
+          request,
+        ),
       getStatus: (importId) => catalogImportService.getStatus(importId),
     },
     comments: {

@@ -69,6 +69,14 @@ function dependencies(maintainer = true): AdminCatalogRouteDependencies {
       total_batches: 1,
       complete: true,
     })),
+    applyAll: vi.fn(async () => ({
+      import_id: IMPORT_ID,
+      batch_index: 0,
+      replayed: false,
+      applied_batches: 1,
+      total_batches: 1,
+      complete: true,
+    })),
     getStatus: vi.fn(async () => ({
       import_id: IMPORT_ID,
       status: 'planned' as const,
@@ -195,6 +203,29 @@ describe('admin catalog routes', () => {
       IMPORT_ID,
       REQUEST_ID,
       { batch_index: 0, confirm_deactivations: true },
+    );
+  });
+
+  it('applies the complete import with the actual request ID', async () => {
+    const dependenciesValue = dependencies();
+    const response = await app(dependenciesValue).request(
+      `/api/v1/admin/catalog/imports/${IMPORT_ID}/apply-all`,
+      {
+        method: 'POST',
+        headers: {
+          authorization: 'Bearer token',
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({ confirm_deactivations: true }),
+      },
+    );
+
+    expect(response.status).toBe(200);
+    expect(dependenciesValue.applyAll).toHaveBeenCalledWith(
+      USER_ID,
+      IMPORT_ID,
+      REQUEST_ID,
+      { confirm_deactivations: true },
     );
   });
 

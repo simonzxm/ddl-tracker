@@ -1,7 +1,9 @@
 import {
+  catalogApplyAllRequestSchema,
   catalogApplyRequestSchema,
   catalogPlanBatchRequestSchema,
   parseUuidV7,
+  type CatalogApplyAllRequest,
   type CatalogApplyRequest,
   type CatalogImportDiff,
   type CatalogPlanBatchRequest,
@@ -38,6 +40,19 @@ export interface AdminCatalogRouteDependencies {
     importId: string,
     requestId: string,
     request: CatalogApplyRequest,
+  ): Promise<{
+    import_id: string;
+    batch_index: number;
+    replayed: boolean;
+    applied_batches: number;
+    total_batches: number;
+    complete: boolean;
+  }>;
+  applyAll(
+    actorId: string,
+    importId: string,
+    requestId: string,
+    request: CatalogApplyAllRequest,
   ): Promise<{
     import_id: string;
     batch_index: number;
@@ -131,6 +146,28 @@ export function registerAdminCatalogRoutes(
     );
     return context.json(
       await dependencies.applyBatch(
+        principal.user.id,
+        importId,
+        context.get('requestId'),
+        body,
+      ),
+    );
+  });
+
+  app.post('/v1/admin/catalog/imports/:import_id/apply-all', async (context) => {
+    const principal = await requireMaintainer(
+      context.req.header('authorization'),
+      dependencies,
+      'mutation',
+    );
+    const importId = parseImportId(context.req.param('import_id'));
+    const body = await readValidatedJson(
+      context.req.raw,
+      catalogApplyAllRequestSchema,
+      ADMIN_BODY_LIMIT,
+    );
+    return context.json(
+      await dependencies.applyAll(
         principal.user.id,
         importId,
         context.get('requestId'),

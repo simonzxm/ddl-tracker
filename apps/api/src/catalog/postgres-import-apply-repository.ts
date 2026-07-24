@@ -484,21 +484,6 @@ export class PostgresCatalogImportApplyRepository
     now: Date,
     createId: () => string,
   ): Promise<void> {
-    const batches = await this.#client.query<BatchRow>(
-      `select batch_index, payload, applied_at
-       from catalog_import_batches
-       where import_id = $1
-       order by batch_index`,
-      [importId],
-    );
-    const parsed = batches.rows.map(parseBatch);
-    const desiredCourseCodes = parsed.flatMap((batch) =>
-      batch.courses.map((course) => course.external_course_code),
-    );
-    const desiredSectionIds = parsed.flatMap((batch) =>
-      batch.classSections.map((section) => section.external_section_id),
-    );
-
     const deactivatedSections = await this.#client.query<{
       id: string;
       external_section_id: string;
@@ -510,9 +495,16 @@ export class PostgresCatalogImportApplyRepository
        where s.course_id = c.id
          and c.term_id = $1
          and s.active = true
-         and not (s.external_section_id = any($2::text[]))
+         and not exists (
+           select 1
+           from catalog_import_batches b
+           cross join lateral
+             jsonb_array_elements(b.payload->'class_sections') desired(value)
+           where b.import_id = $2
+             and desired.value->>'external_section_id' = s.external_section_id
+         )
        returning s.id, s.external_section_id, s.revision`,
-      [termId, desiredSectionIds, now],
+      [termId, importId, now],
     );
     for (const section of deactivatedSections.rows) {
       await this.#client.query(
@@ -538,8 +530,16 @@ export class PostgresCatalogImportApplyRepository
        set active = false, revision = revision + 1, updated_at = $3
        where term_id = $1
          and active = true
-         and not (external_course_code = any($2::text[]))`,
-      [termId, desiredCourseCodes, now],
+         and not exists (
+           select 1
+           from catalog_import_batches b
+           cross join lateral
+             jsonb_array_elements(b.payload->'courses') desired(value)
+           where b.import_id = $2
+             and desired.value->>'external_course_code' =
+               courses.external_course_code
+         )`,
+      [termId, importId, now],
     );
   }
 }

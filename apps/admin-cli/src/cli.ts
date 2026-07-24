@@ -1,6 +1,8 @@
 import { readFile } from 'node:fs/promises';
 import { basename } from 'node:path';
 import { createInterface } from 'node:readline/promises';
+import { promisify } from 'node:util';
+import { gunzip } from 'node:zlib';
 
 import { Command } from 'commander';
 
@@ -15,6 +17,15 @@ import {
   readCatalogImportState,
   writeCatalogImportState,
 } from './catalog/state.js';
+
+const gunzipAsync = promisify(gunzip);
+
+async function decodeCatalogCsv(bytes: Uint8Array): Promise<Uint8Array> {
+  if (bytes[0] !== 0x1f || bytes[1] !== 0x8b) {
+    return bytes;
+  }
+  return new Uint8Array(await gunzipAsync(bytes));
+}
 
 export interface CliDependencies {
   env: NodeJS.ProcessEnv;
@@ -68,10 +79,11 @@ async function prepareFromFiles(
     environment: string;
   },
 ) {
-  const [manifestText, csvBytes] = await Promise.all([
+  const [manifestText, sourceBytes] = await Promise.all([
     dependencies.readTextFile(options.manifestPath),
     dependencies.readBinaryFile(options.csvPath),
   ]);
+  const csvBytes = await decodeCatalogCsv(sourceBytes);
   let manifestValue: unknown;
   try {
     manifestValue = JSON.parse(manifestText);
@@ -118,7 +130,7 @@ export function createProgram(
     .command('validate')
     .description('Validate a manifest and CSV without contacting the API')
     .requiredOption('--manifest <path>', 'manifest JSON path')
-    .requiredOption('--csv <path>', 'catalog CSV path')
+    .requiredOption('--csv <path>', 'catalog CSV or CSV.gz path')
     .option('--environment <name>', 'target environment label', 'validation')
     .action(async (options: {
       manifest: string;
@@ -153,7 +165,7 @@ export function createProgram(
     .command('plan')
     .description('Upload normalized batches and calculate a catalog diff')
     .requiredOption('--manifest <path>', 'manifest JSON path')
-    .requiredOption('--csv <path>', 'catalog CSV path')
+    .requiredOption('--csv <path>', 'catalog CSV or CSV.gz path')
     .requiredOption('--api <url>', 'DDL Tracker API base URL')
     .requiredOption('--environment <name>', 'target environment label')
     .option('--state <path>', 'resume state path')

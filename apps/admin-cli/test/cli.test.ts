@@ -1,6 +1,7 @@
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { gzipSync } from 'node:zlib';
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -84,6 +85,7 @@ function apiClient(deactivations = 0): CatalogWorkflowClient & {
 async function testDependencies(options?: {
   client?: ReturnType<typeof apiClient>;
   prompts?: string[];
+  csvBytes?: Uint8Array;
 }) {
   const output: string[] = [];
   const client = options?.client ?? apiClient();
@@ -91,7 +93,7 @@ async function testDependencies(options?: {
   const dependencies: Partial<CliDependencies> = {
     env: { ...process.env, DDL_TRACKER_ADMIN_TOKEN: 'secret-token' },
     readTextFile: vi.fn(async () => manifest),
-    readBinaryFile: vi.fn(async () => csv),
+    readBinaryFile: vi.fn(async () => options?.csvBytes ?? csv),
     writeLine: (value) => output.push(value),
     prompt: vi.fn(async () => prompts.shift() ?? ''),
     createClient: vi.fn(() => client),
@@ -130,6 +132,30 @@ describe('admin CLI', () => {
       batch_count: 1,
     });
     expect(createClient).not.toHaveBeenCalled();
+  });
+
+  it('validates gzip-compressed CSV input', async () => {
+    const { dependencies, output } = await testDependencies({
+      csvBytes: gzipSync(csv),
+    });
+    const program = createProgram(dependencies).exitOverride();
+
+    await program.parseAsync(
+      [
+        'catalog',
+        'validate',
+        '--manifest',
+        'manifest.json',
+        '--csv',
+        'data.csv.gz',
+      ],
+      { from: 'user' },
+    );
+
+    expect(JSON.parse(output[0] ?? '{}')).toMatchObject({
+      valid: true,
+      row_count: 1,
+    });
   });
 
   it('plans with an environment token and persists credential-free resume state', async () => {

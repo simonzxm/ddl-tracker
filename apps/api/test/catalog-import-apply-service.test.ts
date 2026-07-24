@@ -19,9 +19,15 @@ class FakeApplyRepository implements CatalogImportApplyRepository {
     complete: false,
   };
   received: Parameters<CatalogImportApplyRepository['applyBatch']>[0] | null = null;
+  receivedAll: Parameters<CatalogImportApplyRepository['applyAll']>[0] | null = null;
 
   applyBatch(input: Parameters<CatalogImportApplyRepository['applyBatch']>[0]) {
     this.received = input;
+    return Promise.resolve(this.outcome);
+  }
+
+  applyAll(input: Parameters<CatalogImportApplyRepository['applyAll']>[0]) {
+    this.receivedAll = input;
     return Promise.resolve(this.outcome);
   }
 }
@@ -39,6 +45,37 @@ function service(repository: FakeApplyRepository): CatalogImportApplyService {
 }
 
 describe('CatalogImportApplyService', () => {
+  it('applies the complete import without a client batch index', async () => {
+    const repository = new FakeApplyRepository();
+    repository.outcome = {
+      kind: 'applied',
+      appliedBatches: 2,
+      totalBatches: 2,
+      complete: true,
+    };
+
+    const response = await service(repository).applyAll(
+      ACTOR_ID,
+      IMPORT_ID,
+      REQUEST_ID,
+      { confirm_deactivations: true },
+    );
+
+    expect(response).toMatchObject({
+      batch_index: 1,
+      applied_batches: 2,
+      total_batches: 2,
+      complete: true,
+    });
+    expect(repository.receivedAll).toMatchObject({
+      actorId: ACTOR_ID,
+      importId: IMPORT_ID,
+      requestId: REQUEST_ID,
+      confirmDeactivations: true,
+      now: NOW,
+    });
+  });
+
   it('applies a requested batch with an ID factory and returns progress', async () => {
     const repository = new FakeApplyRepository();
 

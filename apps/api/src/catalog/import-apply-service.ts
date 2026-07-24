@@ -1,4 +1,8 @@
-import { createUuidV7, type CatalogApplyRequest } from '@ddl-tracker/contracts';
+import {
+  createUuidV7,
+  type CatalogApplyAllRequest,
+  type CatalogApplyRequest,
+} from '@ddl-tracker/contracts';
 
 import { HttpError } from '../http/errors.js';
 
@@ -16,6 +20,14 @@ export type CatalogImportApplyOutcome =
   | { kind: 'out_of_order'; expectedBatchIndex: number };
 
 export interface CatalogImportApplyRepository {
+  applyAll(input: {
+    actorId: string;
+    importId: string;
+    requestId: string;
+    confirmDeactivations: boolean;
+    now: Date;
+    createId: () => string;
+  }): Promise<CatalogImportApplyOutcome>;
   applyBatch(input: {
     actorId: string;
     importId: string;
@@ -51,6 +63,23 @@ export class CatalogImportApplyService {
     this.#createId = options.createId ?? createUuidV7;
   }
 
+  async applyAll(
+    actorId: string,
+    importId: string,
+    requestId: string,
+    request: CatalogApplyAllRequest,
+  ): Promise<CatalogApplyResponse> {
+    const outcome = await this.#repository.applyAll({
+      actorId,
+      importId,
+      requestId,
+      confirmDeactivations: request.confirm_deactivations,
+      now: this.#now(),
+      createId: this.#createId,
+    });
+    return this.#response(importId, null, outcome);
+  }
+
   async applyBatch(
     actorId: string,
     importId: string,
@@ -66,6 +95,15 @@ export class CatalogImportApplyService {
       now: this.#now(),
       createId: this.#createId,
     });
+
+    return this.#response(importId, request.batch_index, outcome);
+  }
+
+  #response(
+    importId: string,
+    batchIndex: number | null,
+    outcome: CatalogImportApplyOutcome,
+  ): CatalogApplyResponse {
 
     if (outcome.kind === 'not_found') {
       throw new HttpError({
@@ -107,7 +145,7 @@ export class CatalogImportApplyService {
 
     return {
       import_id: importId,
-      batch_index: request.batch_index,
+      batch_index: batchIndex ?? Math.max(0, outcome.totalBatches - 1),
       replayed: outcome.kind === 'replayed',
       applied_batches: outcome.appliedBatches,
       total_batches: outcome.totalBatches,

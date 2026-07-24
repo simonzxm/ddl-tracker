@@ -3,6 +3,7 @@ import {
   catalogApplyResponseSchema,
   catalogImportStatusSchema,
   catalogPlanBatchResponseSchema,
+  type CatalogApplyAllRequest,
   type CatalogApplyRequest,
   type CatalogPlanBatchRequest,
 } from '@ddl-tracker/contracts';
@@ -65,6 +66,17 @@ export class AdminApiClient {
   applyBatch(importId: string, request: CatalogApplyRequest) {
     return this.#request(
       `/api/v1/admin/catalog/imports/${encodeURIComponent(importId)}/apply`,
+      {
+        method: 'POST',
+        body: JSON.stringify(request),
+      },
+      catalogApplyResponseSchema,
+    );
+  }
+
+  applyAll(importId: string, request: CatalogApplyAllRequest) {
+    return this.#request(
+      `/api/v1/admin/catalog/imports/${encodeURIComponent(importId)}/apply-all`,
       {
         method: 'POST',
         body: JSON.stringify(request),

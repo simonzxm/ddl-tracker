@@ -13,6 +13,37 @@ function response(body: unknown, status = 200): Response {
 }
 
 describe('AdminApiClient', () => {
+  it('sends one request for an atomic full apply', async () => {
+    const fetcher = vi.fn(async () =>
+      response({
+        import_id: IMPORT_ID,
+        batch_index: 30,
+        replayed: false,
+        applied_batches: 31,
+        total_batches: 31,
+        complete: true,
+      }),
+    );
+    const client = new AdminApiClient({
+      baseUrl: 'https://api.example.test',
+      token: 'token',
+      fetcher,
+    });
+
+    await expect(
+      client.applyAll(IMPORT_ID, { confirm_deactivations: true }),
+    ).resolves.toMatchObject({ complete: true, applied_batches: 31 });
+    const call = fetcher.mock.calls[0] as unknown as
+      | [string, RequestInit]
+      | undefined;
+    expect(call?.[0]).toBe(
+      `https://api.example.test/api/v1/admin/catalog/imports/${IMPORT_ID}/apply-all`,
+    );
+    expect(JSON.parse(String(call?.[1].body))).toEqual({
+      confirm_deactivations: true,
+    });
+  });
+
   it('sends bearer-authenticated plan requests and validates responses', async () => {
     const fetcher = vi.fn(async () =>
       response({

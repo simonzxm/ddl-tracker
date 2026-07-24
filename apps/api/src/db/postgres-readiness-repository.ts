@@ -2,14 +2,14 @@ import type { Client } from 'pg';
 
 export class PostgresReadinessRepository {
   readonly #client: Client;
-  readonly #expectedMigrationHash: string;
+  readonly #requiredMigrationHash: string;
 
-  constructor(client: Client, expectedMigrationHash: string) {
-    if (!/^[0-9a-f]{64}$/u.test(expectedMigrationHash)) {
-      throw new Error('Expected migration hash must be a SHA-256 hex digest.');
+  constructor(client: Client, requiredMigrationHash: string) {
+    if (!/^[0-9a-f]{64}$/u.test(requiredMigrationHash)) {
+      throw new Error('Required migration hash must be a SHA-256 hex digest.');
     }
     this.#client = client;
-    this.#expectedMigrationHash = expectedMigrationHash;
+    this.#requiredMigrationHash = requiredMigrationHash;
   }
 
   async isReady(): Promise<boolean> {
@@ -19,7 +19,7 @@ export class PostgresReadinessRepository {
          from drizzle.__drizzle_migrations
          where hash = $1
        ) as applied`,
-      [this.#expectedMigrationHash],
+      [this.#requiredMigrationHash],
     );
     return result.rows[0]?.applied === true;
   }

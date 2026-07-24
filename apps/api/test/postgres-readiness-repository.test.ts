@@ -25,7 +25,7 @@ describePostgres('PostgresReadinessRepository', () => {
     await expect(repository.isReady()).resolves.toBe(true);
   });
 
-  it('remains ready when a newer compatible migration is also applied', async () => {
+  it('remains ready when its required migration is not the newest', async () => {
     const result = await client.query<{ hash: string }>(
       `select hash
        from drizzle.__drizzle_migrations

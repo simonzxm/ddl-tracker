@@ -96,6 +96,8 @@ DATABASE_URL='postgresql://migration-role@private-host/database' \
 
 破坏性变更必须采用 expand → migrate → contract。数据库回滚默认使用 forward-fix；不能在无法证明安全时反向执行 destructive migration。
 
+`/api/health/ready` 验证当前 Worker 所需的 migration 已出现在 journal 中；它允许数据库继续向前迁移，但不承诺旧 Worker 与任意后续 contract migration 兼容。执行 contract 前必须确认新 Worker 已完成切流和 smoke；执行后若旧版本依赖已删除的 schema，禁止直接回滚旧 Worker。
+
 ## Remote dev smoke
 
 Remote dev 只用于短期验证 Cloudflare 网络、Hyperdrive、Tunnel 和 SMTP；完成后立即停止：

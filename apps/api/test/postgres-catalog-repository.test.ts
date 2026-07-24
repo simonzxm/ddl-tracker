@@ -92,7 +92,6 @@ describePostgres('PostgresCatalogRepository', () => {
         externalCourseCode: '0010',
         name: 'Course A',
         credits: '3.50',
-        department: 'Department',
       },
     ]);
   });

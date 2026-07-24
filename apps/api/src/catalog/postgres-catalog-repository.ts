@@ -21,7 +21,6 @@ interface CourseRow {
   external_course_code: string;
   name: string;
   credits: string | null;
-  department: string | null;
 }
 
 interface SectionRow {
@@ -64,7 +63,7 @@ export class PostgresCatalogRepository implements CatalogRepository {
 
   async listCourses(termId: string): Promise<CourseRecord[]> {
     const result = await this.#client.query<CourseRow>(
-      `select id, external_course_code, name, credits::text, department
+      `select id, external_course_code, name, credits::text
        from courses
        where term_id = $1
        order by external_course_code, id`,
@@ -75,7 +74,6 @@ export class PostgresCatalogRepository implements CatalogRepository {
       externalCourseCode: row.external_course_code,
       name: row.name,
       credits: row.credits,
-      department: row.department,
     }));
   }
 

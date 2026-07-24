@@ -52,7 +52,6 @@ function dependencies(): CatalogRouteDependencies {
         external_course_code: '001',
         name: 'Course',
         credits: '3.00',
-        department: null,
       },
     ]),
     listClassSections: vi.fn(async () => []),

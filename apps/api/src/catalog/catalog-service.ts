@@ -19,7 +19,6 @@ export interface CourseRecord {
   externalCourseCode: string;
   name: string;
   credits: string | null;
-  department: string | null;
 }
 
 export interface ClassSectionRecord {
@@ -107,7 +106,6 @@ export class CatalogService {
       external_course_code: course.externalCourseCode,
       name: course.name,
       credits: course.credits,
-      department: course.department,
     }));
   }
 

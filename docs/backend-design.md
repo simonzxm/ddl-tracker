@@ -133,8 +133,8 @@ Bearer API 不使用 cookie。为第三方客户端支持 CORS 时不得启用 c
 | `auth_challenges` | HMAC、过期、尝试数、发送状态；同 subject 一个 current challenge |
 | `sessions` | 随机 token 哈希、设备 metadata、last seen、idle/absolute expiry、revoked_at |
 | `academic_terms` | 外部学期代码唯一；名称、日期、状态 override、source metadata |
-| `courses` | `(term_id, external_course_code)` 唯一；课程名称、学分、开课单位 |
-| `class_sections` | `external_section_id` 唯一；课程、班号、教师、校区、容量、课表文本、raw source、active |
+| `courses` | `(term_id, external_course_code)` 唯一；课程名称、学分 |
+| `class_sections` | `external_section_id` 唯一；课程、班号、开课单位、教师、校区、容量、课表文本、raw source、active |
 | `followed_class_sections` | `(user_id, class_section_id)` 唯一；私人关系 |
 | `course_tasks` | 教学班、创建者、可见状态；无标题或 deadline 字段 |
 | `task_proposals` | task、作者、不可变公开字段、`content_fingerprint`；`(task_id, fingerprint)` 唯一 |

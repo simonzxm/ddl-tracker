@@ -56,6 +56,23 @@ interface CommentRow {
   updated_at: Date;
 }
 
+interface ClassSectionSnapshotRow {
+  id: string;
+  course_id: string;
+  external_section_id: string;
+  section_number: string;
+  department_code: string | null;
+  department_name: string | null;
+  instructors: unknown;
+  campus: string | null;
+  capacity: number | null;
+  schedule_text: string | null;
+  active: boolean;
+  revision: number;
+  created_at: Date;
+  updated_at: Date;
+}
+
 function compareKey(
   left: Pick<SnapshotRecord, 'record_type' | 'id'>,
   right: Pick<SnapshotRecord, 'record_type' | 'id'>,
@@ -99,6 +116,31 @@ function paginate(
 
 function date(value: Date | null): string | null {
   return value?.toISOString() ?? null;
+}
+
+function classSectionSnapshotRecord(
+  row: ClassSectionSnapshotRow,
+): SnapshotRecord {
+  return {
+    record_type: 'class_section',
+    id: row.id,
+    payload: {
+      id: row.id,
+      course_id: row.course_id,
+      external_section_id: row.external_section_id,
+      section_number: row.section_number,
+      department_code: row.department_code,
+      department_name: row.department_name,
+      instructors: row.instructors,
+      campus: row.campus,
+      capacity: row.capacity,
+      schedule_text: row.schedule_text,
+      active: row.active,
+      revision: row.revision,
+      created_at: row.created_at.toISOString(),
+      updated_at: row.updated_at.toISOString(),
+    },
+  };
 }
 
 function tombstone(
@@ -219,22 +261,7 @@ export class PostgresSnapshotReader {
     after: SnapshotAfter | null;
     limit: number;
   }): Promise<SnapshotPage> {
-    const section = await this.#client.query<{
-      id: string;
-      course_id: string;
-      external_section_id: string;
-      section_number: string;
-      department_code: string | null;
-      department_name: string | null;
-      instructors: unknown;
-      campus: string | null;
-      capacity: number | null;
-      schedule_text: string | null;
-      active: boolean;
-      revision: number;
-      created_at: Date;
-      updated_at: Date;
-    }>(
+    const section = await this.#client.query<ClassSectionSnapshotRow>(
       `select id, course_id, external_section_id, section_number,
               department_code, department_name, instructors, campus,
               capacity, schedule_text,
@@ -252,28 +279,7 @@ export class PostgresSnapshotReader {
         status: 404,
       });
     }
-    const records: SnapshotRecord[] = [
-      {
-        record_type: 'class_section',
-        id: row.id,
-        payload: {
-          id: row.id,
-          course_id: row.course_id,
-          external_section_id: row.external_section_id,
-          section_number: row.section_number,
-          department_code: row.department_code,
-          department_name: row.department_name,
-          instructors: row.instructors,
-          campus: row.campus,
-          capacity: row.capacity,
-          schedule_text: row.schedule_text,
-          active: row.active,
-          revision: row.revision,
-          created_at: row.created_at.toISOString(),
-          updated_at: row.updated_at.toISOString(),
-        },
-      },
-    ];
+    const records: SnapshotRecord[] = [classSectionSnapshotRecord(row)];
     await this.#appendPrivateTaskRecords(
       records,
       input.userId,
@@ -400,22 +406,7 @@ export class PostgresSnapshotReader {
     classSectionIds: string[],
   ): Promise<void> {
     if (classSectionIds.length === 0) return;
-    const sections = await this.#client.query<{
-      id: string;
-      course_id: string;
-      external_section_id: string;
-      section_number: string;
-      department_code: string | null;
-      department_name: string | null;
-      instructors: unknown;
-      campus: string | null;
-      capacity: number | null;
-      schedule_text: string | null;
-      active: boolean;
-      revision: number;
-      created_at: Date;
-      updated_at: Date;
-    }>(
+    const sections = await this.#client.query<ClassSectionSnapshotRow>(
       `select id, course_id, external_section_id, section_number,
               department_code, department_name, instructors, campus,
               capacity, schedule_text,
@@ -432,26 +423,7 @@ export class PostgresSnapshotReader {
       ) {
         continue;
       }
-      records.push({
-        record_type: 'class_section',
-        id: row.id,
-        payload: {
-          id: row.id,
-          course_id: row.course_id,
-          external_section_id: row.external_section_id,
-          section_number: row.section_number,
-          department_code: row.department_code,
-          department_name: row.department_name,
-          instructors: row.instructors,
-          campus: row.campus,
-          capacity: row.capacity,
-          schedule_text: row.schedule_text,
-          active: row.active,
-          revision: row.revision,
-          created_at: row.created_at.toISOString(),
-          updated_at: row.updated_at.toISOString(),
-        },
-      });
+      records.push(classSectionSnapshotRecord(row));
     }
 
     const tasks = await this.#client.query<TaskRow>(

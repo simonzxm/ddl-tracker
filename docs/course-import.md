@@ -26,14 +26,14 @@
   "term": {
     "external_code": "2026-2027-1",
     "display_name": "2026-2027学年 第1学期",
-    "starts_on": "2026-08-31",
-    "ends_on": "2027-01-17",
+    "starts_on": "2026-08-24",
+    "ends_on": "2027-01-10",
     "time_zone": "Asia/Shanghai"
   }
 }
 ```
 
-以上日期只演示 manifest 结构，不是对真实校历的声明；实际值必须来自课程数据管理方。
+以上日期来自南京大学 2026–2027 学年校历；后续学期必须重新依据正式校历填写，不能沿用示例值。
 
 - `external_code` 必须与所有 CSV 行的 `XNXQDM` 相同。
 - `display_name` 必须与 `XNXQDM_DISPLAY` 一致，除非维护者明确提供 override reason。
@@ -59,10 +59,8 @@
 | `external_course_code` | `KCH`，保留前导零 |
 | `name` | `KCM` |
 | `credits` | `XF`，解析 decimal，空值允许 |
-| `department_code` | `PKDWDM` |
-| `department_name` | `PKDWDM_DISPLAY` |
 
-同一个唯一键出现多个课程名或开课单位时，plan 必须报冲突，不能选择“最后一行获胜”。
+同一个唯一键出现多个课程名或学分时，plan 必须报冲突，不能选择“最后一行获胜”。开课单位不是课程事实，不保存到课程记录。
 
 ### 教学班
 
@@ -73,7 +71,9 @@
 | `external_section_id` | `JXBID` |
 | `name` | `JXBMC` |
 | `section_number` | `KXH`，保留前导零 |
-| `instructors_text` | `SKJS` |
+| `department_code` | `PKDWDM` |
+| `department_name` | `PKDWDM_DISPLAY` |
+| `instructors` | `SKJS`，按来源分隔符解析为数组 |
 | `campus_code` | `XXXQDM` |
 | `campus_name` | `XXXQDM_DISPLAY` |
 | `capacity` | `XKZRS` |
@@ -85,6 +85,8 @@
 | `building_code` | `JXLDM` |
 | `building_name` | `JXLDM_DISPLAY` |
 | `source_payload` | 该行全部 39 列的 JSON object |
+
+同一课程的不同教学班可以属于不同开课单位，这是正常的开课事实，不产生冲突或警告。开课单位同时保存为教学班结构化字段；原始值仍保留在 `source_payload`，用于审计与未来迁移。
 
 MVP 不把“1-18周、周四第9-11节”解析为可计算课表规则。结构化字段只是检索与展示辅助，`schedule_text` 是当前完整展示来源。
 

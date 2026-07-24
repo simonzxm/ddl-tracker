@@ -20,7 +20,6 @@ const expectedPaths = [
   '/v1/sync',
   '/v1/admin/bootstrap',
   '/v1/admin/catalog/imports/plan',
-  '/v1/admin/catalog/imports/{import_id}/apply',
   '/v1/admin/catalog/imports/{import_id}/apply-all',
   '/v1/admin/catalog/imports/{import_id}',
   '/v1/admin/reports',

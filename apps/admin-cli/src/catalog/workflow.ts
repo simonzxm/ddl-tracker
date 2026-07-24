@@ -1,6 +1,5 @@
 import type {
   CatalogApplyAllRequest,
-  CatalogApplyRequest,
   CatalogImportDiff,
   CatalogPlanBatchRequest,
 } from '@ddl-tracker/contracts';
@@ -43,10 +42,6 @@ export interface CatalogStatusResponse {
 
 export interface CatalogWorkflowClient {
   planBatch(request: CatalogPlanBatchRequest): Promise<CatalogPlanResponse>;
-  applyBatch(
-    importId: string,
-    request: CatalogApplyRequest,
-  ): Promise<CatalogApplyResponse>;
   applyAll(
     importId: string,
     request: CatalogApplyAllRequest,

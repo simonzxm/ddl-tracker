@@ -101,42 +101,24 @@ describe('AdminApiClient', () => {
     );
   });
 
-  it('applies batches and reads import status', async () => {
-    const fetcher = vi
-      .fn()
-      .mockResolvedValueOnce(
-        response({
-          import_id: IMPORT_ID,
-          batch_index: 0,
-          replayed: false,
-          applied_batches: 1,
-          total_batches: 1,
-          complete: true,
-        }),
-      )
-      .mockResolvedValueOnce(
-        response({
-          import_id: IMPORT_ID,
-          status: 'applied',
-          received_batches: 1,
-          applied_batches: 1,
-          total_batches: 1,
-          diff: null,
-          failure_message: null,
-        }),
-      );
+  it('reads import status', async () => {
+    const fetcher = vi.fn(async () =>
+      response({
+        import_id: IMPORT_ID,
+        status: 'applied',
+        received_batches: 1,
+        applied_batches: 1,
+        total_batches: 1,
+        diff: null,
+        failure_message: null,
+      }),
+    );
     const client = new AdminApiClient({
       baseUrl: 'https://api.example.test',
       token: 'token',
       fetcher,
     });
 
-    await expect(
-      client.applyBatch(IMPORT_ID, {
-        batch_index: 0,
-        confirm_deactivations: true,
-      }),
-    ).resolves.toMatchObject({ complete: true });
     await expect(client.getStatus(IMPORT_ID)).resolves.toMatchObject({
       status: 'applied',
     });

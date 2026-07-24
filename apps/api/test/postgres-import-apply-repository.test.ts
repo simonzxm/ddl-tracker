@@ -218,11 +218,10 @@ describePostgres('PostgresCatalogImportApplyRepository', () => {
     await seedPlan(client, baselineHash);
 
     await expect(
-      repository.applyBatch({
+      repository.applyAll({
         actorId: ACTOR_ID,
         importId: IMPORT_ID,
         requestId: REQUEST_ID,
-        batchIndex: 0,
         confirmDeactivations: false,
         now: NOW,
         createId: idFactory(),
@@ -249,11 +248,10 @@ describePostgres('PostgresCatalogImportApplyRepository', () => {
     );
 
     await expect(
-      repository.applyBatch({
+      repository.applyAll({
         actorId: ACTOR_ID,
         importId: IMPORT_ID,
         requestId: REQUEST_ID,
-        batchIndex: 0,
         confirmDeactivations: true,
         now: NOW,
         createId: idFactory(),
@@ -267,11 +265,10 @@ describePostgres('PostgresCatalogImportApplyRepository', () => {
     const createId = idFactory();
 
     await expect(
-      repository.applyBatch({
+      repository.applyAll({
         actorId: ACTOR_ID,
         importId: IMPORT_ID,
         requestId: REQUEST_ID,
-        batchIndex: 0,
         confirmDeactivations: true,
         now: NOW,
         createId,
@@ -378,15 +375,14 @@ describePostgres('PostgresCatalogImportApplyRepository', () => {
       action: string;
     }>('select request_id, action from audit_log');
     expect(audit.rows).toEqual([
-      { request_id: REQUEST_ID, action: 'catalog_import_batch_applied' },
+      { request_id: REQUEST_ID, action: 'catalog_import_applied' },
     ]);
 
     await expect(
-      repository.applyBatch({
+      repository.applyAll({
         actorId: ACTOR_ID,
         importId: IMPORT_ID,
         requestId: REQUEST_ID,
-        batchIndex: 0,
         confirmDeactivations: true,
         now: NOW,
         createId,
@@ -405,23 +401,13 @@ describePostgres('PostgresCatalogImportApplyRepository', () => {
     expect(counts.rows[0]).toEqual({ events: '1', audits: '1' });
   });
 
-  it('atomically finishes every remaining batch after a partial apply', async () => {
+  it('atomically applies every uploaded batch', async () => {
     const baselineHash = await seedCatalog(client);
     await seedPlan(client, baselineHash, {
       totalBatches: 2,
       receivedBatches: 2,
     });
     const createId = idFactory();
-
-    await repository.applyBatch({
-      actorId: ACTOR_ID,
-      importId: IMPORT_ID,
-      requestId: REQUEST_ID,
-      batchIndex: 0,
-      confirmDeactivations: true,
-      now: NOW,
-      createId,
-    });
 
     await expect(
       repository.applyAll({
@@ -459,30 +445,89 @@ describePostgres('PostgresCatalogImportApplyRepository', () => {
     });
   });
 
-  it('rejects out-of-order and incomplete plan batches', async () => {
+  it('rolls back every catalog and import write when the final audit fails', async () => {
     const baselineHash = await seedCatalog(client);
-    await seedPlan(client, baselineHash, { totalBatches: 2, receivedBatches: 2 });
+    await seedPlan(client, baselineHash);
 
     await expect(
-      repository.applyBatch({
+      repository.applyAll({
         actorId: ACTOR_ID,
         importId: IMPORT_ID,
-        requestId: REQUEST_ID,
-        batchIndex: 1,
+        requestId: 'not-a-uuid',
         confirmDeactivations: true,
         now: NOW,
         createId: idFactory(),
       }),
-    ).resolves.toEqual({ kind: 'out_of_order', expectedBatchIndex: 0 });
+    ).rejects.toThrow();
 
-    await client.query('delete from catalog_imports where id = $1', [IMPORT_ID]);
+    const state = await client.query<{
+      term_name: string;
+      course_name: string;
+      missing_course_active: boolean;
+      added_courses: string;
+      section_department: string;
+      missing_section_active: boolean;
+      added_sections: string;
+      import_status: string;
+      applied_batches: number;
+      applied_batch_rows: string;
+      events: string;
+      audits: string;
+    }>(
+      `select
+         (select name from academic_terms where id = $1) as term_name,
+         (select name from courses where id = $2) as course_name,
+         (select active from courses where id = $3) as missing_course_active,
+         (select count(*) from courses
+          where external_course_code = '0020')::text as added_courses,
+         (select department_name from class_sections
+          where id = $4) as section_department,
+         (select active from class_sections
+          where id = $5) as missing_section_active,
+         (select count(*) from class_sections
+          where external_section_id = 'section-2')::text as added_sections,
+         (select status from catalog_imports
+          where id = $6) as import_status,
+         (select applied_batches from catalog_imports
+          where id = $6) as applied_batches,
+         (select count(*) from catalog_import_batches
+          where import_id = $6 and applied_at is not null)::text
+           as applied_batch_rows,
+         (select count(*) from sync_events)::text as events,
+         (select count(*) from audit_log)::text as audits`,
+      [
+        TERM_ID,
+        COURSE_ID,
+        MISSING_COURSE_ID,
+        SECTION_ID,
+        MISSING_SECTION_ID,
+        IMPORT_ID,
+      ],
+    );
+    expect(state.rows[0]).toEqual({
+      term_name: 'Old Term',
+      course_name: 'Old Course',
+      missing_course_active: true,
+      added_courses: '0',
+      section_department: 'Old Department',
+      missing_section_active: true,
+      added_sections: '0',
+      import_status: 'planned',
+      applied_batches: 0,
+      applied_batch_rows: '0',
+      events: '0',
+      audits: '0',
+    });
+  });
+
+  it('rejects an incomplete plan', async () => {
+    const baselineHash = await seedCatalog(client);
     await seedPlan(client, baselineHash, { totalBatches: 2, receivedBatches: 1 });
     await expect(
-      repository.applyBatch({
+      repository.applyAll({
         actorId: ACTOR_ID,
         importId: IMPORT_ID,
         requestId: REQUEST_ID,
-        batchIndex: 0,
         confirmDeactivations: true,
         now: NOW,
         createId: idFactory(),

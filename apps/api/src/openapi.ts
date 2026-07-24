@@ -11,7 +11,6 @@ import {
   adminUserActionRequestSchema,
   apiErrorSchema,
   catalogApplyAllRequestSchema,
-  catalogApplyRequestSchema,
   catalogApplyResponseSchema,
   catalogImportStatusSchema,
   catalogPlanBatchRequestSchema,
@@ -298,19 +297,6 @@ export const openApiDocument = addRateLimitResponses({
         },
       },
     },
-    '/v1/admin/catalog/imports/{import_id}/apply': {
-      post: {
-        tags: ['admin'],
-        summary: 'Apply a planned catalog import batch',
-        security: bearer,
-        parameters: [uuidParameter('import_id', 'Catalog import UUIDv7.')],
-        requestBody: requestBody('CatalogApplyRequest'),
-        responses: {
-          '200': response('Catalog import apply progress.', 'CatalogApplyResponse'),
-          '409': response('Baseline or confirmation conflict.', 'ApiError'),
-        },
-      },
-    },
     '/v1/admin/catalog/imports/{import_id}/apply-all': {
       post: {
         tags: ['admin'],
@@ -445,7 +431,6 @@ export const openApiDocument = addRateLimitResponses({
       CatalogPlanBatchRequest: component(catalogPlanBatchRequestSchema),
       CatalogPlanBatchResponse: component(catalogPlanBatchResponseSchema),
       CatalogApplyAllRequest: component(catalogApplyAllRequestSchema),
-      CatalogApplyRequest: component(catalogApplyRequestSchema),
       CatalogApplyResponse: component(catalogApplyResponseSchema),
       CatalogImportStatus: component(catalogImportStatusSchema),
       AdminBootstrapRequest: component(adminBootstrapRequestSchema),

@@ -61,14 +61,6 @@ function dependencies(maintainer = true): AdminCatalogRouteDependencies {
         checksum_previously_applied: false,
       },
     })),
-    applyBatch: vi.fn(async () => ({
-      import_id: IMPORT_ID,
-      batch_index: 0,
-      replayed: false,
-      applied_batches: 1,
-      total_batches: 1,
-      complete: true,
-    })),
     applyAll: vi.fn(async () => ({
       import_id: IMPORT_ID,
       batch_index: 0,
@@ -180,32 +172,6 @@ describe('admin catalog routes', () => {
     expect(dependenciesValue.planBatch).not.toHaveBeenCalled();
   });
 
-  it('applies a batch with the actual request ID', async () => {
-    const dependenciesValue = dependencies();
-    const response = await app(dependenciesValue).request(
-      `/api/v1/admin/catalog/imports/${IMPORT_ID}/apply`,
-      {
-        method: 'POST',
-        headers: {
-          authorization: 'Bearer token',
-          'content-type': 'application/json',
-        },
-        body: JSON.stringify({
-          batch_index: 0,
-          confirm_deactivations: true,
-        }),
-      },
-    );
-
-    expect(response.status).toBe(200);
-    expect(dependenciesValue.applyBatch).toHaveBeenCalledWith(
-      USER_ID,
-      IMPORT_ID,
-      REQUEST_ID,
-      { batch_index: 0, confirm_deactivations: true },
-    );
-  });
-
   it('applies the complete import with the actual request ID', async () => {
     const dependenciesValue = dependencies();
     const response = await app(dependenciesValue).request(
@@ -227,6 +193,43 @@ describe('admin catalog routes', () => {
       REQUEST_ID,
       { confirm_deactivations: true },
     );
+  });
+
+  it('rejects full apply from a non-maintainer', async () => {
+    const dependenciesValue = dependencies(false);
+    const response = await app(dependenciesValue).request(
+      `/api/v1/admin/catalog/imports/${IMPORT_ID}/apply-all`,
+      {
+        method: 'POST',
+        headers: {
+          authorization: 'Bearer token',
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({ confirm_deactivations: true }),
+      },
+    );
+
+    expect(response.status).toBe(403);
+    expect(dependenciesValue.applyAll).not.toHaveBeenCalled();
+  });
+
+  it('does not expose the obsolete partial apply route', async () => {
+    const response = await app(dependencies()).request(
+      `/api/v1/admin/catalog/imports/${IMPORT_ID}/apply`,
+      {
+        method: 'POST',
+        headers: {
+          authorization: 'Bearer token',
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          batch_index: 0,
+          confirm_deactivations: true,
+        }),
+      },
+    );
+
+    expect(response.status).toBe(404);
   });
 
   it('returns status for a canonical import ID', async () => {

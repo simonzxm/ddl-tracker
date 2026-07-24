@@ -1,7 +1,6 @@
 import {
   createUuidV7,
   type CatalogApplyAllRequest,
-  type CatalogApplyRequest,
 } from '@ddl-tracker/contracts';
 
 import { HttpError } from '../http/errors.js';
@@ -16,23 +15,13 @@ export type CatalogImportApplyOutcome =
   | { kind: 'not_found' }
   | { kind: 'plan_incomplete' }
   | { kind: 'baseline_changed' }
-  | { kind: 'deactivation_confirmation_required'; count: number }
-  | { kind: 'out_of_order'; expectedBatchIndex: number };
+  | { kind: 'deactivation_confirmation_required'; count: number };
 
 export interface CatalogImportApplyRepository {
   applyAll(input: {
     actorId: string;
     importId: string;
     requestId: string;
-    confirmDeactivations: boolean;
-    now: Date;
-    createId: () => string;
-  }): Promise<CatalogImportApplyOutcome>;
-  applyBatch(input: {
-    actorId: string;
-    importId: string;
-    requestId: string;
-    batchIndex: number;
     confirmDeactivations: boolean;
     now: Date;
     createId: () => string;
@@ -77,31 +66,11 @@ export class CatalogImportApplyService {
       now: this.#now(),
       createId: this.#createId,
     });
-    return this.#response(importId, null, outcome);
-  }
-
-  async applyBatch(
-    actorId: string,
-    importId: string,
-    requestId: string,
-    request: CatalogApplyRequest,
-  ): Promise<CatalogApplyResponse> {
-    const outcome = await this.#repository.applyBatch({
-      actorId,
-      importId,
-      requestId,
-      batchIndex: request.batch_index,
-      confirmDeactivations: request.confirm_deactivations,
-      now: this.#now(),
-      createId: this.#createId,
-    });
-
-    return this.#response(importId, request.batch_index, outcome);
+    return this.#response(importId, outcome);
   }
 
   #response(
     importId: string,
-    batchIndex: number | null,
     outcome: CatalogImportApplyOutcome,
   ): CatalogApplyResponse {
 
@@ -134,18 +103,9 @@ export class CatalogImportApplyService {
         details: { deactivation_count: outcome.count },
       });
     }
-    if (outcome.kind === 'out_of_order') {
-      throw new HttpError({
-        code: 'conflict',
-        message: 'Catalog import batches must be applied in order.',
-        status: 409,
-        details: { expected_batch_index: outcome.expectedBatchIndex },
-      });
-    }
-
     return {
       import_id: importId,
-      batch_index: batchIndex ?? Math.max(0, outcome.totalBatches - 1),
+      batch_index: Math.max(0, outcome.totalBatches - 1),
       replayed: outcome.kind === 'replayed',
       applied_batches: outcome.appliedBatches,
       total_batches: outcome.totalBatches,

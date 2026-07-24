@@ -105,7 +105,6 @@ POST   /api/v1/sync
 
 POST   /api/v1/admin/bootstrap
 POST   /api/v1/admin/catalog/imports/plan
-POST   /api/v1/admin/catalog/imports/:import_id/apply
 POST   /api/v1/admin/catalog/imports/:import_id/apply-all
 GET    /api/v1/admin/reports
 POST   /api/v1/admin/reports/:report_id/resolve

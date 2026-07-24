@@ -36,7 +36,7 @@ const csv = new TextEncoder().encode(`${headers.join(',')}\n${row.join(',')}\n`)
 
 function apiClient(deactivations = 0): CatalogWorkflowClient & {
   planBatch: ReturnType<typeof vi.fn>;
-  applyBatch: ReturnType<typeof vi.fn>;
+  applyAll: ReturnType<typeof vi.fn>;
   getStatus: ReturnType<typeof vi.fn>;
 } {
   const diff = {
@@ -61,14 +61,6 @@ function apiClient(deactivations = 0): CatalogWorkflowClient & {
       total_batches: 1,
       plan_complete: true,
       diff,
-    })),
-    applyBatch: vi.fn(async (_id, request) => ({
-      import_id: IMPORT_ID,
-      batch_index: request.batch_index,
-      replayed: false,
-      applied_batches: 1,
-      total_batches: 1,
-      complete: true,
     })),
     applyAll: vi.fn(async () => ({
       import_id: IMPORT_ID,
@@ -219,6 +211,6 @@ describe('admin CLI', () => {
         { from: 'user' },
       ),
     ).rejects.toThrow('confirmation did not match');
-    expect(client.applyBatch).not.toHaveBeenCalled();
+    expect(client.applyAll).not.toHaveBeenCalled();
   });
 });

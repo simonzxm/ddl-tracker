@@ -135,13 +135,6 @@ export const catalogPlanBatchResponseSchema = z
   })
   .strict();
 
-export const catalogApplyRequestSchema = z
-  .object({
-    batch_index: z.number().int().nonnegative(),
-    confirm_deactivations: z.boolean(),
-  })
-  .strict();
-
 export const catalogApplyAllRequestSchema = z
   .object({
     confirm_deactivations: z.boolean(),
@@ -175,7 +168,6 @@ export type CatalogPlanBatchRequest = z.infer<
   typeof catalogPlanBatchRequestSchema
 >;
 export type CatalogImportDiff = z.infer<typeof catalogImportDiffSchema>;
-export type CatalogApplyRequest = z.infer<typeof catalogApplyRequestSchema>;
 export type CatalogApplyAllRequest = z.infer<
   typeof catalogApplyAllRequestSchema
 >;

@@ -1,10 +1,8 @@
 import {
   catalogApplyAllRequestSchema,
-  catalogApplyRequestSchema,
   catalogPlanBatchRequestSchema,
   parseUuidV7,
   type CatalogApplyAllRequest,
-  type CatalogApplyRequest,
   type CatalogImportDiff,
   type CatalogPlanBatchRequest,
 } from '@ddl-tracker/contracts';
@@ -34,19 +32,6 @@ export interface AdminCatalogRouteDependencies {
     total_batches: number;
     plan_complete: boolean;
     diff: CatalogImportDiff | null;
-  }>;
-  applyBatch(
-    actorId: string,
-    importId: string,
-    requestId: string,
-    request: CatalogApplyRequest,
-  ): Promise<{
-    import_id: string;
-    batch_index: number;
-    replayed: boolean;
-    applied_batches: number;
-    total_batches: number;
-    complete: boolean;
   }>;
   applyAll(
     actorId: string,
@@ -130,28 +115,6 @@ export function registerAdminCatalogRoutes(
       });
     }
     return context.json(await dependencies.planBatch(principal.user.id, body));
-  });
-
-  app.post('/v1/admin/catalog/imports/:import_id/apply', async (context) => {
-    const principal = await requireMaintainer(
-      context.req.header('authorization'),
-      dependencies,
-      'mutation',
-    );
-    const importId = parseImportId(context.req.param('import_id'));
-    const body = await readValidatedJson(
-      context.req.raw,
-      catalogApplyRequestSchema,
-      ADMIN_BODY_LIMIT,
-    );
-    return context.json(
-      await dependencies.applyBatch(
-        principal.user.id,
-        importId,
-        context.get('requestId'),
-        body,
-      ),
-    );
   });
 
   app.post('/v1/admin/catalog/imports/:import_id/apply-all', async (context) => {

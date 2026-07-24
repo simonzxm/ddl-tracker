@@ -1,9 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import type {
-  CatalogApplyRequest,
-  CatalogPlanBatchRequest,
-} from '@ddl-tracker/contracts';
+import type { CatalogPlanBatchRequest } from '@ddl-tracker/contracts';
 
 import {
   applyCatalogImport,
@@ -88,7 +85,6 @@ function prepared() {
 function client(): CatalogWorkflowClient & {
   applyAll: ReturnType<typeof vi.fn>;
   planBatch: ReturnType<typeof vi.fn>;
-  applyBatch: ReturnType<typeof vi.fn>;
   getStatus: ReturnType<typeof vi.fn>;
 } {
   return {
@@ -114,14 +110,6 @@ function client(): CatalogWorkflowClient & {
             checksum_previously_applied: false,
           }
         : null,
-    })),
-    applyBatch: vi.fn(async (_id: string, request: CatalogApplyRequest) => ({
-      import_id: IMPORT_ID,
-      batch_index: request.batch_index,
-      replayed: false,
-      applied_batches: request.batch_index + 1,
-      total_batches: 2,
-      complete: request.batch_index === 1,
     })),
     applyAll: vi.fn(async () => ({
       import_id: IMPORT_ID,
@@ -238,7 +226,6 @@ describe('catalog workflow', () => {
     expect(api.applyAll).toHaveBeenCalledWith(IMPORT_ID, {
       confirm_deactivations: true,
     });
-    expect(api.applyBatch).not.toHaveBeenCalled();
     expect(result.complete).toBe(true);
   });
 });

@@ -87,13 +87,15 @@ describe('parseCatalogCsv', () => {
         external_course_code: '0010',
         name: 'Course, Advanced',
         credits: '3.50',
-        department_code: '001',
+        department_code: null,
       }),
     ]);
     expect(result.class_sections).toEqual([
       expect.objectContaining({
         external_section_id: 'section-1',
         section_number: '01',
+        department_code: '001',
+        department_name: 'Department',
         instructors: ['Teacher A', 'Teacher B'],
         capacity: 30,
         schedule_text: 'Thursday 9-11, Room 1',
@@ -151,6 +153,34 @@ describe('parseCatalogCsv', () => {
         manifest,
       ),
     ).toThrow('Conflicting course');
+  });
+
+  it('keeps different offering departments on their class sections', () => {
+    const result = parseCatalogCsv(
+      csv(
+        row(),
+        row({
+          JXBID: 'section-2',
+          PKDWDM: '002',
+          PKDWDM_DISPLAY: 'Other Department',
+        }),
+      ),
+      manifest,
+    );
+
+    expect(result.metadata.warnings).toEqual([]);
+    expect(result.class_sections).toEqual([
+      expect.objectContaining({
+        department_code: '001',
+        department_name: 'Department',
+        source_payload: expect.objectContaining({ PKDWDM: '001' }),
+      }),
+      expect.objectContaining({
+        department_code: '002',
+        department_name: 'Other Department',
+        source_payload: expect.objectContaining({ PKDWDM: '002' }),
+      }),
+    ]);
   });
 
   it('rejects term code and display name mismatches without an override', () => {

@@ -42,6 +42,8 @@ export interface NormalizedCatalogClassSection {
   external_course_code: string;
   name: string;
   section_number: string;
+  department_code: string | null;
+  department_name: string | null;
   instructors: string[];
   campus_code: string | null;
   campus_name: string | null;
@@ -138,16 +140,11 @@ function splitInstructors(value: string | null | undefined): string[] {
     .filter((name): name is string => name !== null);
 }
 
-function sameCourse(
+function sameCourseIdentity(
   left: NormalizedCatalogCourse,
   right: NormalizedCatalogCourse,
 ): boolean {
-  return (
-    left.name === right.name &&
-    left.credits === right.credits &&
-    left.department_code === right.department_code &&
-    left.department_name === right.department_name
-  );
+  return left.name === right.name && left.credits === right.credits;
 }
 
 export function parseCatalogCsv(
@@ -222,16 +219,21 @@ export function parseCatalogCsv(
       external_course_code: courseCode,
       name: requireCell(row, 'KCM', rowNumber),
       credits: parseDecimal(row.XF, 'XF', rowNumber),
-      department_code: row.PKDWDM ?? null,
-      department_name: row.PKDWDM_DISPLAY ?? null,
+      department_code: null,
+      department_name: null,
     };
     const existingCourse = courses.get(courseCode);
-    if (existingCourse !== undefined && !sameCourse(existingCourse, course)) {
+    if (
+      existingCourse !== undefined &&
+      !sameCourseIdentity(existingCourse, course)
+    ) {
       throw new Error(
         `Conflicting course facts for KCH ${courseCode} at row ${String(rowNumber)}.`,
       );
     }
-    courses.set(courseCode, course);
+    if (existingCourse === undefined) {
+      courses.set(courseCode, course);
+    }
 
     const sectionId = requireCell(row, 'JXBID', rowNumber);
     if (sections.has(sectionId)) {
@@ -242,6 +244,8 @@ export function parseCatalogCsv(
       external_course_code: courseCode,
       name: requireCell(row, 'JXBMC', rowNumber),
       section_number: requireCell(row, 'KXH', rowNumber),
+      department_code: row.PKDWDM ?? null,
+      department_name: row.PKDWDM_DISPLAY ?? null,
       instructors: splitInstructors(row.SKJS),
       campus_code: row.XXXQDM ?? null,
       campus_name: row.XXXQDM_DISPLAY ?? null,

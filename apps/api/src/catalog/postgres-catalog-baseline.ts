@@ -20,7 +20,6 @@ interface CourseRow {
   external_course_code: string;
   name: string;
   credits: string | null;
-  department: string | null;
   active: boolean;
   revision: number;
 }
@@ -67,8 +66,7 @@ export async function loadCatalogBaseline(
   }
 
   const courseResult = await client.query<CourseRow>(
-    `select id, external_course_code, name, credits::text, department,
-            active, revision
+    `select id, external_course_code, name, credits::text, active, revision
      from courses
      where term_id = $1
      order by external_course_code`,
@@ -79,7 +77,6 @@ export async function loadCatalogBaseline(
     externalCourseCode: course.external_course_code,
     name: course.name,
     credits: course.credits,
-    department: course.department,
     active: course.active,
     revision: course.revision,
   }));

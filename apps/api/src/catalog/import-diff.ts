@@ -18,7 +18,6 @@ export interface BaselineCourse {
   externalCourseCode: string;
   name: string;
   credits: string | null;
-  department: string | null;
   active: boolean;
   revision: number;
 }
@@ -175,12 +174,6 @@ export function buildCatalogImportDiff(
         'courses.credits',
         current.credits,
         course.credits,
-      ),
-      compareField(
-        fieldChanges,
-        'courses.department',
-        current.department,
-        course.department_name,
       ),
       compareField(fieldChanges, 'courses.active', current.active, true),
     ].some(Boolean);

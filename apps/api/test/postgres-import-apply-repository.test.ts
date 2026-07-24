@@ -108,11 +108,10 @@ async function seedCatalog(client: Client): Promise<string> {
   );
   await client.query(
     `insert into courses (
-       id, term_id, external_course_code, name, credits, department,
-       active, revision
+       id, term_id, external_course_code, name, credits, active, revision
      ) values
-       ($1, $3, '0010', 'Old Course', 3.00, 'Department', true, 1),
-       ($2, $3, '0099', 'Missing Course', null, null, true, 1)`,
+       ($1, $3, '0010', 'Old Course', 3.00, true, 1),
+       ($2, $3, '0099', 'Missing Course', null, true, 1)`,
     [COURSE_ID, MISSING_COURSE_ID, TERM_ID],
   );
   await client.query(

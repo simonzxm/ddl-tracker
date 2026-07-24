@@ -185,9 +185,8 @@ describePostgres('PostgresCatalogImportRepository planning', () => {
     );
     await client.query(
       `insert into courses (
-         id, term_id, external_course_code, name, credits, department,
-         active, revision
-       ) values ($1, $2, '0010', 'Course', 3.00, 'Department', true, 2)`,
+         id, term_id, external_course_code, name, credits, active, revision
+       ) values ($1, $2, '0010', 'Course', 3.00, true, 2)`,
       [COURSE_ID, TERM_ID],
     );
     await client.query(

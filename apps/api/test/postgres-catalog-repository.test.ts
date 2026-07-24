@@ -34,10 +34,10 @@ describePostgres('PostgresCatalogRepository', () => {
     );
     await client.query(
       `insert into courses (
-         id, term_id, external_course_code, name, credits, department
+         id, term_id, external_course_code, name, credits
        ) values
-         ($1, $2, '0010', 'Course A', 3.50, 'Department'),
-         ($3, $4, '0001', 'Other Course', null, null)`,
+         ($1, $2, '0010', 'Course A', 3.50),
+         ($3, $4, '0001', 'Other Course', null)`,
       [COURSE_ID, TERM_ID, OTHER_COURSE_ID, OTHER_TERM_ID],
     );
     await client.query(

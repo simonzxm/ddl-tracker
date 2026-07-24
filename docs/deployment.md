@@ -32,7 +32,7 @@ cp apps/api/wrangler.production.example.jsonc \
 
 - `APP_ENVIRONMENT = production`。
 - `nodejs_compat`。
-- 显式 Workers CPU budget；当前目录批量 apply 使用 `limits.cpu_ms = 5000`，不得依赖账户历史默认值。
+- 当前 Workers Free plan 不配置 `limits.cpu_ms`；目录导入由 CLI 将每批课程和教学班分别限制在 100 条以内。升级到付费 Standard plan 后才可显式配置 CPU budget。
 - retention cleanup cron。
 - Workers logs 与 traces 开启。
 

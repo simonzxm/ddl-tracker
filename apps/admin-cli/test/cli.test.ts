@@ -70,6 +70,14 @@ function apiClient(deactivations = 0): CatalogWorkflowClient & {
       total_batches: 1,
       complete: true,
     })),
+    applyAll: vi.fn(async () => ({
+      import_id: IMPORT_ID,
+      batch_index: 0,
+      replayed: false,
+      applied_batches: 1,
+      total_batches: 1,
+      complete: true,
+    })),
     getStatus: vi.fn(async () => ({
       import_id: IMPORT_ID,
       status: 'planned' as const,
@@ -195,8 +203,7 @@ describe('admin CLI', () => {
       { from: 'user' },
     );
 
-    expect(client.applyBatch).toHaveBeenCalledWith(IMPORT_ID, {
-      batch_index: 0,
+    expect(client.applyAll).toHaveBeenCalledWith(IMPORT_ID, {
       confirm_deactivations: true,
     });
   });

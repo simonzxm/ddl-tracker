@@ -86,6 +86,7 @@ function prepared() {
 }
 
 function client(): CatalogWorkflowClient & {
+  applyAll: ReturnType<typeof vi.fn>;
   planBatch: ReturnType<typeof vi.fn>;
   applyBatch: ReturnType<typeof vi.fn>;
   getStatus: ReturnType<typeof vi.fn>;
@@ -121,6 +122,14 @@ function client(): CatalogWorkflowClient & {
       applied_batches: request.batch_index + 1,
       total_batches: 2,
       complete: request.batch_index === 1,
+    })),
+    applyAll: vi.fn(async () => ({
+      import_id: IMPORT_ID,
+      batch_index: 1,
+      replayed: false,
+      applied_batches: 2,
+      total_batches: 2,
+      complete: true,
     })),
     getStatus: vi.fn(async () => ({
       import_id: IMPORT_ID,
@@ -218,18 +227,18 @@ describe('catalog workflow', () => {
     expect(first?.import_id).toBe(IMPORT_ID);
   });
 
-  it('continues apply from server progress and confirms deactivations', async () => {
+  it('applies the complete plan in one request', async () => {
     const api = client();
 
     const result = await applyCatalogImport(api, IMPORT_ID, {
       confirmDeactivations: true,
     });
 
-    expect(api.applyBatch).toHaveBeenCalledTimes(1);
-    expect(api.applyBatch).toHaveBeenCalledWith(IMPORT_ID, {
-      batch_index: 1,
+    expect(api.applyAll).toHaveBeenCalledTimes(1);
+    expect(api.applyAll).toHaveBeenCalledWith(IMPORT_ID, {
       confirm_deactivations: true,
     });
+    expect(api.applyBatch).not.toHaveBeenCalled();
     expect(result.complete).toBe(true);
   });
 });

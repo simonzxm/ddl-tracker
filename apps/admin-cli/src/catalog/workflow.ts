@@ -1,4 +1,5 @@
 import type {
+  CatalogApplyAllRequest,
   CatalogApplyRequest,
   CatalogImportDiff,
   CatalogPlanBatchRequest,
@@ -45,6 +46,10 @@ export interface CatalogWorkflowClient {
   applyBatch(
     importId: string,
     request: CatalogApplyRequest,
+  ): Promise<CatalogApplyResponse>;
+  applyAll(
+    importId: string,
+    request: CatalogApplyAllRequest,
   ): Promise<CatalogApplyResponse>;
   getStatus(importId: string): Promise<CatalogStatusResponse>;
 }
@@ -183,25 +188,13 @@ export async function applyCatalogImport(
     throw new Error('Catalog import plan is not complete.');
   }
 
-  let lastResponse: CatalogApplyResponse | undefined;
-  for (
-    let batchIndex = status.applied_batches;
-    batchIndex < status.total_batches;
-    batchIndex += 1
-  ) {
-    const response = await client.applyBatch(importId, {
-      batch_index: batchIndex,
-      confirm_deactivations: options.confirmDeactivations,
-    });
-    lastResponse = response;
-    await options.onProgress?.({
-      completed: response.applied_batches,
-      total: response.total_batches,
-      importId,
-    });
-  }
-  if (lastResponse === undefined) {
-    throw new Error('Catalog apply produced no response.');
-  }
-  return lastResponse;
+  const response = await client.applyAll(importId, {
+    confirm_deactivations: options.confirmDeactivations,
+  });
+  await options.onProgress?.({
+    completed: response.applied_batches,
+    total: response.total_batches,
+    importId,
+  });
+  return response;
 }

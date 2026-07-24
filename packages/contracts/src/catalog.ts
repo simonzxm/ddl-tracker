@@ -29,7 +29,7 @@ export const courseSchema = z
     external_course_code: z.string().min(1).max(100),
     name: normalizedTextSchema(1, 300),
     credits: z.string().regex(/^\d{1,3}(?:\.\d{1,2})?$/u).nullable(),
-    department: normalizedTextSchema(1, 300).nullable(),
+    department: normalizedTextSchema(1, 300).nullable().optional(),
   })
   .strict();
 

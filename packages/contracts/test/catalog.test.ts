@@ -29,7 +29,6 @@ describe('catalog contracts', () => {
         external_course_code: '001234',
         name: 'Course',
         credits: '3.50',
-        department: 'Department',
       }),
     ).toMatchObject({ external_course_code: '001234', credits: '3.50' });
   });

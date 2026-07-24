@@ -61,7 +61,6 @@ export const courses = pgTable(
     externalCourseCode: text('external_course_code').notNull(),
     name: text('name').notNull(),
     credits: numeric('credits', { precision: 5, scale: 2 }),
-    department: text('department'),
     active: boolean('active').default(true).notNull(),
     revision: integer('revision').default(1).notNull(),
     sourceMetadata: jsonb('source_metadata')

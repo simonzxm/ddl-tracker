@@ -43,12 +43,14 @@ describePostgres('PostgresCatalogRepository', () => {
     await client.query(
       `insert into class_sections (
          id, course_id, external_section_id, section_number, instructors,
-         campus, capacity, schedule_text, raw_source, active, revision
+         department_code, department_name, campus, capacity, schedule_text,
+         raw_source, active, revision
        ) values
          ($1, $2, 'section-a', '02', '["Teacher"]'::jsonb,
-          'Campus', 30, 'Thursday', '{"secret":"raw"}'::jsonb, true, 2),
+          '001', 'Department', 'Campus', 30, 'Thursday',
+          '{"secret":"raw"}'::jsonb, true, 2),
          ($3, $4, 'section-b', '01', '[]'::jsonb,
-          null, null, null, '{"other":true}'::jsonb, true, 1)`,
+          null, null, null, null, null, '{"other":true}'::jsonb, true, 1)`,
       [
         '018f0000-0000-7000-8000-000000000305',
         COURSE_ID,
@@ -103,6 +105,8 @@ describePostgres('PostgresCatalogRepository', () => {
         id: '018f0000-0000-7000-8000-000000000305',
         externalSectionId: 'section-a',
         sectionNumber: '02',
+        departmentCode: '001',
+        departmentName: 'Department',
         instructors: ['Teacher'],
         campus: 'Campus',
         capacity: 30,

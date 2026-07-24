@@ -28,6 +28,8 @@ interface SectionRow {
   id: string;
   external_section_id: string;
   section_number: string;
+  department_code: string | null;
+  department_name: string | null;
   instructors: string[];
   campus: string | null;
   capacity: number | null;
@@ -79,8 +81,9 @@ export class PostgresCatalogRepository implements CatalogRepository {
 
   async listClassSections(courseId: string): Promise<ClassSectionRecord[]> {
     const result = await this.#client.query<SectionRow>(
-      `select id, external_section_id, section_number, instructors, campus,
-              capacity, schedule_text, active, revision
+      `select id, external_section_id, section_number, department_code,
+              department_name, instructors, campus, capacity, schedule_text,
+              active, revision
        from class_sections
        where course_id = $1
        order by section_number, external_section_id, id`,
@@ -90,6 +93,8 @@ export class PostgresCatalogRepository implements CatalogRepository {
       id: row.id,
       externalSectionId: row.external_section_id,
       sectionNumber: row.section_number,
+      departmentCode: row.department_code,
+      departmentName: row.department_name,
       instructors: row.instructors,
       campus: row.campus,
       capacity: row.capacity,

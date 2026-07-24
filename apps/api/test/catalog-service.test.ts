@@ -100,4 +100,35 @@ describe('CatalogService', () => {
       },
     ]);
   });
+
+  it('maps section department fields to the public contract', async () => {
+    const service = new CatalogService({
+      repository: {
+        ...repository,
+        listClassSections: () =>
+          Promise.resolve([
+            {
+              id: '018f0000-0000-7000-8000-000000000002',
+              externalSectionId: 'section-1',
+              sectionNumber: '01',
+              departmentCode: '001',
+              departmentName: 'Department',
+              instructors: [],
+              campus: null,
+              capacity: null,
+              scheduleText: null,
+              active: true,
+              revision: 1,
+            },
+          ]),
+      },
+    });
+
+    await expect(service.listClassSections('course-1')).resolves.toEqual([
+      expect.objectContaining({
+        department_code: '001',
+        department_name: 'Department',
+      }),
+    ]);
+  });
 });

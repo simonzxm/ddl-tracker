@@ -26,6 +26,8 @@ export interface ClassSectionRecord {
   id: string;
   externalSectionId: string;
   sectionNumber: string;
+  departmentCode: string | null;
+  departmentName: string | null;
   instructors: string[];
   campus: string | null;
   capacity: number | null;
@@ -115,6 +117,8 @@ export class CatalogService {
         id: section.id,
         external_section_id: section.externalSectionId,
         section_number: section.sectionNumber,
+        department_code: section.departmentCode,
+        department_name: section.departmentName,
         instructors: section.instructors,
         campus: section.campus,
         capacity: section.capacity,

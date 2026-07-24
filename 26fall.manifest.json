@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "source_system": "course-management",
+  "term": {
+    "external_code": "2026-2027-1",
+    "display_name": "2026-2027学年 第1学期",
+    "starts_on": "2026-08-24",
+    "ends_on": "2027-01-10",
+    "time_zone": "Asia/Shanghai"
+  }
+}

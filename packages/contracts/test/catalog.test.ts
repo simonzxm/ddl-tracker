@@ -40,6 +40,8 @@ describe('catalog contracts', () => {
         id: ID,
         external_section_id: 'section-1',
         section_number: '01',
+        department_code: '001',
+        department_name: 'Department',
         instructors: ['Teacher'],
         campus: null,
         capacity: 30,

@@ -38,6 +38,8 @@ export const classSectionSchema = z
     id: uuidV7Schema,
     external_section_id: z.string().min(1).max(200),
     section_number: z.string().min(1).max(100),
+    department_code: z.string().min(1).max(100).nullable().optional(),
+    department_name: normalizedTextSchema(1, 300).nullable().optional(),
     instructors: z.array(normalizedTextSchema(1, 200)).max(100),
     campus: normalizedTextSchema(1, 300).nullable(),
     capacity: z.number().int().nonnegative().nullable(),

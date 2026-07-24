@@ -10,6 +10,7 @@ import {
   adminTaskMergeRequestSchema,
   adminUserActionRequestSchema,
   apiErrorSchema,
+  catalogApplyAllRequestSchema,
   catalogApplyRequestSchema,
   catalogApplyResponseSchema,
   catalogImportStatusSchema,
@@ -310,6 +311,19 @@ export const openApiDocument = addRateLimitResponses({
         },
       },
     },
+    '/v1/admin/catalog/imports/{import_id}/apply-all': {
+      post: {
+        tags: ['admin'],
+        summary: 'Atomically apply a complete catalog import',
+        security: bearer,
+        parameters: [uuidParameter('import_id', 'Catalog import UUIDv7.')],
+        requestBody: requestBody('CatalogApplyAllRequest'),
+        responses: {
+          '200': response('Catalog import applied.', 'CatalogApplyResponse'),
+          '409': response('Baseline or confirmation conflict.', 'ApiError'),
+        },
+      },
+    },
     '/v1/admin/catalog/imports/{import_id}': {
       get: {
         tags: ['admin'],
@@ -430,6 +444,7 @@ export const openApiDocument = addRateLimitResponses({
       },
       CatalogPlanBatchRequest: component(catalogPlanBatchRequestSchema),
       CatalogPlanBatchResponse: component(catalogPlanBatchResponseSchema),
+      CatalogApplyAllRequest: component(catalogApplyAllRequestSchema),
       CatalogApplyRequest: component(catalogApplyRequestSchema),
       CatalogApplyResponse: component(catalogApplyResponseSchema),
       CatalogImportStatus: component(catalogImportStatusSchema),

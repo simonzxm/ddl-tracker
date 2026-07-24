@@ -21,6 +21,7 @@ const expectedPaths = [
   '/v1/admin/bootstrap',
   '/v1/admin/catalog/imports/plan',
   '/v1/admin/catalog/imports/{import_id}/apply',
+  '/v1/admin/catalog/imports/{import_id}/apply-all',
   '/v1/admin/catalog/imports/{import_id}',
   '/v1/admin/reports',
   '/v1/admin/reports/{report_id}/resolve',
@@ -45,6 +46,9 @@ describe('OpenAPI document', () => {
     );
     expect(openApiDocument.components.schemas).toHaveProperty('SyncRequest');
     expect(openApiDocument.components.schemas).toHaveProperty('ApiError');
+    expect(openApiDocument.components.schemas).toHaveProperty(
+      'CatalogApplyAllRequest',
+    );
   });
 
   it('documents retry metadata on every bearer-protected operation', () => {

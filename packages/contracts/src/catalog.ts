@@ -29,7 +29,6 @@ export const courseSchema = z
     external_course_code: z.string().min(1).max(100),
     name: normalizedTextSchema(1, 300),
     credits: z.string().regex(/^\d{1,3}(?:\.\d{1,2})?$/u).nullable(),
-    department: normalizedTextSchema(1, 300).nullable().optional(),
   })
   .strict();
 
@@ -38,8 +37,8 @@ export const classSectionSchema = z
     id: uuidV7Schema,
     external_section_id: z.string().min(1).max(200),
     section_number: z.string().min(1).max(100),
-    department_code: z.string().min(1).max(100).nullable().optional(),
-    department_name: normalizedTextSchema(1, 300).nullable().optional(),
+    department_code: z.string().min(1).max(100).nullable(),
+    department_name: normalizedTextSchema(1, 300).nullable(),
     instructors: z.array(normalizedTextSchema(1, 200)).max(100),
     campus: normalizedTextSchema(1, 300).nullable(),
     capacity: z.number().int().nonnegative().nullable(),

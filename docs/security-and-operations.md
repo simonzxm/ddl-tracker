@@ -100,7 +100,7 @@ Session 使用至少 256 bits Web Crypto 随机 opaque bearer token：
 
 ## 限流与资源保护
 
-限流分为 Cloudflare edge/IP 层与 PostgreSQL identity/user 层。Worker module global 不保存计数。
+限流分为 Cloudflare edge 层与 PostgreSQL 持久层。验证码请求的源 IP 从 Cloudflare `CF-Connecting-IP` 获取，先加用途前缀并做 HMAC，再使用 PostgreSQL 计数；数据库不保存原始 IP，Worker module global 也不保存计数。WAF/Rate Limiting 在权限允许时作为更靠前的额外防线。
 
 默认初始值：
 
@@ -116,7 +116,7 @@ Session 使用至少 256 bits Web Crypto 随机 opaque bearer token：
 | sync request body | 512 KiB |
 | sync operations | 100 |
 
-阈值是配置，不进入客户端逻辑。所有 429 响应包含 `retry_after`；错误 message 不说明是 IP、邮箱还是账户命中限制。持续攻击应优先在 Cloudflare WAF/rate limiting 层拦截，数据库限流保证跨 IP 的邮箱与账户规则。
+阈值是配置，不进入客户端逻辑。所有 429 响应包含 `retry_after`；错误 message 不说明是 IP、邮箱还是账户命中限制。持续攻击应优先在 Cloudflare WAF/rate limiting 层拦截，数据库限流保证 IP、邮箱与账户规则在所有 Worker 实例间一致。
 
 ## 输入与内容安全
 

@@ -9,7 +9,7 @@
 - PostgreSQL TLS 使用 `verify_full`，证书 hostname 与连接目标匹配。
 - pgBackRest 最近一次完整/增量备份成功，且最近一次隔离恢复演练仍在运维允许窗口内。
 - 飞书 SMTP credential 已创建；只允许 TLS 端口 465 或 587。
-- Cloudflare WAF/Rate Limiting 已为 `POST /api/v1/auth/email/challenges` 配置源 IP 限制：20/hour、50/day。命中时返回 429、`Retry-After` 和不暴露命中维度的通用 JSON 错误；不能把 IP 计数放进 Worker module global。
+- 应用内 PostgreSQL 限流已为 `POST /api/v1/auth/email/challenges` 配置源 IP 限制：20/hour、50/day。源 IP 必须来自 Cloudflare `CF-Connecting-IP`，数据库只保存带用途前缀的 HMAC。权限允许时再配置等价的 Cloudflare WAF/Rate Limiting 作为额外边缘防线。
 - 发布者已通过 `pnpm verify` 或 CI 的 `pnpm verify:ci`。
 
 ## 创建生产配置
@@ -35,7 +35,7 @@ cp apps/api/wrangler.production.example.jsonc \
 - retention cleanup cron。
 - Workers logs 与 traces 开启。
 
-应用内 PostgreSQL 限流覆盖 email identity（1/min、5/hour、10/day）、sync user（5/10 seconds、30/min）、authenticated read（120/min）和 admin mutation（30/min）。Cloudflare 边缘 IP 规则是额外防线，不能替代应用内计数。
+应用内 PostgreSQL 限流覆盖 source IP（20/hour、50/day）、email identity（1/min、5/hour、10/day）、sync user（5/10 seconds、30/min）、authenticated read（120/min）和 admin mutation（30/min）。Cloudflare 边缘 IP 规则是额外防线，不能替代应用内计数。
 
 执行本地保护检查：
 

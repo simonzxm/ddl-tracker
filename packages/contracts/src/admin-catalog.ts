@@ -15,8 +15,8 @@ export const normalizedCatalogCourseSchema = z
     external_course_code: z.string().trim().min(1).max(100),
     name: normalizedTextSchema(1, 300),
     credits: decimalSchema,
-    department_code: z.string().trim().min(1).max(100).nullable(),
-    department_name: nullableNormalizedTextSchema(300),
+    department_code: z.string().trim().min(1).max(100).nullable().optional(),
+    department_name: nullableNormalizedTextSchema(300).optional(),
   })
   .strict();
 

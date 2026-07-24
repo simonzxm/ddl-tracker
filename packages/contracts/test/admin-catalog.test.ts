@@ -36,8 +36,6 @@ describe('admin catalog import contracts', () => {
             external_course_code: '0010',
             name: 'Course',
             credits: '3.50',
-            department_code: '001',
-            department_name: 'Department',
           },
         ],
         class_sections: [

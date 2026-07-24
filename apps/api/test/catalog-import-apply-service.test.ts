@@ -56,7 +56,6 @@ describe('CatalogImportApplyService', () => {
     );
 
     expect(response).toMatchObject({
-      batch_index: 1,
       applied_batches: 2,
       total_batches: 2,
       complete: true,

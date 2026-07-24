@@ -30,7 +30,6 @@ export interface CatalogImportApplyRepository {
 
 export interface CatalogApplyResponse {
   import_id: string;
-  batch_index: number;
   replayed: boolean;
   applied_batches: number;
   total_batches: number;
@@ -105,7 +104,6 @@ export class CatalogImportApplyService {
     }
     return {
       import_id: importId,
-      batch_index: Math.max(0, outcome.totalBatches - 1),
       replayed: outcome.kind === 'replayed',
       applied_batches: outcome.appliedBatches,
       total_batches: outcome.totalBatches,

@@ -63,7 +63,6 @@ function dependencies(maintainer = true): AdminCatalogRouteDependencies {
     })),
     applyAll: vi.fn(async () => ({
       import_id: IMPORT_ID,
-      batch_index: 0,
       replayed: false,
       applied_batches: 1,
       total_batches: 1,

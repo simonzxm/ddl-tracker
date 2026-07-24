@@ -144,7 +144,6 @@ export const catalogApplyAllRequestSchema = z
 export const catalogApplyResponseSchema = z
   .object({
     import_id: uuidV7Schema,
-    batch_index: z.number().int().nonnegative(),
     replayed: z.boolean(),
     applied_batches: z.number().int().nonnegative(),
     total_batches: z.number().int().positive(),

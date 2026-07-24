@@ -113,7 +113,6 @@ function client(): CatalogWorkflowClient & {
     })),
     applyAll: vi.fn(async () => ({
       import_id: IMPORT_ID,
-      batch_index: 1,
       replayed: false,
       applied_batches: 2,
       total_batches: 2,

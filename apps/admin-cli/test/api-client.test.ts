@@ -17,7 +17,6 @@ describe('AdminApiClient', () => {
     const fetcher = vi.fn(async () =>
       response({
         import_id: IMPORT_ID,
-        batch_index: 30,
         replayed: false,
         applied_batches: 31,
         total_batches: 31,

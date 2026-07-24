@@ -64,7 +64,6 @@ function apiClient(deactivations = 0): CatalogWorkflowClient & {
     })),
     applyAll: vi.fn(async () => ({
       import_id: IMPORT_ID,
-      batch_index: 0,
       replayed: false,
       applied_batches: 1,
       total_batches: 1,

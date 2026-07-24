@@ -23,7 +23,6 @@ export interface CatalogPlanResponse {
 
 export interface CatalogApplyResponse {
   import_id: string;
-  batch_index: number;
   replayed: boolean;
   applied_batches: number;
   total_batches: number;
@@ -172,7 +171,6 @@ export async function applyCatalogImport(
   if (status.status === 'applied') {
     return {
       import_id: importId,
-      batch_index: Math.max(0, status.total_batches - 1),
       replayed: true,
       applied_batches: status.applied_batches,
       total_batches: status.total_batches,

@@ -40,7 +40,6 @@ export interface AdminCatalogRouteDependencies {
     request: CatalogApplyAllRequest,
   ): Promise<{
     import_id: string;
-    batch_index: number;
     replayed: boolean;
     applied_batches: number;
     total_batches: number;

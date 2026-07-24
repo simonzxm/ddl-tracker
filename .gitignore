@@ -8,6 +8,7 @@ apps/api/wrangler.production.jsonc
 
 # Real course data is managed outside this repository
 *.csv
+*.csv.gz
 !data/fixtures/*.csv
 
 # Database exports and backup material

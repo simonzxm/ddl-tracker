@@ -94,6 +94,8 @@ export const classSections = pgTable(
       .references(() => courses.id, { onDelete: 'restrict' }),
     externalSectionId: text('external_section_id').notNull(),
     sectionNumber: text('section_number').notNull(),
+    departmentCode: text('department_code'),
+    departmentName: text('department_name'),
     instructors: jsonb('instructors')
       .$type<string[]>()
       .default(sql`'[]'::jsonb`)

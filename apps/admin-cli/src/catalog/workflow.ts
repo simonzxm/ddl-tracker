@@ -70,7 +70,7 @@ export function prepareCatalogImport(input: {
     parsed.courses,
     parsed.class_sections,
     {
-      maximumRecordsPerType: 500,
+      maximumRecordsPerType: 100,
       maximumPayloadBytes: input.maximumPayloadBytes ?? 420 * 1024,
     },
   );

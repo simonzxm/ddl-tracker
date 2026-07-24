@@ -147,6 +147,32 @@ function client(): CatalogWorkflowClient & {
 }
 
 describe('catalog workflow', () => {
+  it('keeps default plan batches at most 100 courses and class sections', () => {
+    const rows = Array.from({ length: 101 }, (_, index) => csvRow(index + 1));
+    const result = prepareCatalogImport({
+      filename: 'fixture.csv',
+      environment: 'staging',
+      manifestValue: {
+        schema_version: 1,
+        source_system: 'test',
+        term: {
+          external_code: '2026-2027-1',
+          display_name: 'Term',
+          starts_on: '2026-08-31',
+          ends_on: '2027-01-17',
+          time_zone: 'Asia/Shanghai',
+        },
+      },
+      csvBytes: new TextEncoder().encode(
+        `${headers.join(',')}\n${rows.join('\n')}\n`,
+      ),
+    });
+
+    expect(result.batches).toHaveLength(2);
+    expect(result.batches[0]?.courses).toHaveLength(100);
+    expect(result.batches[0]?.class_sections).toHaveLength(100);
+  });
+
   it('validates files and creates bounded deterministic plan batches', () => {
     const result = prepared();
 

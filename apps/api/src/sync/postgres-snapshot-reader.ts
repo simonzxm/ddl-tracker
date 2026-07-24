@@ -224,6 +224,8 @@ export class PostgresSnapshotReader {
       course_id: string;
       external_section_id: string;
       section_number: string;
+      department_code: string | null;
+      department_name: string | null;
       instructors: unknown;
       campus: string | null;
       capacity: number | null;
@@ -234,7 +236,8 @@ export class PostgresSnapshotReader {
       updated_at: Date;
     }>(
       `select id, course_id, external_section_id, section_number,
-              instructors, campus, capacity, schedule_text,
+              department_code, department_name, instructors, campus,
+              capacity, schedule_text,
               active, revision, created_at, updated_at
        from class_sections
        where id = $1 and active = true
@@ -258,6 +261,8 @@ export class PostgresSnapshotReader {
           course_id: row.course_id,
           external_section_id: row.external_section_id,
           section_number: row.section_number,
+          department_code: row.department_code,
+          department_name: row.department_name,
           instructors: row.instructors,
           campus: row.campus,
           capacity: row.capacity,
@@ -400,6 +405,8 @@ export class PostgresSnapshotReader {
       course_id: string;
       external_section_id: string;
       section_number: string;
+      department_code: string | null;
+      department_name: string | null;
       instructors: unknown;
       campus: string | null;
       capacity: number | null;
@@ -410,7 +417,8 @@ export class PostgresSnapshotReader {
       updated_at: Date;
     }>(
       `select id, course_id, external_section_id, section_number,
-              instructors, campus, capacity, schedule_text,
+              department_code, department_name, instructors, campus,
+              capacity, schedule_text,
               active, revision, created_at, updated_at
        from class_sections where id = any($1::uuid[])`,
       [classSectionIds],
@@ -432,6 +440,8 @@ export class PostgresSnapshotReader {
           course_id: row.course_id,
           external_section_id: row.external_section_id,
           section_number: row.section_number,
+          department_code: row.department_code,
+          department_name: row.department_name,
           instructors: row.instructors,
           campus: row.campus,
           capacity: row.capacity,

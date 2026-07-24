@@ -37,10 +37,11 @@ async function seed(client: Client): Promise<void> {
   );
   await client.query(
     `insert into class_sections (
-       id, course_id, external_section_id, section_number
+       id, course_id, external_section_id, section_number,
+       department_code, department_name
      ) values
-       ($1, $3, 'section-1', '01'),
-       ($2, $3, 'section-2', '02')`,
+       ($1, $3, 'section-1', '01', '001', 'Department'),
+       ($2, $3, 'section-2', '02', null, null)`,
     [SECTION_ID, OTHER_SECTION_ID, COURSE_ID],
   );
   await client.query(
@@ -158,6 +159,13 @@ describePostgres('PostgresSnapshotReader', () => {
     expect(types).toContain('task_comment');
     expect(JSON.stringify(page.records)).not.toContain('Other private');
     expect(JSON.stringify(page.records)).not.toContain('raw_source');
+    expect(
+      page.records.find(({ record_type }) => record_type === 'class_section')
+        ?.payload,
+    ).toMatchObject({
+      department_code: '001',
+      department_name: 'Department',
+    });
     expect(page.complete).toBe(true);
   });
 
@@ -210,6 +218,13 @@ describePostgres('PostgresSnapshotReader', () => {
         'task_comment',
       ]),
     );
+    expect(
+      page.records.find(({ record_type }) => record_type === 'class_section')
+        ?.payload,
+    ).toMatchObject({
+      department_code: '001',
+      department_name: 'Department',
+    });
     const follows = await client.query<{ count: string }>(
       'select count(*)::text as count from followed_class_sections',
     );

@@ -7,8 +7,6 @@ function course(index: number) {
     external_course_code: String(index).padStart(4, '0'),
     name: `Course ${String(index)}`,
     credits: null,
-    department_code: null,
-    department_name: null,
   };
 }
 

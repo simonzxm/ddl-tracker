@@ -33,8 +33,6 @@ export interface NormalizedCatalogCourse {
   external_course_code: string;
   name: string;
   credits: string | null;
-  department_code: string | null;
-  department_name: string | null;
 }
 
 export interface NormalizedCatalogClassSection {
@@ -219,8 +217,6 @@ export function parseCatalogCsv(
       external_course_code: courseCode,
       name: requireCell(row, 'KCM', rowNumber),
       credits: parseDecimal(row.XF, 'XF', rowNumber),
-      department_code: null,
-      department_name: null,
     };
     const existingCourse = courses.get(courseCode);
     if (

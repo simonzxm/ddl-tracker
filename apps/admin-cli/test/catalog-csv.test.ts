@@ -87,9 +87,10 @@ describe('parseCatalogCsv', () => {
         external_course_code: '0010',
         name: 'Course, Advanced',
         credits: '3.50',
-        department_code: null,
       }),
     ]);
+    expect(result.courses[0]).not.toHaveProperty('department_code');
+    expect(result.courses[0]).not.toHaveProperty('department_name');
     expect(result.class_sections).toEqual([
       expect.objectContaining({
         external_section_id: 'section-1',

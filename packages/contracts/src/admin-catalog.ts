@@ -142,6 +142,12 @@ export const catalogApplyRequestSchema = z
   })
   .strict();
 
+export const catalogApplyAllRequestSchema = z
+  .object({
+    confirm_deactivations: z.boolean(),
+  })
+  .strict();
+
 export const catalogApplyResponseSchema = z
   .object({
     import_id: uuidV7Schema,
@@ -170,3 +176,6 @@ export type CatalogPlanBatchRequest = z.infer<
 >;
 export type CatalogImportDiff = z.infer<typeof catalogImportDiffSchema>;
 export type CatalogApplyRequest = z.infer<typeof catalogApplyRequestSchema>;
+export type CatalogApplyAllRequest = z.infer<
+  typeof catalogApplyAllRequestSchema
+>;

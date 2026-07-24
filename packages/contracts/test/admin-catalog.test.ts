@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  catalogApplyAllRequestSchema,
   catalogApplyRequestSchema,
   catalogPlanBatchRequestSchema,
 } from '../src/admin-catalog.js';
@@ -131,5 +132,17 @@ describe('admin catalog import contracts', () => {
         confirm_deactivations: false,
       }),
     ).toEqual({ batch_index: 0, confirm_deactivations: false });
+  });
+
+  it('accepts full apply without a client-managed batch index', () => {
+    expect(
+      catalogApplyAllRequestSchema.parse({ confirm_deactivations: true }),
+    ).toEqual({ confirm_deactivations: true });
+    expect(() =>
+      catalogApplyAllRequestSchema.parse({
+        batch_index: 0,
+        confirm_deactivations: true,
+      }),
+    ).toThrow();
   });
 });

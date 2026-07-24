@@ -85,12 +85,33 @@ describe('authentication routes', () => {
     const auth = dependencies();
     const response = await app(auth).request('/api/v1/auth/email/challenges', {
       method: 'POST',
+      headers: {
+        'cf-connecting-ip': '2001:DB8::1',
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ email: 'student@example.edu' }),
+    });
+
+    expect(response.status).toBe(200);
+    expect(auth.requestChallenge).toHaveBeenCalledWith(
+      'student@example.edu',
+      '2001:db8::1',
+    );
+  });
+
+  it('uses a bounded fallback when the Cloudflare source IP header is absent', async () => {
+    const auth = dependencies();
+    const response = await app(auth).request('/api/v1/auth/email/challenges', {
+      method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ email: 'student@example.edu' }),
     });
 
     expect(response.status).toBe(200);
-    expect(auth.requestChallenge).toHaveBeenCalledWith('student@example.edu');
+    expect(auth.requestChallenge).toHaveBeenCalledWith(
+      'student@example.edu',
+      'unavailable',
+    );
   });
 
   it('verifies a challenge with device metadata', async () => {

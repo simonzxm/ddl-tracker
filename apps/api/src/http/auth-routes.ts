@@ -22,7 +22,7 @@ import { readValidatedJson } from './json-body.js';
 const AUTH_BODY_LIMIT = 64 * 1024;
 
 export interface AuthRouteDependencies {
-  requestChallenge(email: string): Promise<{
+  requestChallenge(email: string, sourceIp: string): Promise<{
     challenge_id: string;
     expires_at: string;
   }>;
@@ -105,7 +105,12 @@ export function registerAuthRoutes(
       emailChallengeRequestSchema,
       AUTH_BODY_LIMIT,
     );
-    return context.json(await dependencies.requestChallenge(body.email));
+    return context.json(
+      await dependencies.requestChallenge(
+        body.email,
+        normalizedConnectingIp(context.req.header('cf-connecting-ip')),
+      ),
+    );
   });
 
   app.post('/v1/auth/email/verifications', async (context) => {
@@ -233,4 +238,17 @@ export function registerAuthRoutes(
     await dependencies.revokeAllSessions(principal.user.id);
     return context.body(null, 204);
   });
+}
+
+function normalizedConnectingIp(value: string | undefined): string {
+  const normalized = value?.trim().toLowerCase();
+  if (
+    normalized === undefined ||
+    normalized.length === 0 ||
+    normalized.length > 64 ||
+    !/^[0-9a-f:.]+$/u.test(normalized)
+  ) {
+    return 'unavailable';
+  }
+  return normalized;
 }

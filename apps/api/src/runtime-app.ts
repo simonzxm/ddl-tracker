@@ -183,7 +183,8 @@ export function createRuntimeApp(
       : { logRequest: options.logRequest }),
     checkReady: () => readinessRepository.isReady(),
     auth: {
-      requestChallenge: (email) => challengeService.requestChallenge(email),
+      requestChallenge: (email, sourceIp) =>
+        challengeService.requestChallenge(email, sourceIp),
       verifyChallenge: async (input) => {
         const identity = await challengeService.verifyChallenge({
           challengeId: input.challengeId,

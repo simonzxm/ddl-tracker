@@ -1,7 +1,10 @@
 import { createUuidV7 } from '@ddl-tracker/contracts';
 
 import { HttpError } from '../http/errors.js';
-import type { RateLimitConsumer } from '../security/postgres-rate-limiter.js';
+import type {
+  RateLimitConsumer,
+  RateLimitRule,
+} from '../security/postgres-rate-limiter.js';
 import {
   constantTimeEqual,
   createNumericCode,
@@ -16,7 +19,11 @@ const EMAIL_RATE_LIMIT_RULES = [
   { scope: 'auth_email_minute', limit: 1, windowSeconds: 60 },
   { scope: 'auth_email_hour', limit: 5, windowSeconds: 60 * 60 },
   { scope: 'auth_email_day', limit: 10, windowSeconds: 24 * 60 * 60 },
-] as const;
+] as const satisfies readonly RateLimitRule[];
+const IP_RATE_LIMIT_RULES = [
+  { scope: 'auth_ip_hour', limit: 20, windowSeconds: 60 * 60 },
+  { scope: 'auth_ip_day', limit: 50, windowSeconds: 24 * 60 * 60 },
+] as const satisfies readonly RateLimitRule[];
 
 export interface MailDelivery {
   sendVerificationCode(input: {
@@ -97,10 +104,19 @@ export class EmailChallengeService {
     this.#createCode = options.createCode ?? createNumericCode;
   }
 
-  async requestChallenge(email: string): Promise<{
+  async requestChallenge(email: string, sourceIp?: string): Promise<{
     challenge_id: string;
     expires_at: string;
   }> {
+    const now = this.#now();
+    if (sourceIp !== undefined) {
+      await this.#consumeRateLimit(
+        `ip-rate-limit\u0000${sourceIp}`,
+        IP_RATE_LIMIT_RULES,
+        now,
+      );
+    }
+
     let identity: { normalized: string; display: string };
     try {
       identity = normalizeInstitutionalEmail(email, this.#allowedDomains);
@@ -112,25 +128,11 @@ export class EmailChallengeService {
       });
     }
 
-    const now = this.#now();
-    const subjectKey = await hmacSha256(
-      this.#hmacSecret,
+    await this.#consumeRateLimit(
       `email-rate-limit\u0000${identity.normalized}`,
-    );
-    const rateLimit = await this.#rateLimiter.consume({
-      subjectKey,
-      rules: EMAIL_RATE_LIMIT_RULES,
+      EMAIL_RATE_LIMIT_RULES,
       now,
-    });
-    if (!rateLimit.allowed) {
-      throw new HttpError({
-        code: 'rate_limited',
-        message: 'Too many verification attempts.',
-        retryable: true,
-        retryAfter: rateLimit.retryAfter,
-        status: 429,
-      });
-    }
+    );
 
     const latestCreatedAt = await this.#repository.findLatestCreatedAt(
       'email',
@@ -192,6 +194,27 @@ export class EmailChallengeService {
       challenge_id: id,
       expires_at: expiresAt.toISOString(),
     };
+  }
+
+  async #consumeRateLimit(
+    subject: string,
+    rules: readonly RateLimitRule[],
+    now: Date,
+  ): Promise<void> {
+    const subjectKey = await hmacSha256(this.#hmacSecret, subject);
+    const rateLimit = await this.#rateLimiter.consume({
+      subjectKey,
+      rules,
+      now,
+    });
+    if (rateLimit.allowed) return;
+    throw new HttpError({
+      code: 'rate_limited',
+      message: 'Too many verification attempts.',
+      retryable: true,
+      retryAfter: rateLimit.retryAfter,
+      status: 429,
+    });
   }
 
   async verifyChallenge(input: {

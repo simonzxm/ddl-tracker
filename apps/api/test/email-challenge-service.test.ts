@@ -134,6 +134,58 @@ describe('EmailChallengeService', () => {
     );
   });
 
+  it('rate limits a source IP without storing the raw address', async () => {
+    const repository = new FakeChallengeRepository();
+    const mail = mailDelivery();
+    const rateLimiter = new FakeRateLimiter();
+
+    await service(repository, mail, rateLimiter).requestChallenge(
+      'student@example.edu',
+      '2001:db8::1',
+    );
+
+    expect(rateLimiter.inputs).toEqual([
+      {
+        subjectKey: expect.stringMatching(/^[A-Za-z0-9_-]{43}$/u),
+        scopes: ['auth_ip_hour', 'auth_ip_day'],
+      },
+      {
+        subjectKey: expect.stringMatching(/^[A-Za-z0-9_-]{43}$/u),
+        scopes: ['auth_email_minute', 'auth_email_hour', 'auth_email_day'],
+      },
+    ]);
+    expect(rateLimiter.inputs[0]?.subjectKey).not.toBe(
+      rateLimiter.inputs[1]?.subjectKey,
+    );
+    expect(JSON.stringify(rateLimiter.inputs)).not.toContain('2001:db8::1');
+  });
+
+  it('stops before validating or delivering email when the IP limit is exhausted', async () => {
+    const repository = new FakeChallengeRepository();
+    const mail = mailDelivery();
+    const rateLimiter = new FakeRateLimiter();
+    rateLimiter.decision = {
+      allowed: false,
+      retryAfter: 120,
+      scope: 'auth_ip_hour',
+    };
+
+    await expect(
+      service(repository, mail, rateLimiter).requestChallenge(
+        'invalid-email',
+        '203.0.113.7',
+      ),
+    ).rejects.toMatchObject({
+      code: 'rate_limited',
+      message: 'Too many verification attempts.',
+      retryAfter: 120,
+      details: {},
+    });
+    expect(rateLimiter.inputs).toHaveLength(1);
+    expect(repository.pendingIds).toEqual([]);
+    expect(mail.sendVerificationCode).not.toHaveBeenCalled();
+  });
+
   it('returns a generic persistent rate-limit response before delivery', async () => {
     const repository = new FakeChallengeRepository();
     const mail = mailDelivery();

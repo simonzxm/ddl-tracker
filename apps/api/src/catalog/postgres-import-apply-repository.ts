@@ -484,22 +484,30 @@ export class PostgresCatalogImportApplyRepository
        returning s.id, s.external_section_id, s.revision`,
       [termId, importId, now],
     );
-    for (const section of deactivatedSections.rows) {
+    if (deactivatedSections.rows.length > 0) {
+      const events = deactivatedSections.rows.map((section) => ({
+        event_id: createId(),
+        id: section.id,
+        external_section_id: section.external_section_id,
+        revision: section.revision,
+      }));
       await this.#client.query(
         `insert into sync_events (
            event_id, scope, type, schema_version, payload, occurred_at
-         ) values ($1, 'authenticated_global',
-                   'class_section_deactivated', 1, $2::jsonb, $3)`,
-        [
-          createId(),
-          JSON.stringify({
-            id: section.id,
-            external_section_id: section.external_section_id,
-            active: false,
-            revision: section.revision,
-          }),
-          now,
-        ],
+         )
+         select event.event_id, 'authenticated_global',
+                'class_section_deactivated', 1,
+                jsonb_build_object(
+                  'id', event.id,
+                  'external_section_id', event.external_section_id,
+                  'active', false,
+                  'revision', event.revision
+                ),
+                $2
+         from jsonb_to_recordset($1::jsonb) as event(
+           event_id uuid, id uuid, external_section_id text, revision integer
+         )`,
+        [JSON.stringify(events), now],
       );
     }
 

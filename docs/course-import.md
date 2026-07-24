@@ -122,8 +122,8 @@ Plan 保存为 `catalog_imports` 记录并返回 import ID。它绑定 checksum�
 - 新文件缺失的旧记录只标记 inactive，不硬删除。
 - 停用记录前，CLI 必须要求显式 `--confirm-deactivations`；无缺失时不要求。
 - 已有关联任务、私人信息和历史学期记录全部保留。
-- 每批规范化记录通过后端事务应用；整个 import 只有所有批次成功后才标记 completed。
-- 中途失败可使用同 import ID 幂等续传；不能重复应用已确认批次。
+- 规范化记录可以分批上传计划，但 apply 通过单个后端事务集合式写入全部课程和教学班；成功后一次性标记整个 import completed。
+- apply 失败时整个事务回滚；同一 import ID 可幂等重试，不能留下部分完成的新目录状态。
 - 完成后追加目录失效/停用同步事件和审计记录。
 
 ## 维护者 CLI 行为

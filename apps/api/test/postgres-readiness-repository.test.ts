@@ -25,6 +25,23 @@ describePostgres('PostgresReadinessRepository', () => {
     await expect(repository.isReady()).resolves.toBe(true);
   });
 
+  it('remains ready when a newer compatible migration is also applied', async () => {
+    const result = await client.query<{ hash: string }>(
+      `select hash
+       from drizzle.__drizzle_migrations
+       order by id desc
+       offset 1
+       limit 1`,
+    );
+    const previousHash = result.rows[0]?.hash;
+    if (previousHash === undefined) {
+      throw new Error('Expected at least two applied test migrations.');
+    }
+
+    const previous = new PostgresReadinessRepository(client, previousHash);
+    await expect(previous.isReady()).resolves.toBe(true);
+  });
+
   it('reports not ready when the expected migration hash differs', async () => {
     const mismatched = new PostgresReadinessRepository(client, '0'.repeat(64));
 

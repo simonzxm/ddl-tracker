@@ -29,7 +29,7 @@ function environment(overrides: Partial<Env> = {}): Env {
 function client() {
   return {
     query: vi.fn(async () => ({
-      rows: [{ hash: latestMigrationHash }],
+      rows: [{ applied: true }],
       rowCount: 1,
     })),
   } as unknown as Client;
@@ -52,6 +52,7 @@ describe('createRuntimeApp', () => {
     expect(ready.status).toBe(200);
     expect(database.query).toHaveBeenCalledWith(
       expect.stringContaining('drizzle.__drizzle_migrations'),
+      [latestMigrationHash],
     );
   });
 

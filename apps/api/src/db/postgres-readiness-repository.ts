@@ -13,12 +13,14 @@ export class PostgresReadinessRepository {
   }
 
   async isReady(): Promise<boolean> {
-    const result = await this.#client.query<{ hash: string }>(
-      `select hash
-       from drizzle.__drizzle_migrations
-       order by id desc
-       limit 1`,
+    const result = await this.#client.query<{ applied: boolean }>(
+      `select exists (
+         select 1
+         from drizzle.__drizzle_migrations
+         where hash = $1
+       ) as applied`,
+      [this.#expectedMigrationHash],
     );
-    return result.rows[0]?.hash === this.#expectedMigrationHash;
+    return result.rows[0]?.applied === true;
   }
 }

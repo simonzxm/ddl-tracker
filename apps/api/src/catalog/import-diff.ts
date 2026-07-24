@@ -28,6 +28,8 @@ export interface BaselineClassSection {
   externalSectionId: string;
   externalCourseCode: string;
   sectionNumber: string;
+  departmentCode: string | null;
+  departmentName: string | null;
   instructors: string[];
   campus: string | null;
   capacity: number | null;
@@ -213,6 +215,18 @@ export function buildCatalogImportDiff(
       );
     }
     const changed = [
+      compareField(
+        fieldChanges,
+        'class_sections.department_code',
+        current.departmentCode,
+        section.department_code ?? null,
+      ),
+      compareField(
+        fieldChanges,
+        'class_sections.department_name',
+        current.departmentName,
+        section.department_name ?? null,
+      ),
       compareField(
         fieldChanges,
         'class_sections.section_number',

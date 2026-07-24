@@ -30,6 +30,8 @@ interface SectionRow {
   external_section_id: string;
   external_course_code: string;
   section_number: string;
+  department_code: string | null;
+  department_name: string | null;
   instructors: string[];
   campus: string | null;
   capacity: number | null;
@@ -84,7 +86,8 @@ export async function loadCatalogBaseline(
 
   const sectionResult = await client.query<SectionRow>(
     `select s.id, s.external_section_id, c.external_course_code,
-            s.section_number, s.instructors, s.campus, s.capacity,
+            s.section_number, s.department_code, s.department_name,
+            s.instructors, s.campus, s.capacity,
             s.schedule_text, s.active, s.revision
      from class_sections s
      join courses c on c.id = s.course_id
@@ -98,6 +101,8 @@ export async function loadCatalogBaseline(
       externalSectionId: section.external_section_id,
       externalCourseCode: section.external_course_code,
       sectionNumber: section.section_number,
+      departmentCode: section.department_code,
+      departmentName: section.department_name,
       instructors: section.instructors,
       campus: section.campus,
       capacity: section.capacity,

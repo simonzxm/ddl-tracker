@@ -50,6 +50,8 @@ const batchPayload = {
       external_course_code: '0010',
       name: 'Section 1',
       section_number: '01',
+      department_code: '002',
+      department_name: 'New Department',
       instructors: ['Teacher'],
       campus_code: '01',
       campus_name: 'Campus',
@@ -68,6 +70,8 @@ const batchPayload = {
       external_course_code: '0020',
       name: 'Section 2',
       section_number: '01',
+      department_code: null,
+      department_name: null,
       instructors: [],
       campus_code: null,
       campus_name: null,
@@ -118,12 +122,14 @@ async function seedCatalog(client: Client): Promise<string> {
   await client.query(
     `insert into class_sections (
        id, course_id, external_section_id, section_number, instructors,
-       campus, capacity, schedule_text, raw_source, active, revision
+       department_code, department_name, campus, capacity, schedule_text,
+       raw_source, active, revision
      ) values
        ($1, $3, 'section-1', '01', '["Teacher"]'::jsonb,
-        'Campus', 20, 'Old Schedule', '{}'::jsonb, true, 1),
+        '001', 'Old Department', 'Campus', 20, 'Old Schedule', '{}'::jsonb,
+        true, 1),
        ($2, $3, 'section-missing', '02', '[]'::jsonb,
-        null, null, null, '{}'::jsonb, true, 1)`,
+        null, null, null, null, null, '{}'::jsonb, true, 1)`,
     [SECTION_ID, MISSING_SECTION_ID, COURSE_ID],
   );
   return hashCatalogBaseline(
@@ -321,28 +327,37 @@ describePostgres('PostgresCatalogImportApplyRepository', () => {
 
     const sections = await client.query<{
       external_section_id: string;
+      department_code: string | null;
+      department_name: string | null;
       capacity: number | null;
       active: boolean;
       revision: number;
     }>(
-      `select external_section_id, capacity, active, revision
+      `select external_section_id, department_code, department_name,
+              capacity, active, revision
        from class_sections order by external_section_id`,
     );
     expect(sections.rows).toEqual([
       {
         external_section_id: 'section-1',
+        department_code: '002',
+        department_name: 'New Department',
         capacity: 30,
         active: true,
         revision: 2,
       },
       {
         external_section_id: 'section-2',
+        department_code: null,
+        department_name: null,
         capacity: null,
         active: true,
         revision: 1,
       },
       {
         external_section_id: 'section-missing',
+        department_code: null,
+        department_name: null,
         capacity: null,
         active: false,
         revision: 2,

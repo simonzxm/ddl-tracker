@@ -45,6 +45,8 @@ interface ExistingSectionRow {
   id: string;
   course_id: string;
   section_number: string;
+  department_code: string | null;
+  department_name: string | null;
   instructors: string[];
   campus: string | null;
   capacity: number | null;
@@ -402,8 +404,9 @@ export class PostgresCatalogImportApplyRepository
       );
     }
     const existing = await this.#client.query<ExistingSectionRow>(
-      `select id, course_id, section_number, instructors, campus, capacity,
-              schedule_text, raw_source, active, revision
+      `select id, course_id, section_number, department_code, department_name,
+              instructors, campus, capacity, schedule_text, raw_source,
+              active, revision
        from class_sections
        where external_section_id = $1
        for update`,
@@ -413,16 +416,18 @@ export class PostgresCatalogImportApplyRepository
     if (current === undefined) {
       await this.#client.query(
         `insert into class_sections (
-           id, course_id, external_section_id, section_number, instructors,
-           campus, capacity, schedule_text, raw_source, active, revision,
-           created_at, updated_at
-         ) values ($1, $2, $3, $4, $5::jsonb, $6, $7, $8,
-                   $9::jsonb, true, 1, $10, $10)`,
+           id, course_id, external_section_id, section_number,
+           department_code, department_name, instructors, campus, capacity,
+           schedule_text, raw_source, active, revision, created_at, updated_at
+         ) values ($1, $2, $3, $4, $5, $6, $7::jsonb, $8, $9, $10,
+                   $11::jsonb, true, 1, $12, $12)`,
         [
           createId(),
           courseId,
           section.external_section_id,
           section.section_number,
+          section.department_code ?? null,
+          section.department_name ?? null,
           JSON.stringify(section.instructors),
           section.campus_name,
           section.capacity,
@@ -449,6 +454,8 @@ export class PostgresCatalogImportApplyRepository
     };
     const changed =
       current.section_number !== section.section_number ||
+      current.department_code !== (section.department_code ?? null) ||
+      current.department_name !== (section.department_name ?? null) ||
       !equalJson(current.instructors, section.instructors) ||
       current.campus !== section.campus_name ||
       current.capacity !== section.capacity ||
@@ -457,13 +464,16 @@ export class PostgresCatalogImportApplyRepository
       !current.active;
     await this.#client.query(
       `update class_sections
-       set section_number = $2, instructors = $3::jsonb, campus = $4,
-           capacity = $5, schedule_text = $6, raw_source = $7::jsonb,
-           active = true, revision = revision + $8, updated_at = $9
+       set section_number = $2, department_code = $3, department_name = $4,
+           instructors = $5::jsonb, campus = $6, capacity = $7,
+           schedule_text = $8, raw_source = $9::jsonb,
+           active = true, revision = revision + $10, updated_at = $11
        where id = $1`,
       [
         current.id,
         section.section_number,
+        section.department_code ?? null,
+        section.department_name ?? null,
         JSON.stringify(section.instructors),
         section.campus_name,
         section.capacity,

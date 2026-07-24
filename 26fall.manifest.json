@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "source_system": "course-management",
+  "source_system": "at-nju/courses@47cd3a5367aa00299c403b3ccf9f934b2af9fe92",
   "term": {
     "external_code": "2026-2027-1",
     "display_name": "2026-2027学年 第1学期",

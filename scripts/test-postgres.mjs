@@ -25,6 +25,24 @@ run('pnpm', [
   'node',
   'scripts/reset-test-database.mjs',
 ]);
+run(
+  'pnpm',
+  [
+    '--filter',
+    '@ddl-tracker/api',
+    'exec',
+    'node',
+    'scripts/test-catalog-import-status-migration.mjs',
+  ],
+  { TEST_DATABASE_URL: connectionString },
+);
+run('pnpm', [
+  '--filter',
+  '@ddl-tracker/api',
+  'exec',
+  'node',
+  'scripts/reset-test-database.mjs',
+]);
 run('pnpm', ['--filter', '@ddl-tracker/api', 'db:migrate'], {
   DATABASE_URL: connectionString,
 });

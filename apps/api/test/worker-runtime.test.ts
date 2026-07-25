@@ -9,7 +9,7 @@ const USER_ID = '018f0000-0000-7000-8000-000000004502';
 const IMPORT_ID = '018f0000-0000-7000-8000-000000004503';
 const HASH = 'a'.repeat(64);
 
-function maintainer(): AuthenticatedPrincipal {
+function principal(hasMaintainerRole = true): AuthenticatedPrincipal {
   const now = new Date();
   return {
     user: {
@@ -31,7 +31,7 @@ function maintainer(): AuthenticatedPrincipal {
       absoluteExpiresAt: new Date(now.getTime() + 120_000),
       revokedAt: null,
     },
-    roles: ['maintainer'],
+    roles: hasMaintainerRole ? ['maintainer'] : [],
   };
 }
 
@@ -45,13 +45,14 @@ async function gzip(value: string): Promise<ArrayBuffer> {
 
 function adminCatalog(
   capture: (value: Uint8Array) => void,
+  hasMaintainerRole = true,
 ): AdminCatalogRouteDependencies {
   const unsupported = (): never => {
     throw new Error('Unexpected catalog operation in Workers runtime test.');
   };
   return {
     environment: 'test',
-    authenticate: async () => maintainer(),
+    authenticate: async () => principal(hasMaintainerRole),
     rateLimitRead: async () => undefined,
     rateLimitMutation: async () => undefined,
     planBatch: unsupported,
@@ -192,5 +193,31 @@ describe('Workers runtime API shell', () => {
     await expect(response.json()).resolves.toMatchObject({
       code: 'unauthenticated',
     });
+  });
+
+  it('forbids upload and cancellation without the maintainer role', async () => {
+    const app = createApp({
+      createRequestId: () => REQUEST_ID,
+      checkReady: () => Promise.resolve(true),
+      adminCatalog: adminCatalog(() => undefined, false),
+    });
+
+    for (const path of [
+      '/api/v1/admin/catalog/imports/upload',
+      `/api/v1/admin/catalog/imports/${IMPORT_ID}/cancel`,
+    ]) {
+      const response = await app.request(path, {
+        method: 'POST',
+        headers: {
+          authorization: 'Bearer token',
+          'content-type': 'application/json',
+        },
+        body: '{}',
+      });
+      expect(response.status).toBe(403);
+      await expect(response.json()).resolves.toMatchObject({
+        code: 'forbidden',
+      });
+    }
   });
 });

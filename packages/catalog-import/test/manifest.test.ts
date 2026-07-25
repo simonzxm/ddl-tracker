@@ -40,9 +40,33 @@ describe('catalog manifest', () => {
           ends_on: '2027-01-17',
         },
       },
+      {
+        ...manifest,
+        term: { ...manifest.term, starts_on: '2026-02-29' },
+      },
+      {
+        ...manifest,
+        term: { ...manifest.term, starts_on: '2026-99-99' },
+      },
+      {
+        ...manifest,
+        term: { ...manifest.term, starts_on: '0000-01-01' },
+      },
     ]) {
       expect(() => parseCatalogManifest(value)).toThrow();
     }
+  });
+
+  it('accepts a real leap day', () => {
+    expect(
+      parseCatalogManifest({
+        ...manifest,
+        term: {
+          ...manifest.term,
+          starts_on: '2024-02-29',
+        },
+      }).term.starts_on,
+    ).toBe('2024-02-29');
   });
 
   it('allows an explicit display name override reason', () => {

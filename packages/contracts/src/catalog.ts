@@ -1,10 +1,10 @@
 import { z } from 'zod';
 
-import { normalizedTextSchema, uuidV7Schema } from './schema.js';
-
-const localDateSchema = z
-  .string()
-  .regex(/^\d{4}-\d{2}-\d{2}$/u, 'Date must use YYYY-MM-DD.');
+import {
+  localDateSchema,
+  normalizedTextSchema,
+  uuidV7Schema,
+} from './schema.js';
 
 export const termStatusSchema = z.enum([
   'upcoming',

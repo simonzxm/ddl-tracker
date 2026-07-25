@@ -1,11 +1,7 @@
 import { createHash } from 'node:crypto';
 
-import { normalizePlainText } from '@ddl-tracker/contracts';
+import { localDateSchema, normalizePlainText } from '@ddl-tracker/contracts';
 import { z } from 'zod';
-
-const localDateSchema = z
-  .string()
-  .regex(/^\d{4}-\d{2}-\d{2}$/u, 'Date must use YYYY-MM-DD.');
 const normalizedText = (maximum: number) =>
   z.string().transform((value, context) => {
     try {

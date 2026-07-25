@@ -180,6 +180,9 @@ export function parseCatalogCsv(
   if (new Set(headers).size !== headers.length) {
     throw new Error('CSV contains duplicate header names.');
   }
+  if (headers.length > REQUIRED_HEADERS.length + 100) {
+    throw new Error('CSV contains more than 100 unknown columns.');
+  }
   const missing = REQUIRED_HEADERS.filter((header) => !headers.includes(header));
   if (missing.length > 0) {
     throw new Error(`Missing required CSV columns: ${missing.join(', ')}.`);

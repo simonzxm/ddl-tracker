@@ -26,6 +26,21 @@ function transformedString(
 export const uuidV7Schema = transformedString(parseUuidV7);
 export const rfc3339TimestampSchema = transformedString(canonicalizeTimestamp);
 export const opaqueTokenSchema = z.string().min(1).max(4096);
+export const localDateSchema = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/u, 'Date must use YYYY-MM-DD.')
+  .refine((value) => {
+    const [yearText, monthText, dayText] = value.split('-');
+    const year = Number(yearText);
+    const month = Number(monthText);
+    const day = Number(dayText);
+    if (year < 1 || month < 1 || month > 12 || day < 1) {
+      return false;
+    }
+    const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+    const days = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+    return day <= (days[month - 1] ?? 0);
+  }, 'Date must be a real Gregorian calendar date.');
 
 export function normalizedTextSchema(minimum: number, maximum: number) {
   return z.string().transform((value, context) => {

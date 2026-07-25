@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import {
+  localDateSchema,
   normalizedTextSchema,
   nullableNormalizedTextSchema,
   uuidV7Schema,
@@ -29,7 +30,7 @@ export const normalizedCatalogClassSectionSchema = z
     instructors: z.array(normalizedTextSchema(1, 200)).max(100),
     campus_code: z.string().trim().min(1).max(100).nullable(),
     campus_name: nullableNormalizedTextSchema(300),
-    capacity: z.number().int().nonnegative().nullable(),
+    capacity: z.number().int().nonnegative().max(2_147_483_647).nullable(),
     schedule_text: nullableNormalizedTextSchema(2000),
     weeks_text: nullableNormalizedTextSchema(500),
     weekday_text: nullableNormalizedTextSchema(100),
@@ -45,8 +46,8 @@ export const normalizedCatalogTermSchema = z
   .object({
     external_code: z.string().trim().min(1).max(100),
     display_name: normalizedTextSchema(1, 200),
-    starts_on: z.string().regex(/^\d{4}-\d{2}-\d{2}$/u),
-    ends_on: z.string().regex(/^\d{4}-\d{2}-\d{2}$/u),
+    starts_on: localDateSchema,
+    ends_on: localDateSchema,
     time_zone: z.literal('Asia/Shanghai'),
   })
   .strict()

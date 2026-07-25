@@ -154,6 +154,9 @@ describe('parseCatalogCsv', () => {
       parseCatalogCsv(csv(row({ XKZRS: '-1' })), manifest),
     ).toThrow('XKZRS');
     expect(() =>
+      parseCatalogCsv(csv(row({ XKZRS: '2147483648' })), manifest),
+    ).toThrow();
+    expect(() =>
       parseCatalogCsv(csv(row({ KCM: 'x'.repeat(301) })), manifest),
     ).toThrow();
   });
@@ -165,6 +168,20 @@ describe('parseCatalogCsv', () => {
     );
 
     expect(() => parseCatalogCsv(bytes, manifest)).toThrow();
+  });
+
+  it('rejects more unknown columns than the response warning budget', () => {
+    const extras = Array.from(
+      { length: 101 },
+      (_, index) => `EXTRA_${String(index)}`,
+    );
+    const bytes = new TextEncoder().encode(
+      `${[...headers, ...extras].join(',')}\n${row()},${extras.map(() => 'x').join(',')}\n`,
+    );
+
+    expect(() => parseCatalogCsv(bytes, manifest)).toThrow(
+      'more than 100 unknown columns',
+    );
   });
 
   it('rejects duplicate section keys and conflicting course facts', () => {

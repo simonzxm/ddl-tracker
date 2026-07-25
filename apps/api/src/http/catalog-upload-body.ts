@@ -1,3 +1,4 @@
+import type { CatalogUploadSource } from '@ddl-tracker/catalog-import';
 import { normalizePlainText } from '@ddl-tracker/contracts';
 
 import { assertDeclaredLength, readBoundedBytes } from './bounded-body.js';
@@ -16,12 +17,6 @@ export const CATALOG_UPLOAD_LIMITS: CatalogUploadLimits = {
   manifestBytes: 16 * 1024,
   csvBytes: 10 * 1024 * 1024,
 } as const;
-
-export interface CatalogUploadBody {
-  filename: string;
-  csvBytes: Uint8Array;
-  manifestValue: unknown;
-}
 
 function invalidUpload(message: string): HttpError {
   return new HttpError({
@@ -100,7 +95,7 @@ async function decompressGzip(
 export async function readCatalogUpload(
   request: Request,
   limits: CatalogUploadLimits = CATALOG_UPLOAD_LIMITS,
-): Promise<CatalogUploadBody> {
+): Promise<CatalogUploadSource> {
   const contentType = assertMultipart(request);
   assertDeclaredLength(request, limits.multipartBytes);
   const body = await readBoundedBytes(request.body, limits.multipartBytes);

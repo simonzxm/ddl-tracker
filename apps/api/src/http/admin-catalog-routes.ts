@@ -11,6 +11,7 @@ import {
   type CatalogPlanBatchRequest,
   type CatalogUploadResponse,
 } from '@ddl-tracker/contracts';
+import type { CatalogUploadSource } from '@ddl-tracker/catalog-import';
 import type { Hono } from 'hono';
 
 import type { AuthenticatedPrincipal } from '../auth/account-service.js';
@@ -42,11 +43,7 @@ export interface AdminCatalogRouteDependencies {
   upload(
     actorId: string,
     requestId: string,
-    input: {
-      filename: string;
-      manifestValue: unknown;
-      csvBytes: Uint8Array;
-    },
+    input: CatalogUploadSource,
   ): Promise<CatalogUploadResponse>;
   applyAll(
     actorId: string,

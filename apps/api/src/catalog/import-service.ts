@@ -4,6 +4,7 @@ import {
   prepareCatalogImportData,
   type CatalogBatch,
   type CatalogManifest,
+  type CatalogUploadSource,
 } from '@ddl-tracker/catalog-import';
 import {
   createUuidV7,
@@ -206,11 +207,7 @@ export class CatalogImportService {
   async upload(
     actorId: string,
     requestId: string,
-    input: {
-      filename: string;
-      manifestValue: unknown;
-      csvBytes: Uint8Array;
-    },
+    input: CatalogUploadSource,
   ): Promise<CatalogUploadResponse> {
     let manifest: CatalogManifest;
     let prepared: ReturnType<typeof prepareCatalogImportData>;

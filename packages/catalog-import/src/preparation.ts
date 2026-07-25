@@ -8,6 +8,12 @@ export interface PreparedCatalogData {
   batches: CatalogBatch[];
 }
 
+export interface CatalogUploadSource {
+  filename: string;
+  csvBytes: Uint8Array;
+  manifestValue: unknown;
+}
+
 export function prepareCatalogImportData(input: {
   manifestValue: unknown;
   csvBytes: Uint8Array;

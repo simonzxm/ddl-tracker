@@ -11,11 +11,14 @@ import {
 } from '@ddl-tracker/contracts';
 
 import { loadCatalogBaseline } from './postgres-catalog-baseline.js';
+import { buildCatalogImportDiff, hashCatalogBaseline } from './import-diff.js';
 import type {
   CatalogImportBatchRecord,
   CatalogImportRecord,
   CatalogImportRepository,
   CatalogPlanningContext,
+  CompleteCatalogPlan,
+  CompleteCatalogPlanOutcome,
   SavePlanBatchOutcome,
 } from './import-service.js';
 
@@ -252,6 +255,106 @@ export class PostgresCatalogImportRepository implements CatalogImportRepository 
       }
       await this.#client.query('commit');
       return { kind: 'accepted', importRecord: toImportRecord(updatedRow) };
+    } catch (error) {
+      await this.#client.query('rollback');
+      throw error;
+    }
+  }
+
+  async saveCompletePlan(
+    input: CompleteCatalogPlan,
+  ): Promise<CompleteCatalogPlanOutcome> {
+    await this.#client.query('begin');
+    try {
+      await this.#client.query('set transaction isolation level repeatable read');
+      const baseline = await loadCatalogBaseline(
+        this.#client,
+        input.term.external_code,
+      );
+      const prior = await this.#client.query(
+        `select 1
+         from catalog_imports
+         where checksum = $1
+           and manifest_hash = $2
+           and environment = $3
+           and status = 'applied'
+         limit 1`,
+        [input.checksum, input.manifestHash, this.#environment],
+      );
+      const courses = input.batches.flatMap((batch) => batch.courses);
+      const classSections = input.batches.flatMap(
+        (batch) => batch.class_sections,
+      );
+      const diff = buildCatalogImportDiff(
+        { term: input.term, courses, classSections },
+        baseline,
+        prior.rowCount === 1,
+      );
+      const baselineHash = hashCatalogBaseline(baseline);
+      const inserted = await this.#client.query<ImportRow>(
+        `insert into catalog_imports (
+           id, checksum, header_hash, manifest_hash, environment, filename,
+           manifest, normalized_term, row_count, total_batches,
+           received_batches, applied_batches, baseline_hash,
+           deactivation_count, diff, actor_id, status, created_at, updated_at
+         ) values (
+           $1, $2, $3, $4, $5, $6, $7::jsonb, $8::jsonb, $9, $10,
+           $10, 0, $11, $12, $13::jsonb, $14, 'planned', $15, $15
+         )
+         returning id, actor_id, checksum, header_hash, manifest_hash,
+                   environment, filename, manifest, normalized_term, row_count,
+                   total_batches, received_batches, applied_batches,
+                   baseline_hash, deactivation_count, diff, status,
+                   failure_message`,
+        [
+          input.generatedImportId,
+          input.checksum,
+          input.headerHash,
+          input.manifestHash,
+          this.#environment,
+          input.filename,
+          JSON.stringify(input.manifest),
+          JSON.stringify(input.term),
+          input.rowCount,
+          input.batches.length,
+          baselineHash,
+          diff.courses.deactivated + diff.class_sections.deactivated,
+          JSON.stringify(diff),
+          input.actorId,
+          input.now,
+        ],
+      );
+      await this.#client.query(
+        `insert into catalog_import_batches (
+           import_id, batch_index, batch_checksum, payload, created_at
+         )
+         select $1, batch_index, batch_checksum, payload, $3
+         from jsonb_to_recordset($2::jsonb) as batch(
+           batch_index integer,
+           batch_checksum text,
+           payload jsonb
+         )`,
+        [
+          input.generatedImportId,
+          JSON.stringify(
+            input.batches.map((batch) => ({
+              batch_index: batch.batchIndex,
+              batch_checksum: batch.batchChecksum,
+              payload: {
+                courses: batch.courses,
+                class_sections: batch.class_sections,
+              },
+            })),
+          ),
+          input.now,
+        ],
+      );
+      const row = inserted.rows[0];
+      if (row === undefined) {
+        throw new Error('Catalog import was not returned after insertion.');
+      }
+      await this.#client.query('commit');
+      return { importRecord: toImportRecord(row), diff };
     } catch (error) {
       await this.#client.query('rollback');
       throw error;

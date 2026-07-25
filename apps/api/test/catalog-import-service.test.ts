@@ -11,6 +11,7 @@ import {
   type CatalogImportBatchRecord,
   type CatalogImportRecord,
   type CatalogImportRepository,
+  type CompleteCatalogPlan,
 } from '../src/catalog/import-service.js';
 
 const IMPORT_ID = '018f0000-0000-7000-8000-000000000501';
@@ -87,6 +88,7 @@ class FakeImportRepository implements CatalogImportRepository {
   baseline: CatalogBaseline = emptyBaseline;
   checksumPreviouslyApplied = false;
   completed: { baselineHash: string; diff: CatalogImportDiff } | null = null;
+  completeInput: CompleteCatalogPlan | null = null;
 
   async savePlanBatch(input: {
     generatedImportId: string;
@@ -167,6 +169,45 @@ class FakeImportRepository implements CatalogImportRepository {
         diff.courses.deactivated + diff.class_sections.deactivated;
     }
     return Promise.resolve();
+  }
+
+  saveCompletePlan(input: CompleteCatalogPlan) {
+    this.completeInput = input;
+    const completeDiff: CatalogImportDiff = {
+      terms: { added: 1, updated: 0, unchanged: 0, deactivated: 0 },
+      courses: { added: 1, updated: 0, unchanged: 0, deactivated: 0 },
+      class_sections: {
+        added: 1,
+        updated: 0,
+        unchanged: 0,
+        deactivated: 0,
+      },
+      field_changes: {},
+      deactivated_class_section_ids: [],
+      checksum_previously_applied: false,
+    };
+    const importRecord: CatalogImportRecord = {
+      id: input.generatedImportId,
+      actorId: input.actorId,
+      checksum: input.checksum,
+      headerHash: input.headerHash,
+      manifestHash: input.manifestHash,
+      environment: 'staging',
+      filename: input.filename,
+      manifest: input.manifest,
+      term: input.term,
+      rowCount: input.rowCount,
+      totalBatches: input.batches.length,
+      receivedBatches: input.batches.length,
+      appliedBatches: 0,
+      baselineHash: HASH,
+      deactivationCount: 0,
+      diff: completeDiff,
+      status: 'planned',
+      failureMessage: null,
+    };
+    this.record = importRecord;
+    return Promise.resolve({ importRecord, diff: completeDiff });
   }
 }
 
@@ -291,5 +332,72 @@ describe('CatalogImportService plan batches', () => {
     await expect(
       service(repository).planBatch(ACTOR_ID, request({ row_count: 2 })),
     ).rejects.toMatchObject({ code: 'invalid_request' });
+  });
+});
+
+describe('CatalogImportService gzip upload planning', () => {
+  const headers = [
+    'XNXQDM', 'XNXQDM_DISPLAY', 'KCH', 'KCM', 'XF', 'PKDWDM',
+    'PKDWDM_DISPLAY', 'JXBID', 'JXBMC', 'KXH', 'SKJS', 'XXXQDM',
+    'XXXQDM_DISPLAY', 'XKZRS', 'YPSJDD', 'SKZC', 'SKXQ', 'SKJC',
+    'SKJAS', 'JXLDM', 'JXLDM_DISPLAY',
+  ];
+  const values = [
+    '2026-2027-1', 'Term', '0010', 'Course', '3', '001', 'Department',
+    'section-1', 'Section', '01', 'Teacher', '01', 'Campus', '30',
+    'Thursday', '1-18', '4', '9-11', 'Room', 'B01', 'Building',
+  ];
+  const manifestValue = {
+    schema_version: 1,
+    source_system: 'test',
+    term: {
+      external_code: '2026-2027-1',
+      display_name: 'Term',
+      starts_on: '2026-08-31',
+      ends_on: '2027-01-17',
+      time_zone: 'Asia/Shanghai',
+    },
+  };
+
+  it('validates normalized data and saves one complete plan', async () => {
+    const repository = new FakeImportRepository();
+    const response = await service(repository).upload(ACTOR_ID, {
+      filename: 'courses.csv.gz',
+      manifestValue,
+      csvBytes: new TextEncoder().encode(
+        `${headers.join(',')}\n${values.join(',')}\n`,
+      ),
+    });
+
+    expect(response).toMatchObject({
+      import_id: IMPORT_ID,
+      filename: 'courses.csv.gz',
+      row_count: 1,
+      course_count: 1,
+      class_section_count: 1,
+      total_batches: 1,
+      warnings: [],
+      diff: { courses: { added: 1 } },
+    });
+    expect(repository.completeInput).toMatchObject({
+      actorId: ACTOR_ID,
+      rowCount: 1,
+      batches: [{ batchIndex: 0 }],
+    });
+    expect(repository.completeInput?.batches[0]?.batchChecksum).toMatch(
+      /^[0-9a-f]{64}$/u,
+    );
+  });
+
+  it('rejects malformed manifests before opening a plan', async () => {
+    const repository = new FakeImportRepository();
+    await expect(
+      service(repository).upload(ACTOR_ID, {
+        filename: 'courses.csv.gz',
+        manifestValue: {},
+        csvBytes: new Uint8Array(),
+      }),
+    ).rejects.toMatchObject({ code: 'invalid_request', status: 400 });
+    expect(repository.completeInput).toBeNull();
   });
 });

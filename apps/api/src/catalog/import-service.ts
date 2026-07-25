@@ -1,10 +1,18 @@
 import { createHash } from 'node:crypto';
 
 import {
+  parseCatalogCsv,
+  parseCatalogManifest,
+  splitCatalogBatches,
+  type CatalogBatch,
+  type CatalogManifest,
+} from '@ddl-tracker/catalog-import';
+import {
   createUuidV7,
   type CatalogImportDiff,
   type CatalogImportStatusValue,
   type CatalogPlanBatchRequest,
+  type CatalogUploadResponse,
 } from '@ddl-tracker/contracts';
 
 import { HttpError } from '../http/errors.js';
@@ -58,6 +66,28 @@ export type SavePlanBatchOutcome =
   | { kind: 'metadata_conflict' }
   | { kind: 'batch_conflict' };
 
+export interface CompleteCatalogPlan {
+  generatedImportId: string;
+  actorId: string;
+  filename: string;
+  checksum: string;
+  headerHash: string;
+  manifestHash: string;
+  manifest: CatalogManifest;
+  term: CatalogPlanBatchRequest['term'];
+  rowCount: number;
+  batches: (CatalogBatch & {
+      batchIndex: number;
+      batchChecksum: string;
+    })[];
+  now: Date;
+}
+
+export interface CompleteCatalogPlanOutcome {
+  importRecord: CatalogImportRecord;
+  diff: CatalogImportDiff;
+}
+
 export interface CatalogImportStatus {
   import_id: string;
   status: CatalogImportStatusValue;
@@ -83,6 +113,9 @@ export interface CatalogImportRepository {
     diff: CatalogImportDiff,
     now: Date,
   ): Promise<void>;
+  saveCompletePlan(
+    input: CompleteCatalogPlan,
+  ): Promise<CompleteCatalogPlanOutcome>;
   getStatus(importId: string): Promise<CatalogImportRecord | null>;
 }
 
@@ -96,13 +129,17 @@ export interface CatalogPlanBatchResponse {
   diff: CatalogImportDiff | null;
 }
 
-function checksumBatch(request: CatalogPlanBatchRequest): string {
+function checksumBatchContent(input: {
+  batchIndex: number;
+  courses: CatalogPlanBatchRequest['courses'];
+  classSections: CatalogPlanBatchRequest['class_sections'];
+}): string {
   return createHash('sha256')
     .update(
       JSON.stringify({
-        batch_index: request.batch_index,
-        courses: request.courses,
-        class_sections: request.class_sections,
+        batch_index: input.batchIndex,
+        courses: input.courses,
+        class_sections: input.classSections,
       }),
       'utf8',
     )
@@ -150,6 +187,70 @@ export class CatalogImportService {
     this.#now = options.now ?? (() => new Date());
   }
 
+  async upload(
+    actorId: string,
+    input: {
+      filename: string;
+      manifestValue: unknown;
+      csvBytes: Uint8Array;
+    },
+  ): Promise<CatalogUploadResponse> {
+    let manifest: CatalogManifest;
+    let parsed: ReturnType<typeof parseCatalogCsv>;
+    let batches: CatalogBatch[];
+    try {
+      manifest = parseCatalogManifest(input.manifestValue);
+      parsed = parseCatalogCsv(input.csvBytes, manifest);
+      batches = splitCatalogBatches(parsed.courses, parsed.class_sections, {
+        maximumRecordsPerType: 100,
+        maximumPayloadBytes: 420 * 1024,
+      });
+    } catch (error) {
+      throw new HttpError({
+        code: 'invalid_request',
+        message:
+          error instanceof Error
+            ? error.message
+            : 'Catalog upload could not be validated.',
+        status: 400,
+      });
+    }
+
+    const outcome = await this.#repository.saveCompletePlan({
+      generatedImportId: this.#createId(),
+      actorId,
+      filename: input.filename,
+      checksum: parsed.metadata.checksum,
+      headerHash: parsed.metadata.header_hash,
+      manifestHash: parsed.metadata.manifest_hash,
+      manifest,
+      term: parsed.term,
+      rowCount: parsed.metadata.row_count,
+      batches: batches.map((batch, batchIndex) => ({
+        ...batch,
+        batchIndex,
+        batchChecksum: checksumBatchContent({
+          batchIndex,
+          courses: batch.courses,
+          classSections: batch.class_sections,
+        }),
+      })),
+      now: this.#now(),
+    });
+    return {
+      import_id: outcome.importRecord.id,
+      filename: input.filename,
+      checksum: parsed.metadata.checksum,
+      manifest_hash: parsed.metadata.manifest_hash,
+      row_count: parsed.metadata.row_count,
+      course_count: parsed.courses.length,
+      class_section_count: parsed.class_sections.length,
+      total_batches: outcome.importRecord.totalBatches,
+      warnings: parsed.metadata.warnings,
+      diff: outcome.diff,
+    };
+  }
+
   async getStatus(importId: string): Promise<CatalogImportStatus> {
     const record = await this.#repository.getStatus(importId);
     if (record === null) {
@@ -178,7 +279,11 @@ export class CatalogImportService {
       generatedImportId: this.#createId(),
       actorId,
       request,
-      batchChecksum: checksumBatch(request),
+      batchChecksum: checksumBatchContent({
+        batchIndex: request.batch_index,
+        courses: request.courses,
+        classSections: request.class_sections,
+      }),
       now: this.#now(),
     });
     if (saved.kind === 'metadata_conflict') {

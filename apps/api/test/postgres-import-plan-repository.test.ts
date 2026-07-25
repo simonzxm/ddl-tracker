@@ -7,6 +7,7 @@ import type {
 } from '@ddl-tracker/contracts';
 
 import { PostgresCatalogImportRepository } from '../src/catalog/postgres-import-plan-repository.js';
+import type { CompleteCatalogPlan } from '../src/catalog/import-service.js';
 
 const databaseUrl = process.env['TEST_DATABASE_URL'];
 const describePostgres = databaseUrl === undefined ? describe.skip : describe;
@@ -81,6 +82,40 @@ const diff: CatalogImportDiff = {
   deactivated_class_section_ids: [],
   checksum_previously_applied: false,
 };
+
+function completePlanInput(): CompleteCatalogPlan {
+  const value = request();
+  return {
+    generatedImportId: IMPORT_ID,
+    actorId: ACTOR_ID,
+    filename: 'courses.csv.gz',
+    checksum: value.checksum,
+    headerHash: value.header_hash,
+    manifestHash: value.manifest_hash,
+    manifest: {
+      schema_version: 1,
+      source_system: 'test',
+      term: value.term,
+    },
+    term: value.term,
+    rowCount: value.row_count,
+    batches: [
+      {
+        batchIndex: 0,
+        batchChecksum: 'b'.repeat(64),
+        courses: value.courses,
+        class_sections: [],
+      },
+      {
+        batchIndex: 1,
+        batchChecksum: 'c'.repeat(64),
+        courses: [],
+        class_sections: value.class_sections,
+      },
+    ],
+    now: NOW,
+  };
+}
 
 describePostgres('PostgresCatalogImportRepository planning', () => {
   let client: Client;
@@ -240,5 +275,52 @@ describePostgres('PostgresCatalogImportRepository planning', () => {
       deactivation_count: 0,
       diff,
     });
+  });
+
+  it('stores every uploaded batch and its diff in one complete plan', async () => {
+    const outcome = await repository.saveCompletePlan(completePlanInput());
+
+    expect(outcome).toMatchObject({
+      importRecord: {
+        id: IMPORT_ID,
+        filename: 'courses.csv.gz',
+        totalBatches: 2,
+        receivedBatches: 2,
+        status: 'planned',
+      },
+      diff: {
+        terms: { added: 1 },
+        courses: { added: 1 },
+        class_sections: { added: 1 },
+      },
+    });
+    const batches = await client.query<{
+      batch_index: number;
+      batch_checksum: string;
+    }>(
+      `select batch_index, batch_checksum
+       from catalog_import_batches where import_id = $1 order by batch_index`,
+      [IMPORT_ID],
+    );
+    expect(batches.rows).toEqual([
+      { batch_index: 0, batch_checksum: 'b'.repeat(64) },
+      { batch_index: 1, batch_checksum: 'c'.repeat(64) },
+    ]);
+  });
+
+  it('rolls back the whole uploaded plan if its batch set is invalid', async () => {
+    const input = completePlanInput();
+    const secondBatch = input.batches[1];
+    if (secondBatch === undefined) {
+      throw new Error('Test fixture is missing its second batch.');
+    }
+    input.batches[1] = { ...secondBatch, batchIndex: 0 };
+
+    await expect(repository.saveCompletePlan(input)).rejects.toThrow();
+    const stored = await client.query(
+      `select 1 from catalog_imports where id = $1`,
+      [IMPORT_ID],
+    );
+    expect(stored.rowCount).toBe(0);
   });
 });

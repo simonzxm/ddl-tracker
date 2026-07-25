@@ -89,6 +89,12 @@ const diff: CatalogImportDiff = {
   courses: { added: 1, updated: 1, unchanged: 0, deactivated: 1 },
   class_sections: { added: 1, updated: 1, unchanged: 0, deactivated: 1 },
   field_changes: {},
+  deactivated_courses: [
+    { id: MISSING_COURSE_ID, external_course_code: '0099' },
+  ],
+  deactivated_class_sections: [
+    { id: MISSING_SECTION_ID, external_section_id: 'section-missing' },
+  ],
   deactivated_class_section_ids: [MISSING_SECTION_ID],
   checksum_previously_applied: false,
 };

@@ -159,6 +159,18 @@ describe('catalog import diff', () => {
     expect(diff.deactivated_class_section_ids).toEqual([
       '018f0000-0000-7000-8000-000000000405',
     ]);
+    expect(diff.deactivated_courses).toEqual([
+      {
+        id: '018f0000-0000-7000-8000-000000000404',
+        external_course_code: '0099',
+      },
+    ]);
+    expect(diff.deactivated_class_sections).toEqual([
+      {
+        id: '018f0000-0000-7000-8000-000000000405',
+        external_section_id: 'section-missing',
+      },
+    ]);
   });
 
   it('marks identical desired records unchanged', () => {

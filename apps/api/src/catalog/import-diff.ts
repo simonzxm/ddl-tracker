@@ -119,6 +119,7 @@ export function buildCatalogImportDiff(
   const termCounts = emptyCounts();
   const courseCounts = emptyCounts();
   const sectionCounts = emptyCounts();
+  const deactivatedCourses: CatalogImportDiff['deactivated_courses'] = [];
 
   if (baseline.term === null) {
     termCounts.added = 1;
@@ -182,6 +183,10 @@ export function buildCatalogImportDiff(
   for (const course of baseline.courses) {
     if (course.active && !desiredCourses.has(course.externalCourseCode)) {
       courseCounts.deactivated += 1;
+      deactivatedCourses.push({
+        id: course.id,
+        external_course_code: course.externalCourseCode,
+      });
       incrementChange(fieldChanges, 'courses.active');
     }
   }
@@ -261,10 +266,15 @@ export function buildCatalogImportDiff(
   }
 
   const deactivatedSectionIds: string[] = [];
+  const deactivatedSections: CatalogImportDiff['deactivated_class_sections'] = [];
   for (const section of baseline.classSections) {
     if (section.active && !desiredSections.has(section.externalSectionId)) {
       sectionCounts.deactivated += 1;
       deactivatedSectionIds.push(section.id);
+      deactivatedSections.push({
+        id: section.id,
+        external_section_id: section.externalSectionId,
+      });
       incrementChange(fieldChanges, 'class_sections.active');
     }
   }
@@ -277,6 +287,12 @@ export function buildCatalogImportDiff(
       Object.entries(fieldChanges).sort(([left], [right]) =>
         left.localeCompare(right),
       ),
+    ),
+    deactivated_courses: deactivatedCourses.sort((left, right) =>
+      left.external_course_code.localeCompare(right.external_course_code),
+    ),
+    deactivated_class_sections: deactivatedSections.sort((left, right) =>
+      left.external_section_id.localeCompare(right.external_section_id),
     ),
     deactivated_class_section_ids: deactivatedSectionIds.sort(),
     checksum_previously_applied: checksumPreviouslyApplied,

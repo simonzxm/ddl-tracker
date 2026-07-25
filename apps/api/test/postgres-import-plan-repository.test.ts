@@ -81,6 +81,8 @@ const diff: CatalogImportDiff = {
   courses: { added: 0, updated: 0, unchanged: 1, deactivated: 0 },
   class_sections: { added: 0, updated: 1, unchanged: 0, deactivated: 0 },
   field_changes: { 'terms.name': 1 },
+  deactivated_courses: [],
+  deactivated_class_sections: [],
   deactivated_class_section_ids: [],
   checksum_previously_applied: false,
 };

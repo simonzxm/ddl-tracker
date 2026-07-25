@@ -18,6 +18,8 @@ describe('AdminApiClient', () => {
     courses: { added: 1, updated: 0, unchanged: 0, deactivated: 0 },
     class_sections: { added: 1, updated: 0, unchanged: 0, deactivated: 0 },
     field_changes: {},
+    deactivated_courses: [],
+    deactivated_class_sections: [],
     deactivated_class_section_ids: [],
     checksum_previously_applied: false,
   };

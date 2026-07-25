@@ -118,6 +118,26 @@ export const catalogImportDiffSchema = z
     courses: diffCountsSchema,
     class_sections: diffCountsSchema,
     field_changes: z.record(z.string(), z.number().int().nonnegative()),
+    deactivated_courses: z
+      .array(
+        z
+          .object({
+            id: uuidV7Schema,
+            external_course_code: z.string().trim().min(1).max(100),
+          })
+          .strict(),
+      )
+      .default([]),
+    deactivated_class_sections: z
+      .array(
+        z
+          .object({
+            id: uuidV7Schema,
+            external_section_id: z.string().trim().min(1).max(200),
+          })
+          .strict(),
+      )
+      .default([]),
     deactivated_class_section_ids: z.array(uuidV7Schema),
     checksum_previously_applied: z.boolean(),
   })

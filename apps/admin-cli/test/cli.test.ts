@@ -54,6 +54,8 @@ function apiClient(deactivations = 0): AdminCatalogClient & {
       deactivated: deactivations,
     },
     field_changes: {},
+    deactivated_courses: [],
+    deactivated_class_sections: [],
     deactivated_class_section_ids: [],
     checksum_previously_applied: false,
   };

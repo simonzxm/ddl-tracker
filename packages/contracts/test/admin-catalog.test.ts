@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   catalogApplyAllRequestSchema,
   catalogCancelRequestSchema,
+  catalogImportDiffSchema,
   catalogImportStatusSchema,
   catalogPlanBatchRequestSchema,
   catalogUploadResponseSchema,
@@ -161,6 +162,8 @@ describe('admin catalog import contracts', () => {
             deactivated: 0,
           },
           field_changes: {},
+          deactivated_courses: [],
+          deactivated_class_sections: [],
           deactivated_class_section_ids: [],
           checksum_previously_applied: false,
         },
@@ -185,5 +188,26 @@ describe('admin catalog import contracts', () => {
         }),
       ).toMatchObject({ status });
     }
+  });
+
+  it('defaults reviewable deactivation details for stored legacy diffs', () => {
+    expect(
+      catalogImportDiffSchema.parse({
+        terms: { added: 0, updated: 0, unchanged: 1, deactivated: 0 },
+        courses: { added: 0, updated: 0, unchanged: 1, deactivated: 0 },
+        class_sections: {
+          added: 0,
+          updated: 0,
+          unchanged: 1,
+          deactivated: 0,
+        },
+        field_changes: {},
+        deactivated_class_section_ids: [],
+        checksum_previously_applied: false,
+      }),
+    ).toMatchObject({
+      deactivated_courses: [],
+      deactivated_class_sections: [],
+    });
   });
 });

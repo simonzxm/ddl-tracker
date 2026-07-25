@@ -190,6 +190,10 @@ describePostgres('PostgresRetentionService', () => {
       audits: string;
       expired_imports: string;
       import_batches: string;
+      audit_result: {
+        catalog_imports: number;
+        expired_catalog_import_ids: string[];
+      };
     }>(
       `select
          (select count(*) from auth_challenges)::text as challenges,
@@ -201,6 +205,8 @@ describePostgres('PostgresRetentionService', () => {
          (select count(*) from catalog_imports
           where status = 'expired')::text as expired_imports,
          (select count(*) from catalog_import_batches)::text as import_batches,
+         (select result from audit_log
+          where action = 'retention_cleanup') as audit_result,
          (select count(*) from audit_log
           where action = 'retention_cleanup')::text as audits`,
     );
@@ -214,6 +220,10 @@ describePostgres('PostgresRetentionService', () => {
       audits: '1',
       expired_imports: '1',
       import_batches: '2',
+      audit_result: expect.objectContaining({
+        catalog_imports: 1,
+        expired_catalog_import_ids: [OLD_IMPORT_ID],
+      }),
     });
     const retention = await client.query<{ minimum_sequence: string }>(
       `select minimum_sequence::text as minimum_sequence

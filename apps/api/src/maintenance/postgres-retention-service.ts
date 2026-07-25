@@ -83,7 +83,7 @@ export class PostgresRetentionService {
       );
       const syncEvents = await this.#deleteEvents(eventCutoff, input.limit);
       const result: RetentionBatchResult = {
-        catalog_imports: catalogImports,
+        catalog_imports: catalogImports.count,
         auth_challenges: authChallenges,
         registration_tokens: registrationTokens,
         sessions,
@@ -100,7 +100,10 @@ export class PostgresRetentionService {
                    $3, $4)`,
         [
           this.#createId(),
-          JSON.stringify(result),
+          JSON.stringify({
+            ...result,
+            expired_catalog_import_ids: catalogImports.importIds,
+          }),
           this.#createId(),
           input.now,
         ],
@@ -117,8 +120,11 @@ export class PostgresRetentionService {
     cutoff: Date,
     now: Date,
     limit: number,
-  ): Promise<number> {
-    const result = await this.#client.query<{ count: string }>(
+  ): Promise<{ count: number; importIds: string[] }> {
+    const result = await this.#client.query<{
+      count: string;
+      import_ids: string[];
+    }>(
       `with selected as (
          select id
          from catalog_imports
@@ -138,10 +144,16 @@ export class PostgresRetentionService {
          where target.import_id = expired.id
          returning target.import_id
        )
-       select count(*)::text as count from expired`,
+       select count(*)::text as count,
+              coalesce(json_agg(id order by id), '[]'::json)::jsonb
+                as import_ids
+       from expired`,
       [cutoff, limit, now],
     );
-    return Number(result.rows[0]?.count ?? '0');
+    return {
+      count: Number(result.rows[0]?.count ?? '0'),
+      importIds: result.rows[0]?.import_ids ?? [],
+    };
   }
 
   async #deleteById(

@@ -12,9 +12,12 @@ import {
   apiErrorSchema,
   catalogApplyAllRequestSchema,
   catalogApplyResponseSchema,
+  catalogCancelRequestSchema,
+  catalogCancelResponseSchema,
   catalogImportStatusSchema,
   catalogPlanBatchRequestSchema,
   catalogPlanBatchResponseSchema,
+  catalogUploadResponseSchema,
   classSectionSnapshotResponseSchema,
   classSectionsResponseSchema,
   commentRevisionPageSchema,
@@ -297,6 +300,42 @@ export const openApiDocument = addRateLimitResponses({
         },
       },
     },
+    '/v1/admin/catalog/imports/upload': {
+      post: {
+        tags: ['admin'],
+        summary: 'Upload one gzip catalog and create a complete import plan',
+        security: bearer,
+        requestBody: {
+          required: true,
+          content: {
+            'multipart/form-data': {
+              schema: {
+                type: 'object',
+                required: ['catalog', 'manifest'],
+                properties: {
+                  catalog: {
+                    type: 'string',
+                    format: 'binary',
+                    description: 'A gzip-compressed UTF-8 CSV named *.csv.gz.',
+                  },
+                  manifest: {
+                    type: 'string',
+                    format: 'binary',
+                    description: 'The matching UTF-8 JSON manifest.',
+                  },
+                },
+                additionalProperties: false,
+              },
+            },
+          },
+        },
+        responses: {
+          '200': response('Complete catalog import plan.', 'CatalogUploadResponse'),
+          '413': response('Compressed or expanded payload too large.', 'ApiError'),
+          '415': response('Multipart content type required.', 'ApiError'),
+        },
+      },
+    },
     '/v1/admin/catalog/imports/{import_id}/apply-all': {
       post: {
         tags: ['admin'],
@@ -307,6 +346,19 @@ export const openApiDocument = addRateLimitResponses({
         responses: {
           '200': response('Catalog import applied.', 'CatalogApplyResponse'),
           '409': response('Baseline or confirmation conflict.', 'ApiError'),
+        },
+      },
+    },
+    '/v1/admin/catalog/imports/{import_id}/cancel': {
+      post: {
+        tags: ['admin'],
+        summary: 'Cancel a planned catalog import',
+        security: bearer,
+        parameters: [uuidParameter('import_id', 'Catalog import UUIDv7.')],
+        requestBody: requestBody('CatalogCancelRequest'),
+        responses: {
+          '200': response('Catalog import cancelled.', 'CatalogCancelResponse'),
+          '409': response('Catalog import is already terminal.', 'ApiError'),
         },
       },
     },
@@ -430,8 +482,11 @@ export const openApiDocument = addRateLimitResponses({
       },
       CatalogPlanBatchRequest: component(catalogPlanBatchRequestSchema),
       CatalogPlanBatchResponse: component(catalogPlanBatchResponseSchema),
+      CatalogUploadResponse: component(catalogUploadResponseSchema),
       CatalogApplyAllRequest: component(catalogApplyAllRequestSchema),
       CatalogApplyResponse: component(catalogApplyResponseSchema),
+      CatalogCancelRequest: component(catalogCancelRequestSchema),
+      CatalogCancelResponse: component(catalogCancelResponseSchema),
       CatalogImportStatus: component(catalogImportStatusSchema),
       AdminBootstrapRequest: component(adminBootstrapRequestSchema),
       AdminReportResolutionRequest: component(

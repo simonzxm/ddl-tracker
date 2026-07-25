@@ -20,7 +20,9 @@ const expectedPaths = [
   '/v1/sync',
   '/v1/admin/bootstrap',
   '/v1/admin/catalog/imports/plan',
+  '/v1/admin/catalog/imports/upload',
   '/v1/admin/catalog/imports/{import_id}/apply-all',
+  '/v1/admin/catalog/imports/{import_id}/cancel',
   '/v1/admin/catalog/imports/{import_id}',
   '/v1/admin/reports',
   '/v1/admin/reports/{report_id}/resolve',
@@ -47,6 +49,12 @@ describe('OpenAPI document', () => {
     expect(openApiDocument.components.schemas).toHaveProperty('ApiError');
     expect(openApiDocument.components.schemas).toHaveProperty(
       'CatalogApplyAllRequest',
+    );
+    expect(openApiDocument.components.schemas).toHaveProperty(
+      'CatalogUploadResponse',
+    );
+    expect(openApiDocument.components.schemas).toHaveProperty(
+      'CatalogCancelRequest',
     );
   });
 

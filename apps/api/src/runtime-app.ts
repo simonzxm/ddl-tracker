@@ -231,6 +231,8 @@ export function createRuntimeApp(
           requestId,
           request,
         ),
+      cancel: (actorId, importId, requestId, request) =>
+        catalogImportService.cancel(actorId, importId, requestId, request),
       getStatus: (importId) => catalogImportService.getStatus(importId),
     },
     comments: {

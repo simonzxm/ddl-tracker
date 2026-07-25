@@ -1,8 +1,11 @@
 import {
   catalogApplyAllRequestSchema,
+  catalogCancelRequestSchema,
   catalogPlanBatchRequestSchema,
   parseUuidV7,
   type CatalogApplyAllRequest,
+  type CatalogCancelRequest,
+  type CatalogCancelResponse,
   type CatalogImportDiff,
   type CatalogImportStatusValue,
   type CatalogPlanBatchRequest,
@@ -56,6 +59,12 @@ export interface AdminCatalogRouteDependencies {
     total_batches: number;
     complete: boolean;
   }>;
+  cancel(
+    actorId: string,
+    importId: string,
+    requestId: string,
+    request: CatalogCancelRequest,
+  ): Promise<CatalogCancelResponse>;
   getStatus(importId: string): Promise<{
     import_id: string;
     status: CatalogImportStatusValue;
@@ -151,6 +160,28 @@ export function registerAdminCatalogRoutes(
     );
     return context.json(
       await dependencies.applyAll(
+        principal.user.id,
+        importId,
+        context.get('requestId'),
+        body,
+      ),
+    );
+  });
+
+  app.post('/v1/admin/catalog/imports/:import_id/cancel', async (context) => {
+    const principal = await requireMaintainer(
+      context.req.header('authorization'),
+      dependencies,
+      'mutation',
+    );
+    const importId = parseImportId(context.req.param('import_id'));
+    const body = await readValidatedJson(
+      context.req.raw,
+      catalogCancelRequestSchema,
+      ADMIN_BODY_LIMIT,
+    );
+    return context.json(
+      await dependencies.cancel(
         principal.user.id,
         importId,
         context.get('requestId'),

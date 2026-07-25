@@ -94,6 +94,11 @@ function dependencies(maintainer = true): AdminCatalogRouteDependencies {
       total_batches: 1,
       complete: true,
     })),
+    cancel: vi.fn(async () => ({
+      import_id: IMPORT_ID,
+      status: 'cancelled' as const,
+      replayed: false,
+    })),
     getStatus: vi.fn(async () => ({
       import_id: IMPORT_ID,
       status: 'planned' as const,
@@ -265,6 +270,29 @@ describe('admin catalog routes', () => {
 
     expect(response.status).toBe(403);
     expect(dependenciesValue.applyAll).not.toHaveBeenCalled();
+  });
+
+  it('cancels a plan with an audited reason and request ID', async () => {
+    const dependenciesValue = dependencies();
+    const response = await app(dependenciesValue).request(
+      `/api/v1/admin/catalog/imports/${IMPORT_ID}/cancel`,
+      {
+        method: 'POST',
+        headers: {
+          authorization: 'Bearer token',
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({ reason: 'Superseded upload' }),
+      },
+    );
+
+    expect(response.status).toBe(200);
+    expect(dependenciesValue.cancel).toHaveBeenCalledWith(
+      USER_ID,
+      IMPORT_ID,
+      REQUEST_ID,
+      { reason: 'Superseded upload' },
+    );
   });
 
   it('does not expose the obsolete partial apply route', async () => {

@@ -1,7 +1,5 @@
 import {
-  parseCatalogCsv,
-  parseCatalogManifest,
-  splitCatalogBatches,
+  prepareCatalogImportData,
   type CatalogBatch,
   type CatalogManifest,
   type ParsedCatalogCsv,
@@ -65,16 +63,13 @@ export function prepareCatalogImport(input: {
   csvBytes: Uint8Array;
   maximumPayloadBytes?: number;
 }): PreparedCatalogImport {
-  const manifest = parseCatalogManifest(input.manifestValue);
-  const parsed = parseCatalogCsv(input.csvBytes, manifest);
-  const batches = splitCatalogBatches(
-    parsed.courses,
-    parsed.class_sections,
-    {
-      maximumRecordsPerType: 100,
-      maximumPayloadBytes: input.maximumPayloadBytes ?? 420 * 1024,
-    },
-  );
+  const { manifest, parsed, batches } = prepareCatalogImportData({
+    manifestValue: input.manifestValue,
+    csvBytes: input.csvBytes,
+    ...(input.maximumPayloadBytes === undefined
+      ? {}
+      : { maximumPayloadBytes: input.maximumPayloadBytes }),
+  });
   return {
     filename: input.filename,
     environment: input.environment,

@@ -1,9 +1,7 @@
 import { createHash } from 'node:crypto';
 
 import {
-  parseCatalogCsv,
-  parseCatalogManifest,
-  splitCatalogBatches,
+  prepareCatalogImportData,
   type CatalogBatch,
   type CatalogManifest,
 } from '@ddl-tracker/catalog-import';
@@ -211,15 +209,15 @@ export class CatalogImportService {
     },
   ): Promise<CatalogUploadResponse> {
     let manifest: CatalogManifest;
-    let parsed: ReturnType<typeof parseCatalogCsv>;
+    let prepared: ReturnType<typeof prepareCatalogImportData>;
     let batches: CatalogBatch[];
     try {
-      manifest = parseCatalogManifest(input.manifestValue);
-      parsed = parseCatalogCsv(input.csvBytes, manifest);
-      batches = splitCatalogBatches(parsed.courses, parsed.class_sections, {
-        maximumRecordsPerType: 100,
-        maximumPayloadBytes: 420 * 1024,
+      prepared = prepareCatalogImportData({
+        manifestValue: input.manifestValue,
+        csvBytes: input.csvBytes,
       });
+      manifest = prepared.manifest;
+      batches = prepared.batches;
     } catch (error) {
       throw new HttpError({
         code: 'invalid_request',
@@ -230,6 +228,7 @@ export class CatalogImportService {
         status: 400,
       });
     }
+    const { parsed } = prepared;
 
     const outcome = await this.#repository.saveCompletePlan({
       generatedImportId: this.#createId(),

@@ -7,6 +7,7 @@ const SESSION_DIAGNOSTIC_DAYS = 30;
 const RETENTION_LOCK = 4_819_252;
 
 export interface RetentionBatchResult {
+  catalog_imports: number;
   auth_challenges: number;
   registration_tokens: number;
   sessions: number;
@@ -52,6 +53,11 @@ export class PostgresRetentionService {
         temporaryCutoff,
         input.limit,
       );
+      const catalogImports = await this.#expireCatalogImports(
+        temporaryCutoff,
+        input.now,
+        input.limit,
+      );
       const registrationTokens = await this.#deleteById(
         'registration_tokens',
         `(expires_at <= $1 or consumed_at <= $1)`,
@@ -77,6 +83,7 @@ export class PostgresRetentionService {
       );
       const syncEvents = await this.#deleteEvents(eventCutoff, input.limit);
       const result: RetentionBatchResult = {
+        catalog_imports: catalogImports,
         auth_challenges: authChallenges,
         registration_tokens: registrationTokens,
         sessions,
@@ -104,6 +111,37 @@ export class PostgresRetentionService {
       await this.#client.query('rollback');
       throw error;
     }
+  }
+
+  async #expireCatalogImports(
+    cutoff: Date,
+    now: Date,
+    limit: number,
+  ): Promise<number> {
+    const result = await this.#client.query<{ count: string }>(
+      `with selected as (
+         select id
+         from catalog_imports
+         where status = 'planned' and updated_at < $1
+         order by updated_at, id
+         for update skip locked
+         limit $2
+       ), expired as (
+         update catalog_imports target
+         set status = 'expired', updated_at = $3
+         from selected
+         where target.id = selected.id
+         returning target.id
+       ), deleted as (
+         delete from catalog_import_batches target
+         using expired
+         where target.import_id = expired.id
+         returning target.import_id
+       )
+       select count(*)::text as count from expired`,
+      [cutoff, limit, now],
+    );
+    return Number(result.rows[0]?.count ?? '0');
   }
 
   async #deleteById(

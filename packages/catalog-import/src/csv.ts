@@ -1,6 +1,10 @@
 import { createHash } from 'node:crypto';
 
-import { normalizePlainText } from '@ddl-tracker/contracts';
+import {
+  normalizePlainText,
+  normalizedCatalogClassSectionSchema,
+  normalizedCatalogCourseSchema,
+} from '@ddl-tracker/contracts';
 import { parse } from 'csv-parse/sync';
 
 import { hashCatalogManifest, type CatalogManifest } from './manifest.js';
@@ -277,11 +281,15 @@ export function parseCatalogCsv(
       ends_on: manifest.term.ends_on,
       time_zone: manifest.term.time_zone,
     },
-    courses: [...courses.values()].sort((left, right) =>
-      left.external_course_code.localeCompare(right.external_course_code),
-    ),
-    class_sections: [...sections.values()].sort((left, right) =>
-      left.external_section_id.localeCompare(right.external_section_id),
-    ),
+    courses: [...courses.values()]
+      .sort((left, right) =>
+        left.external_course_code.localeCompare(right.external_course_code),
+      )
+      .map((course) => normalizedCatalogCourseSchema.parse(course)),
+    class_sections: [...sections.values()]
+      .sort((left, right) =>
+        left.external_section_id.localeCompare(right.external_section_id),
+      )
+      .map((section) => normalizedCatalogClassSectionSchema.parse(section)),
   };
 }

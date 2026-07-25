@@ -153,6 +153,18 @@ describe('parseCatalogCsv', () => {
     expect(() =>
       parseCatalogCsv(csv(row({ XKZRS: '-1' })), manifest),
     ).toThrow('XKZRS');
+    expect(() =>
+      parseCatalogCsv(csv(row({ KCM: 'x'.repeat(301) })), manifest),
+    ).toThrow();
+  });
+
+  it('enforces source payload bounds before a plan is persisted', () => {
+    const extendedHeaders = [...headers, 'NEW_FIELD'];
+    const bytes = new TextEncoder().encode(
+      `${extendedHeaders.join(',')}\n${row()},${'x'.repeat(10_001)}\n`,
+    );
+
+    expect(() => parseCatalogCsv(bytes, manifest)).toThrow();
   });
 
   it('rejects duplicate section keys and conflicting course facts', () => {

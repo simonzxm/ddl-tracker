@@ -17,6 +17,7 @@ import type {
   CatalogImportRecord,
   CatalogImportRepository,
   CatalogPlanningContext,
+  CancelCatalogImportOutcome,
   CompleteCatalogPlan,
   CompleteCatalogPlanOutcome,
   SavePlanBatchOutcome,
@@ -355,6 +356,79 @@ export class PostgresCatalogImportRepository implements CatalogImportRepository 
       }
       await this.#client.query('commit');
       return { importRecord: toImportRecord(row), diff };
+    } catch (error) {
+      await this.#client.query('rollback');
+      throw error;
+    }
+  }
+
+  async cancel(input: {
+    actorId: string;
+    importId: string;
+    reason: string;
+    requestId: string;
+    now: Date;
+    auditId: string;
+  }): Promise<CancelCatalogImportOutcome> {
+    await this.#client.query('begin');
+    try {
+      const selected = await this.#client.query<{
+        status: CatalogImportStatusValue;
+        received_batches: number;
+      }>(
+        `select status, received_batches
+         from catalog_imports
+         where id = $1 and environment = $2
+         for update`,
+        [input.importId, this.#environment],
+      );
+      const row = selected.rows[0];
+      if (row === undefined) {
+        await this.#client.query('rollback');
+        return { kind: 'not_found' };
+      }
+      if (row.status === 'cancelled') {
+        await this.#client.query('commit');
+        return { kind: 'replayed' };
+      }
+      if (row.status !== 'planned') {
+        await this.#client.query('rollback');
+        return { kind: 'terminal_conflict', status: row.status };
+      }
+
+      await this.#client.query(
+        `update catalog_imports
+         set status = 'cancelled', updated_at = $2
+         where id = $1`,
+        [input.importId, input.now],
+      );
+      const deleted = await this.#client.query(
+        `delete from catalog_import_batches where import_id = $1`,
+        [input.importId],
+      );
+      await this.#client.query(
+        `insert into audit_log (
+           id, actor_id, action, target_type, target_id, reason, result,
+           request_id, created_at
+         ) values (
+           $1, $2, 'catalog_import_cancelled', 'catalog_import', $3, $4,
+           $5::jsonb, $6, $7
+         )`,
+        [
+          input.auditId,
+          input.actorId,
+          input.importId,
+          input.reason,
+          JSON.stringify({
+            received_batches: row.received_batches,
+            deleted_batch_payloads: deleted.rowCount,
+          }),
+          input.requestId,
+          input.now,
+        ],
+      );
+      await this.#client.query('commit');
+      return { kind: 'cancelled' };
     } catch (error) {
       await this.#client.query('rollback');
       throw error;

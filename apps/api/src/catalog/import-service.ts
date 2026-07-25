@@ -9,6 +9,8 @@ import {
 } from '@ddl-tracker/catalog-import';
 import {
   createUuidV7,
+  type CatalogCancelRequest,
+  type CatalogCancelResponse,
   type CatalogImportDiff,
   type CatalogImportStatusValue,
   type CatalogPlanBatchRequest,
@@ -88,6 +90,11 @@ export interface CompleteCatalogPlanOutcome {
   diff: CatalogImportDiff;
 }
 
+export type CancelCatalogImportOutcome =
+  | { kind: 'cancelled' | 'replayed' }
+  | { kind: 'not_found' }
+  | { kind: 'terminal_conflict'; status: CatalogImportStatusValue };
+
 export interface CatalogImportStatus {
   import_id: string;
   status: CatalogImportStatusValue;
@@ -116,6 +123,14 @@ export interface CatalogImportRepository {
   saveCompletePlan(
     input: CompleteCatalogPlan,
   ): Promise<CompleteCatalogPlanOutcome>;
+  cancel(input: {
+    actorId: string;
+    importId: string;
+    reason: string;
+    requestId: string;
+    now: Date;
+    auditId: string;
+  }): Promise<CancelCatalogImportOutcome>;
   getStatus(importId: string): Promise<CatalogImportRecord | null>;
 }
 
@@ -268,6 +283,42 @@ export class CatalogImportService {
       total_batches: record.totalBatches,
       diff: record.diff,
       failure_message: record.failureMessage,
+    };
+  }
+
+  async cancel(
+    actorId: string,
+    importId: string,
+    requestId: string,
+    request: CatalogCancelRequest,
+  ): Promise<CatalogCancelResponse> {
+    const outcome = await this.#repository.cancel({
+      actorId,
+      importId,
+      reason: request.reason,
+      requestId,
+      now: this.#now(),
+      auditId: this.#createId(),
+    });
+    if (outcome.kind === 'not_found') {
+      throw new HttpError({
+        code: 'not_found',
+        message: 'Catalog import not found.',
+        status: 404,
+      });
+    }
+    if (outcome.kind === 'terminal_conflict') {
+      throw new HttpError({
+        code: 'conflict',
+        message: `Catalog import is already ${outcome.status}.`,
+        status: 409,
+        details: { status: outcome.status },
+      });
+    }
+    return {
+      import_id: importId,
+      status: 'cancelled',
+      replayed: outcome.kind === 'replayed',
     };
   }
 

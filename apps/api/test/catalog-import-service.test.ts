@@ -89,6 +89,10 @@ class FakeImportRepository implements CatalogImportRepository {
   checksumPreviouslyApplied = false;
   completed: { baselineHash: string; diff: CatalogImportDiff } | null = null;
   completeInput: CompleteCatalogPlan | null = null;
+  cancelOutcome: Awaited<ReturnType<CatalogImportRepository['cancel']>> = {
+    kind: 'cancelled',
+  };
+  cancelInput: Parameters<CatalogImportRepository['cancel']>[0] | null = null;
 
   async savePlanBatch(input: {
     generatedImportId: string;
@@ -209,6 +213,11 @@ class FakeImportRepository implements CatalogImportRepository {
     this.record = importRecord;
     return Promise.resolve({ importRecord, diff: completeDiff });
   }
+
+  cancel(input: Parameters<CatalogImportRepository['cancel']>[0]) {
+    this.cancelInput = input;
+    return Promise.resolve(this.cancelOutcome);
+  }
 }
 
 function service(repository: FakeImportRepository): CatalogImportService {
@@ -256,6 +265,59 @@ describe('CatalogImportService status', () => {
     repository.record = null;
     await expect(service(repository).getStatus(IMPORT_ID)).rejects.toMatchObject({
       code: 'not_found',
+    });
+  });
+});
+
+describe('CatalogImportService cancellation', () => {
+  it('cancels a planned import and reports idempotent replays', async () => {
+    const repository = new FakeImportRepository();
+    await expect(
+      service(repository).cancel(ACTOR_ID, IMPORT_ID, IMPORT_ID, {
+        reason: 'Superseded upload',
+      }),
+    ).resolves.toEqual({
+      import_id: IMPORT_ID,
+      status: 'cancelled',
+      replayed: false,
+    });
+    expect(repository.cancelInput).toMatchObject({
+      actorId: ACTOR_ID,
+      importId: IMPORT_ID,
+      reason: 'Superseded upload',
+      requestId: IMPORT_ID,
+      now: NOW,
+    });
+
+    repository.cancelOutcome = { kind: 'replayed' };
+    await expect(
+      service(repository).cancel(ACTOR_ID, IMPORT_ID, IMPORT_ID, {
+        reason: 'Superseded upload',
+      }),
+    ).resolves.toMatchObject({ replayed: true });
+  });
+
+  it('maps missing and terminal imports to stable errors', async () => {
+    const repository = new FakeImportRepository();
+    repository.cancelOutcome = { kind: 'not_found' };
+    await expect(
+      service(repository).cancel(ACTOR_ID, IMPORT_ID, IMPORT_ID, {
+        reason: 'Superseded upload',
+      }),
+    ).rejects.toMatchObject({ code: 'not_found', status: 404 });
+
+    repository.cancelOutcome = {
+      kind: 'terminal_conflict',
+      status: 'applied',
+    };
+    await expect(
+      service(repository).cancel(ACTOR_ID, IMPORT_ID, IMPORT_ID, {
+        reason: 'Superseded upload',
+      }),
+    ).rejects.toMatchObject({
+      code: 'conflict',
+      status: 409,
+      details: { status: 'applied' },
     });
   });
 });

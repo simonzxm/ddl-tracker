@@ -16,6 +16,8 @@ const ACTOR_ID = '018f0000-0000-7000-8000-000000000602';
 const TERM_ID = '018f0000-0000-7000-8000-000000000603';
 const COURSE_ID = '018f0000-0000-7000-8000-000000000604';
 const SECTION_ID = '018f0000-0000-7000-8000-000000000605';
+const REQUEST_ID = '018f0000-0000-7000-8000-000000000606';
+const AUDIT_ID = '018f0000-0000-7000-8000-000000000607';
 const HASH = 'a'.repeat(64);
 const NOW = new Date('2026-07-19T12:00:00.000Z');
 
@@ -129,7 +131,7 @@ describePostgres('PostgresCatalogImportRepository planning', () => {
 
   beforeEach(async () => {
     await client.query(`
-      truncate table catalog_import_batches, catalog_imports, class_sections,
+      truncate table audit_log, catalog_import_batches, catalog_imports, class_sections,
         courses, academic_terms, users cascade
     `);
     await client.query(
@@ -322,5 +324,52 @@ describePostgres('PostgresCatalogImportRepository planning', () => {
       [IMPORT_ID],
     );
     expect(stored.rowCount).toBe(0);
+  });
+
+  it('cancels once, removes payloads, and keeps an audit trail', async () => {
+    await repository.saveCompletePlan(completePlanInput());
+    const cancelInput = {
+      actorId: ACTOR_ID,
+      importId: IMPORT_ID,
+      reason: 'Superseded by a corrected source file.',
+      requestId: REQUEST_ID,
+      now: NOW,
+      auditId: AUDIT_ID,
+    };
+
+    await expect(repository.cancel(cancelInput)).resolves.toEqual({
+      kind: 'cancelled',
+    });
+    await expect(repository.cancel(cancelInput)).resolves.toEqual({
+      kind: 'replayed',
+    });
+
+    const stored = await client.query<{
+      status: string;
+      batches: string;
+      audits: string;
+      reason: string;
+      result: { deleted_batch_payloads: number };
+    }>(
+      `select catalog_imports.status,
+              (select count(*)::text from catalog_import_batches
+               where import_id = catalog_imports.id) as batches,
+              (select count(*)::text from audit_log
+               where action = 'catalog_import_cancelled'
+                 and target_id = catalog_imports.id) as audits,
+              audit_log.reason,
+              audit_log.result
+       from catalog_imports
+       join audit_log on audit_log.target_id = catalog_imports.id
+       where catalog_imports.id = $1`,
+      [IMPORT_ID],
+    );
+    expect(stored.rows[0]).toEqual({
+      status: 'cancelled',
+      batches: '0',
+      audits: '1',
+      reason: 'Superseded by a corrected source file.',
+      result: { received_batches: 2, deleted_batch_payloads: 2 },
+    });
   });
 });

@@ -223,6 +223,7 @@ export function createRuntimeApp(
         requestRateLimits.consumeAdminMutation(userId),
       planBatch: (actorId, request) =>
         catalogImportService.planBatch(actorId, request),
+      upload: (actorId, input) => catalogImportService.upload(actorId, input),
       applyAll: (actorId, importId, requestId, request) =>
         catalogApplyService.applyAll(
           actorId,

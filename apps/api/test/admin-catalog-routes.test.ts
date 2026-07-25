@@ -1,3 +1,5 @@
+import { gzipSync } from 'node:zlib';
+
 import { describe, expect, it, vi } from 'vitest';
 
 import type { AuthenticatedPrincipal } from '../src/auth/account-service.js';
@@ -52,6 +54,30 @@ function dependencies(maintainer = true): AdminCatalogRouteDependencies {
         courses: { added: 0, updated: 0, unchanged: 0, deactivated: 0 },
         class_sections: {
           added: 0,
+          updated: 0,
+          unchanged: 0,
+          deactivated: 0,
+        },
+        field_changes: {},
+        deactivated_class_section_ids: [],
+        checksum_previously_applied: false,
+      },
+    })),
+    upload: vi.fn(async () => ({
+      import_id: IMPORT_ID,
+      filename: 'courses.csv.gz',
+      checksum: HASH,
+      manifest_hash: HASH,
+      row_count: 1,
+      course_count: 1,
+      class_section_count: 1,
+      total_batches: 1,
+      warnings: [],
+      diff: {
+        terms: { added: 1, updated: 0, unchanged: 0, deactivated: 0 },
+        courses: { added: 1, updated: 0, unchanged: 0, deactivated: 0 },
+        class_sections: {
+          added: 1,
           updated: 0,
           unchanged: 0,
           deactivated: 0,
@@ -169,6 +195,35 @@ describe('admin catalog routes', () => {
 
     expect(response.status).toBe(409);
     expect(dependenciesValue.planBatch).not.toHaveBeenCalled();
+  });
+
+  it('accepts a dedicated gzip upload for the maintainer', async () => {
+    const dependenciesValue = dependencies();
+    const form = new FormData();
+    form.set(
+      'catalog',
+      new Blob([gzipSync('header\nvalue\n')]),
+      'courses.csv.gz',
+    );
+    form.set('manifest', '{"schema_version":1}');
+    const response = await app(dependenciesValue).request(
+      '/api/v1/admin/catalog/imports/upload',
+      {
+        method: 'POST',
+        headers: { authorization: 'Bearer token' },
+        body: form,
+      },
+    );
+
+    expect(response.status).toBe(200);
+    expect(dependenciesValue.upload).toHaveBeenCalledWith(
+      USER_ID,
+      expect.objectContaining({
+        filename: 'courses.csv.gz',
+        manifestValue: { schema_version: 1 },
+        csvBytes: new TextEncoder().encode('header\nvalue\n'),
+      }),
+    );
   });
 
   it('applies the complete import with the actual request ID', async () => {

@@ -6,12 +6,14 @@ import {
   type CatalogImportDiff,
   type CatalogImportStatusValue,
   type CatalogPlanBatchRequest,
+  type CatalogUploadResponse,
 } from '@ddl-tracker/contracts';
 import type { Hono } from 'hono';
 
 import type { AuthenticatedPrincipal } from '../auth/account-service.js';
 import type { AppVariables } from './app.js';
 import { authenticateBearer } from './bearer.js';
+import { readCatalogUpload } from './catalog-upload-body.js';
 import { HttpError } from './errors.js';
 import { readValidatedJson } from './json-body.js';
 
@@ -34,6 +36,14 @@ export interface AdminCatalogRouteDependencies {
     plan_complete: boolean;
     diff: CatalogImportDiff | null;
   }>;
+  upload(
+    actorId: string,
+    input: {
+      filename: string;
+      manifestValue: unknown;
+      csvBytes: Uint8Array;
+    },
+  ): Promise<CatalogUploadResponse>;
   applyAll(
     actorId: string,
     importId: string,
@@ -115,6 +125,16 @@ export function registerAdminCatalogRoutes(
       });
     }
     return context.json(await dependencies.planBatch(principal.user.id, body));
+  });
+
+  app.post('/v1/admin/catalog/imports/upload', async (context) => {
+    const principal = await requireMaintainer(
+      context.req.header('authorization'),
+      dependencies,
+      'mutation',
+    );
+    const body = await readCatalogUpload(context.req.raw);
+    return context.json(await dependencies.upload(principal.user.id, body));
   });
 
   app.post('/v1/admin/catalog/imports/:import_id/apply-all', async (context) => {

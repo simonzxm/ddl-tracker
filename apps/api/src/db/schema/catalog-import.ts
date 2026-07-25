@@ -18,6 +18,8 @@ export const catalogImportStatus = pgEnum('catalog_import_status', [
   'planned',
   'applied',
   'failed',
+  'cancelled',
+  'expired',
 ]);
 
 export const catalogImports = pgTable(

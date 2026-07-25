@@ -1,0 +1,66 @@
+{
+  "schema_version": 1,
+  "current_server_version": "1.1.0",
+  "versions": {
+    "1.0.0": {
+      "capabilities": [
+        "catalog_plan_batches",
+        "catalog_apply_all",
+        "catalog_import_status"
+      ],
+      "catalog_import_status_values": ["planned", "applied", "failed"]
+    },
+    "1.1.0": {
+      "capabilities": [
+        "catalog_plan_batches",
+        "catalog_apply_all",
+        "catalog_import_status",
+        "catalog_gzip_upload",
+        "catalog_import_cancel",
+        "catalog_terminal_expiry",
+        "catalog_deactivation_identifiers",
+        "catalog_upload_replay"
+      ],
+      "catalog_import_status_values": [
+        "planned",
+        "applied",
+        "failed",
+        "cancelled",
+        "expired"
+      ]
+    }
+  },
+  "matrix": [
+    {
+      "client_version": "1.0.0",
+      "server_version": "1.0.0",
+      "compatibility": "full",
+      "requirements": []
+    },
+    {
+      "client_version": "1.0.0",
+      "server_version": "1.1.0",
+      "compatibility": "conditional",
+      "requirements": [
+        "ignore_additive_response_fields",
+        "accept_new_terminal_statuses"
+      ]
+    },
+    {
+      "client_version": "1.1.0",
+      "server_version": "1.0.0",
+      "compatibility": "conditional",
+      "requirements": [
+        "fallback_to_plan_batches",
+        "avoid_1_1_only_endpoints",
+        "accept_missing_1_1_response_fields"
+      ]
+    },
+    {
+      "client_version": "1.1.0",
+      "server_version": "1.1.0",
+      "compatibility": "full",
+      "requirements": []
+    }
+  ]
+}

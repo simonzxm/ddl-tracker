@@ -80,7 +80,7 @@ docs/
 
 ## HTTP 表面
 
-所有 HTTP 接口位于 `/api`，业务路径位于 `/api/v1`。具体 schema 由 `packages/contracts` 生成 OpenAPI；稳定错误 code 是客户端逻辑契约，英文 message 仅用于诊断。
+所有 HTTP 接口位于 `/api`，业务路径位于 `/api/v1`。具体 schema 由 `packages/contracts` 生成 OpenAPI；稳定错误 code 是客户端逻辑契约，英文 message 仅用于诊断。minor contract release 的客户端/服务端能力与 fallback 见[API 契约兼容矩阵](./api-compatibility.md)。
 
 ```text
 GET    /api/health/live

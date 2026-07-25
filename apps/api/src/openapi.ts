@@ -101,7 +101,7 @@ export const openApiDocument = addRateLimitResponses({
   openapi: '3.1.0',
   info: {
     title: 'DDL Tracker API',
-    version: '1.0.0',
+    version: '1.1.0',
     description:
       'Passwordless course deadline tracking, offline synchronization, catalog administration, and moderation API.',
   },

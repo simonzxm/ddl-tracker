@@ -6,6 +6,12 @@ import { gunzip } from 'node:zlib';
 
 import { Command } from 'commander';
 
+import type {
+  CatalogCancelRequest,
+  CatalogCancelResponse,
+  CatalogUploadResponse,
+} from '@ddl-tracker/contracts';
+
 import { AdminApiClient } from './api-client.js';
 import {
   applyCatalogImport,
@@ -19,6 +25,18 @@ import {
 } from './catalog/state.js';
 
 const gunzipAsync = promisify(gunzip);
+
+export interface AdminCatalogClient extends CatalogWorkflowClient {
+  upload(input: {
+    filename: string;
+    catalogGzip: Uint8Array;
+    manifestJson: string;
+  }): Promise<CatalogUploadResponse>;
+  cancel(
+    importId: string,
+    request: CatalogCancelRequest,
+  ): Promise<CatalogCancelResponse>;
+}
 
 async function decodeCatalogCsv(bytes: Uint8Array): Promise<Uint8Array> {
   if (bytes[0] !== 0x1f || bytes[1] !== 0x8b) {
@@ -36,7 +54,7 @@ export interface CliDependencies {
   createClient(options: {
     baseUrl: string;
     token: string;
-  }): CatalogWorkflowClient;
+  }): AdminCatalogClient;
 }
 
 function defaultDependencies(): CliDependencies {
@@ -228,6 +246,45 @@ export function createProgram(
     });
 
   catalog
+    .command('upload')
+    .description('Upload one .csv.gz file and create a complete catalog plan')
+    .requiredOption('--manifest <path>', 'manifest JSON path')
+    .requiredOption('--csv <path>', 'catalog CSV.gz path')
+    .requiredOption('--api <url>', 'DDL Tracker API base URL')
+    .option(
+      '--token-env <name>',
+      'environment variable containing the bearer token',
+      'DDL_TRACKER_ADMIN_TOKEN',
+    )
+    .action(async (options: {
+      manifest: string;
+      csv: string;
+      api: string;
+      tokenEnv: string;
+    }) => {
+      if (!/\.csv\.gz$/iu.test(options.csv)) {
+        throw new Error('Catalog upload requires a .csv.gz file.');
+      }
+      const [manifestJson, catalogGzip] = await Promise.all([
+        dependencies.readTextFile(options.manifest),
+        dependencies.readBinaryFile(options.csv),
+      ]);
+      if (catalogGzip[0] !== 0x1f || catalogGzip[1] !== 0x8b) {
+        throw new Error('Catalog upload file is not gzip data.');
+      }
+      const client = dependencies.createClient({
+        baseUrl: options.api,
+        token: requiredToken(dependencies, options.tokenEnv),
+      });
+      const result = await client.upload({
+        filename: basename(options.csv),
+        catalogGzip,
+        manifestJson,
+      });
+      dependencies.writeLine(JSON.stringify(result, null, 2));
+    });
+
+  catalog
     .command('status')
     .description('Read catalog import progress')
     .requiredOption('--api <url>', 'DDL Tracker API base URL')
@@ -248,6 +305,42 @@ export function createProgram(
       });
       dependencies.writeLine(
         JSON.stringify(await client.getStatus(options.import), null, 2),
+      );
+    });
+
+  catalog
+    .command('cancel')
+    .description('Cancel a planned catalog import and remove its payloads')
+    .requiredOption('--api <url>', 'DDL Tracker API base URL')
+    .requiredOption('--import <id>', 'catalog import ID')
+    .requiredOption('--reason <text>', 'audit reason')
+    .option(
+      '--token-env <name>',
+      'environment variable containing the bearer token',
+      'DDL_TRACKER_ADMIN_TOKEN',
+    )
+    .action(async (options: {
+      api: string;
+      import: string;
+      reason: string;
+      tokenEnv: string;
+    }) => {
+      const confirmation = await dependencies.prompt(
+        `Type CANCEL ${options.import} to continue: `,
+      );
+      if (confirmation !== `CANCEL ${options.import}`) {
+        throw new Error('Catalog cancel confirmation did not match.');
+      }
+      const client = dependencies.createClient({
+        baseUrl: options.api,
+        token: requiredToken(dependencies, options.tokenEnv),
+      });
+      dependencies.writeLine(
+        JSON.stringify(
+          await client.cancel(options.import, { reason: options.reason }),
+          null,
+          2,
+        ),
       );
     });
 

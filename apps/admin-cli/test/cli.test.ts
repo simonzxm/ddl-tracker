@@ -5,8 +5,11 @@ import { gzipSync } from 'node:zlib';
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { createProgram, type CliDependencies } from '../src/cli.js';
-import type { CatalogWorkflowClient } from '../src/catalog/workflow.js';
+import {
+  createProgram,
+  type AdminCatalogClient,
+  type CliDependencies,
+} from '../src/cli.js';
 
 const IMPORT_ID = '018f0000-0000-7000-8000-000000001301';
 const directories: string[] = [];
@@ -34,9 +37,11 @@ const manifest = JSON.stringify({
 });
 const csv = new TextEncoder().encode(`${headers.join(',')}\n${row.join(',')}\n`);
 
-function apiClient(deactivations = 0): CatalogWorkflowClient & {
+function apiClient(deactivations = 0): AdminCatalogClient & {
   planBatch: ReturnType<typeof vi.fn>;
+  upload: ReturnType<typeof vi.fn>;
   applyAll: ReturnType<typeof vi.fn>;
+  cancel: ReturnType<typeof vi.fn>;
   getStatus: ReturnType<typeof vi.fn>;
 } {
   const diff = {
@@ -62,12 +67,29 @@ function apiClient(deactivations = 0): CatalogWorkflowClient & {
       plan_complete: true,
       diff,
     })),
+    upload: vi.fn(async () => ({
+      import_id: IMPORT_ID,
+      filename: 'data.csv.gz',
+      checksum: 'a'.repeat(64),
+      manifest_hash: 'b'.repeat(64),
+      row_count: 1,
+      course_count: 1,
+      class_section_count: 1,
+      total_batches: 1,
+      warnings: [],
+      diff,
+    })),
     applyAll: vi.fn(async () => ({
       import_id: IMPORT_ID,
       replayed: false,
       applied_batches: 1,
       total_batches: 1,
       complete: true,
+    })),
+    cancel: vi.fn(async () => ({
+      import_id: IMPORT_ID,
+      status: 'cancelled' as const,
+      replayed: false,
     })),
     getStatus: vi.fn(async () => ({
       import_id: IMPORT_ID,
@@ -179,6 +201,56 @@ describe('admin CLI', () => {
       next_plan_batch: 1,
     });
     expect(stateText).not.toContain('secret-token');
+  });
+
+  it('uploads one gzip file without client-side batching', async () => {
+    const client = apiClient();
+    const gzip = gzipSync(csv);
+    const { dependencies, output } = await testDependencies({
+      client,
+      csvBytes: gzip,
+    });
+    const program = createProgram(dependencies).exitOverride();
+
+    await program.parseAsync(
+      [
+        'catalog', 'upload', '--manifest', 'manifest.json',
+        '--csv', 'data.csv.gz', '--api', 'https://api.example.test',
+      ],
+      { from: 'user' },
+    );
+
+    expect(client.upload).toHaveBeenCalledWith({
+      filename: 'data.csv.gz',
+      catalogGzip: gzip,
+      manifestJson: manifest,
+    });
+    expect(client.planBatch).not.toHaveBeenCalled();
+    expect(JSON.parse(output[0] ?? '{}')).toMatchObject({
+      import_id: IMPORT_ID,
+      total_batches: 1,
+    });
+  });
+
+  it('cancels only after exact confirmation and includes the reason', async () => {
+    const client = apiClient();
+    const { dependencies } = await testDependencies({
+      client,
+      prompts: [`CANCEL ${IMPORT_ID}`],
+    });
+    const program = createProgram(dependencies).exitOverride();
+
+    await program.parseAsync(
+      [
+        'catalog', 'cancel', '--api', 'https://api.example.test',
+        '--import', IMPORT_ID, '--reason', 'Superseded upload',
+      ],
+      { from: 'user' },
+    );
+
+    expect(client.cancel).toHaveBeenCalledWith(IMPORT_ID, {
+      reason: 'Superseded upload',
+    });
   });
 
   it('requires exact apply and deactivation confirmations', async () => {

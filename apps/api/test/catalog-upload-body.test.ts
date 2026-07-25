@@ -61,6 +61,9 @@ describe('readCatalogUpload', () => {
     await expect(
       readCatalogUpload(uploadRequest({ catalog: new Blob(['not gzip']) })),
     ).rejects.toMatchObject({ code: 'invalid_request' });
+    await expect(
+      readCatalogUpload(uploadRequest({ filename: 'bad\u0000.csv.gz' })),
+    ).rejects.toMatchObject({ code: 'invalid_request', status: 400 });
   });
 
   it('bounds compressed, manifest, and decompressed sizes', async () => {

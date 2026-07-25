@@ -126,7 +126,12 @@ export async function readCatalogUpload(
   if (typeof catalog === 'string') {
     throw invalidUpload('Multipart field catalog must be a file.');
   }
-  const filename = normalizePlainText(catalog.name);
+  let filename: string;
+  try {
+    filename = normalizePlainText(catalog.name);
+  } catch {
+    throw invalidUpload('Catalog filename contains invalid text.');
+  }
   if (
     filename.length === 0 ||
     Array.from(filename).length > 255 ||

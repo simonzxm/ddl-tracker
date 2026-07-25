@@ -25,11 +25,8 @@ const catalogImportStatusValueSchema = z.enum([
 ]);
 
 const compatibilityRequirementSchema = z.enum([
-  'ignore_additive_response_fields',
-  'accept_new_terminal_statuses',
-  'fallback_to_plan_batches',
+  'select_legacy_plan_workflow',
   'avoid_1_1_only_endpoints',
-  'accept_missing_1_1_response_fields',
 ]);
 
 const contractReleaseSchema = z
@@ -45,7 +42,7 @@ const compatibilityPairSchema = z
   .object({
     client_version: apiContractVersionSchema,
     server_version: apiContractVersionSchema,
-    compatibility: z.enum(['full', 'conditional']),
+    compatibility: z.enum(['full', 'conditional', 'incompatible']),
     requirements: z.array(compatibilityRequirementSchema),
   })
   .strict();

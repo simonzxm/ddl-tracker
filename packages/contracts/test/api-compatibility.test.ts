@@ -37,7 +37,7 @@ describe('API compatibility matrix', () => {
     ]);
   });
 
-  it('requires explicit fallbacks across minor versions', () => {
+  it('records strict-client incompatibility and an explicit legacy workflow', () => {
     const matrix = apiCompatibilityMatrixSchema.parse(rawMatrix);
     const oldClient = matrix.matrix.find(
       ({ client_version: client, server_version: server }) =>
@@ -49,16 +49,13 @@ describe('API compatibility matrix', () => {
     );
 
     expect(oldClient).toMatchObject({
-      compatibility: 'conditional',
-      requirements: expect.arrayContaining([
-        'ignore_additive_response_fields',
-        'accept_new_terminal_statuses',
-      ]),
+      compatibility: 'incompatible',
+      requirements: [],
     });
     expect(oldServer).toMatchObject({
       compatibility: 'conditional',
       requirements: expect.arrayContaining([
-        'fallback_to_plan_batches',
+        'select_legacy_plan_workflow',
         'avoid_1_1_only_endpoints',
       ]),
     });

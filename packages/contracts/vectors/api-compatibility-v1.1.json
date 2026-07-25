@@ -40,20 +40,16 @@
     {
       "client_version": "1.0.0",
       "server_version": "1.1.0",
-      "compatibility": "conditional",
-      "requirements": [
-        "ignore_additive_response_fields",
-        "accept_new_terminal_statuses"
-      ]
+      "compatibility": "incompatible",
+      "requirements": []
     },
     {
       "client_version": "1.1.0",
       "server_version": "1.0.0",
       "compatibility": "conditional",
       "requirements": [
-        "fallback_to_plan_batches",
-        "avoid_1_1_only_endpoints",
-        "accept_missing_1_1_response_fields"
+        "select_legacy_plan_workflow",
+        "avoid_1_1_only_endpoints"
       ]
     },
     {

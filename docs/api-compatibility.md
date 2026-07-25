@@ -6,8 +6,8 @@
 
 | client \ server | 1.0.0 | 1.1.0 |
 | --- | --- | --- |
-| 1.0.0 | 完全兼容 | 条件兼容：旧 plan/apply 请求仍可用；响应 parser 必须忽略新增字段并接受 `cancelled`、`expired` |
-| 1.1.0 | 条件兼容：回退到分批 plan，不调用 upload/cancel，并接受缺少 1.1 新字段 | 完全兼容 |
+| 1.0.0 | 完全兼容 | 不兼容：已发布的 1.0 response schema 是 strict，会拒绝新增 diff 字段以及 `cancelled`、`expired` |
+| 1.1.0 | 条件兼容：维护者显式选择分批 plan 流程，并且不调用 upload/cancel | 完全兼容 |
 
 ## 1.1.0 变化
 
@@ -17,4 +17,6 @@
 - import diff 新增待停用课程与教学班的内部 ID 和外部键。
 - gzip upload response 显式返回 replay 状态、checksum、manifest hash、计数、warning 和完整 diff。
 
-1.0.0 的 plan、apply-all 和 status 路径及 request 字段在 1.1.0 server 上继续保留。严格拒绝未知响应字段或只接受三个旧 status 值的 1.0.0 客户端并不兼容，必须先升级 parser。1.1.0 客户端连接 1.0.0 server 时必须读取 OpenAPI `info.version`，并按矩阵回退，不能把 404 当作临时网络错误重试新 endpoint。
+1.0.0 的 plan、apply-all 和 status 路径及 request 字段在 1.1.0 server 上继续保留，但已发布的 1.0.0 客户端会严格拒绝新增响应字段和 status，因此整体仍不兼容，必须升级客户端。
+
+当前 1.1.0 admin CLI 不自动协商 server version，也不会把 upload/cancel 自动改写为旧 plan。连接 1.0.0 server 时，维护者必须先确认 OpenAPI `info.version`，显式运行 `catalog plan` 的 legacy workflow，并避免调用 upload/cancel；否则 1.1-only endpoint 的 404 是契约不兼容，不是应重试的临时网络错误。

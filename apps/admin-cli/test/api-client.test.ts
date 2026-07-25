@@ -115,6 +115,7 @@ describe('AdminApiClient', () => {
     const fetcher = vi.fn(async () =>
       response({
         import_id: IMPORT_ID,
+        replayed: false,
         filename: 'courses.csv.gz',
         checksum: HASH,
         manifest_hash: HASH,

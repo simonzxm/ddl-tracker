@@ -71,6 +71,7 @@ function apiClient(deactivations = 0): AdminCatalogClient & {
     })),
     upload: vi.fn(async () => ({
       import_id: IMPORT_ID,
+      replayed: false,
       filename: 'data.csv.gz',
       checksum: 'a'.repeat(64),
       manifest_hash: 'b'.repeat(64),

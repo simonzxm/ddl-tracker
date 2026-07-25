@@ -24,7 +24,7 @@ import {
 
 export interface CatalogImportRecord {
   id: string;
-  actorId: string;
+  actorId: string | null;
   checksum: string;
   headerHash: string;
   manifestHash: string;
@@ -79,13 +79,16 @@ export interface CompleteCatalogPlan {
   batches: (CatalogBatch & {
       batchIndex: number;
       batchChecksum: string;
-    })[];
+  })[];
+  requestId: string;
+  auditId: string;
   now: Date;
 }
 
 export interface CompleteCatalogPlanOutcome {
   importRecord: CatalogImportRecord;
   diff: CatalogImportDiff;
+  replayed: boolean;
 }
 
 export type CancelCatalogImportOutcome =
@@ -202,6 +205,7 @@ export class CatalogImportService {
 
   async upload(
     actorId: string,
+    requestId: string,
     input: {
       filename: string;
       manifestValue: unknown;
@@ -249,10 +253,13 @@ export class CatalogImportService {
           classSections: batch.class_sections,
         }),
       })),
+      requestId,
+      auditId: this.#createId(),
       now: this.#now(),
     });
     return {
       import_id: outcome.importRecord.id,
+      replayed: outcome.replayed,
       filename: input.filename,
       checksum: parsed.metadata.checksum,
       manifest_hash: parsed.metadata.manifest_hash,

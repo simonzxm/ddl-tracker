@@ -18,6 +18,10 @@ const COURSE_ID = '018f0000-0000-7000-8000-000000000604';
 const SECTION_ID = '018f0000-0000-7000-8000-000000000605';
 const REQUEST_ID = '018f0000-0000-7000-8000-000000000606';
 const AUDIT_ID = '018f0000-0000-7000-8000-000000000607';
+const UPLOAD_AUDIT_ID = '018f0000-0000-7000-8000-000000000610';
+const REPLAY_IMPORT_ID = '018f0000-0000-7000-8000-000000000611';
+const REPLAY_REQUEST_ID = '018f0000-0000-7000-8000-000000000612';
+const REPLAY_AUDIT_ID = '018f0000-0000-7000-8000-000000000613';
 const HASH = 'a'.repeat(64);
 const NOW = new Date('2026-07-19T12:00:00.000Z');
 
@@ -117,6 +121,8 @@ function completePlanInput(): CompleteCatalogPlan {
         class_sections: value.class_sections,
       },
     ],
+    requestId: REQUEST_ID,
+    auditId: UPLOAD_AUDIT_ID,
     now: NOW,
   };
 }
@@ -310,6 +316,27 @@ describePostgres('PostgresCatalogImportRepository planning', () => {
       { batch_index: 0, batch_checksum: 'b'.repeat(64) },
       { batch_index: 1, batch_checksum: 'c'.repeat(64) },
     ]);
+    const audit = await client.query<{
+      action: string;
+      request_id: string;
+      result: { replayed: boolean };
+    }>(
+      `select action, request_id, result
+       from audit_log where target_id = $1`,
+      [IMPORT_ID],
+    );
+    expect(audit.rows).toEqual([
+      {
+        action: 'catalog_import_uploaded',
+        request_id: REQUEST_ID,
+        result: {
+          replayed: false,
+          checksum: HASH,
+          row_count: 1,
+          total_batches: 2,
+        },
+      },
+    ]);
   });
 
   it('rolls back the whole uploaded plan if its batch set is invalid', async () => {
@@ -326,6 +353,45 @@ describePostgres('PostgresCatalogImportRepository planning', () => {
       [IMPORT_ID],
     );
     expect(stored.rowCount).toBe(0);
+  });
+
+  it('replays an already applied checksum without creating another plan', async () => {
+    await repository.saveCompletePlan(completePlanInput());
+    await client.query(
+      `update catalog_imports
+       set status = 'applied', applied_batches = total_batches, applied_at = $2
+       where id = $1`,
+      [IMPORT_ID, NOW],
+    );
+    const replay = completePlanInput();
+    replay.generatedImportId = REPLAY_IMPORT_ID;
+    replay.requestId = REPLAY_REQUEST_ID;
+    replay.auditId = REPLAY_AUDIT_ID;
+
+    await expect(repository.saveCompletePlan(replay)).resolves.toMatchObject({
+      replayed: true,
+      importRecord: { id: IMPORT_ID, status: 'applied' },
+      diff: { checksum_previously_applied: true },
+    });
+    const counts = await client.query<{
+      imports: string;
+      batches: string;
+      audits: string;
+      replay_audits: string;
+    }>(
+      `select
+         (select count(*) from catalog_imports)::text as imports,
+         (select count(*) from catalog_import_batches)::text as batches,
+         (select count(*) from audit_log)::text as audits,
+         (select count(*) from audit_log
+          where result->>'replayed' = 'true')::text as replay_audits`,
+    );
+    expect(counts.rows[0]).toEqual({
+      imports: '1',
+      batches: '2',
+      audits: '2',
+      replay_audits: '1',
+    });
   });
 
   it('cancels once, removes payloads, and keeps an audit trail', async () => {
@@ -363,6 +429,7 @@ describePostgres('PostgresCatalogImportRepository planning', () => {
               audit_log.result
        from catalog_imports
        join audit_log on audit_log.target_id = catalog_imports.id
+        and audit_log.action = 'catalog_import_cancelled'
        where catalog_imports.id = $1`,
       [IMPORT_ID],
     );

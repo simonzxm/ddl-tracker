@@ -144,6 +144,7 @@ describe('admin catalog import contracts', () => {
     expect(
       catalogUploadResponseSchema.parse({
         import_id: ID,
+        replayed: false,
         filename: 'courses.csv.gz',
         checksum: HASH,
         manifest_hash: HASH,
@@ -168,7 +169,11 @@ describe('admin catalog import contracts', () => {
           checksum_previously_applied: false,
         },
       }),
-    ).toMatchObject({ filename: 'courses.csv.gz', total_batches: 1 });
+    ).toMatchObject({
+      replayed: false,
+      filename: 'courses.csv.gz',
+      total_batches: 1,
+    });
   });
 
   it('normalizes cancellation reasons and exposes terminal statuses', () => {

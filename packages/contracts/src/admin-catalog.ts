@@ -158,6 +158,7 @@ export const catalogPlanBatchResponseSchema = z
 export const catalogUploadResponseSchema = z
   .object({
     import_id: uuidV7Schema,
+    replayed: z.boolean(),
     filename: normalizedTextSchema(1, 255),
     checksum: sha256Schema,
     manifest_hash: sha256Schema,

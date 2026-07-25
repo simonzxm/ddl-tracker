@@ -41,6 +41,7 @@ export interface AdminCatalogRouteDependencies {
   }>;
   upload(
     actorId: string,
+    requestId: string,
     input: {
       filename: string;
       manifestValue: unknown;
@@ -143,7 +144,13 @@ export function registerAdminCatalogRoutes(
       'mutation',
     );
     const body = await readCatalogUpload(context.req.raw);
-    return context.json(await dependencies.upload(principal.user.id, body));
+    return context.json(
+      await dependencies.upload(
+        principal.user.id,
+        context.get('requestId'),
+        body,
+      ),
+    );
   });
 
   app.post('/v1/admin/catalog/imports/:import_id/apply-all', async (context) => {

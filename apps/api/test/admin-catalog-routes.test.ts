@@ -67,6 +67,7 @@ function dependencies(maintainer = true): AdminCatalogRouteDependencies {
     })),
     upload: vi.fn(async () => ({
       import_id: IMPORT_ID,
+      replayed: false,
       filename: 'courses.csv.gz',
       checksum: HASH,
       manifest_hash: HASH,
@@ -227,6 +228,7 @@ describe('admin catalog routes', () => {
     expect(response.status).toBe(200);
     expect(dependenciesValue.upload).toHaveBeenCalledWith(
       USER_ID,
+      REQUEST_ID,
       expect.objectContaining({
         filename: 'courses.csv.gz',
         manifestValue: { schema_version: 1 },

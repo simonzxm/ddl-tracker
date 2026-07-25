@@ -66,7 +66,7 @@ function canonicalJson(value: unknown): string {
 }
 
 function toImportRecord(row: ImportRow): CatalogImportRecord {
-  if (row.actor_id === null || row.header_hash === null || row.manifest_hash === null) {
+  if (row.header_hash === null || row.manifest_hash === null) {
     throw new Error('Catalog import metadata is incomplete.');
   }
   return {
@@ -272,16 +272,35 @@ export class PostgresCatalogImportRepository implements CatalogImportRepository 
         this.#client,
         input.term.external_code,
       );
-      const prior = await this.#client.query(
-        `select 1
+      const prior = await this.#client.query<ImportRow>(
+        `select id, actor_id, checksum, header_hash, manifest_hash,
+                environment, filename, manifest, normalized_term, row_count,
+                total_batches, received_batches, applied_batches,
+                baseline_hash, deactivation_count, diff, status,
+                failure_message
          from catalog_imports
          where checksum = $1
            and manifest_hash = $2
            and environment = $3
            and status = 'applied'
+         order by applied_at desc nulls last, created_at desc
          limit 1`,
         [input.checksum, input.manifestHash, this.#environment],
       );
+      const priorRow = prior.rows[0];
+      if (priorRow !== undefined) {
+        const importRecord = toImportRecord(priorRow);
+        if (importRecord.diff === null) {
+          throw new Error('Applied catalog import is missing its diff.');
+        }
+        const replayDiff: CatalogImportDiff = {
+          ...importRecord.diff,
+          checksum_previously_applied: true,
+        };
+        await this.#auditUpload(input, importRecord.id, true);
+        await this.#client.query('commit');
+        return { importRecord, diff: replayDiff, replayed: true };
+      }
       const courses = input.batches.flatMap((batch) => batch.courses);
       const classSections = input.batches.flatMap(
         (batch) => batch.class_sections,
@@ -289,7 +308,7 @@ export class PostgresCatalogImportRepository implements CatalogImportRepository 
       const diff = buildCatalogImportDiff(
         { term: input.term, courses, classSections },
         baseline,
-        prior.rowCount === 1,
+        false,
       );
       const baselineHash = hashCatalogBaseline(baseline);
       const inserted = await this.#client.query<ImportRow>(
@@ -350,16 +369,46 @@ export class PostgresCatalogImportRepository implements CatalogImportRepository 
           input.now,
         ],
       );
+      await this.#auditUpload(input, input.generatedImportId, false);
       const row = inserted.rows[0];
       if (row === undefined) {
         throw new Error('Catalog import was not returned after insertion.');
       }
       await this.#client.query('commit');
-      return { importRecord: toImportRecord(row), diff };
+      return { importRecord: toImportRecord(row), diff, replayed: false };
     } catch (error) {
       await this.#client.query('rollback');
       throw error;
     }
+  }
+
+  async #auditUpload(
+    input: CompleteCatalogPlan,
+    importId: string,
+    replayed: boolean,
+  ): Promise<void> {
+    await this.#client.query(
+      `insert into audit_log (
+         id, actor_id, action, target_type, target_id, reason, result,
+         request_id, created_at
+       ) values (
+         $1, $2, 'catalog_import_uploaded', 'catalog_import', $3,
+         'Catalog gzip upload validated.', $4::jsonb, $5, $6
+       )`,
+      [
+        input.auditId,
+        input.actorId,
+        importId,
+        JSON.stringify({
+          replayed,
+          checksum: input.checksum,
+          row_count: input.rowCount,
+          total_batches: input.batches.length,
+        }),
+        input.requestId,
+        input.now,
+      ],
+    );
   }
 
   async cancel(input: {

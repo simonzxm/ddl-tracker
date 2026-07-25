@@ -213,7 +213,11 @@ class FakeImportRepository implements CatalogImportRepository {
       failureMessage: null,
     };
     this.record = importRecord;
-    return Promise.resolve({ importRecord, diff: completeDiff });
+    return Promise.resolve({
+      importRecord,
+      diff: completeDiff,
+      replayed: false,
+    });
   }
 
   cancel(input: Parameters<CatalogImportRepository['cancel']>[0]) {
@@ -425,7 +429,7 @@ describe('CatalogImportService gzip upload planning', () => {
 
   it('validates normalized data and saves one complete plan', async () => {
     const repository = new FakeImportRepository();
-    const response = await service(repository).upload(ACTOR_ID, {
+    const response = await service(repository).upload(ACTOR_ID, IMPORT_ID, {
       filename: 'courses.csv.gz',
       manifestValue,
       csvBytes: new TextEncoder().encode(
@@ -435,6 +439,7 @@ describe('CatalogImportService gzip upload planning', () => {
 
     expect(response).toMatchObject({
       import_id: IMPORT_ID,
+      replayed: false,
       filename: 'courses.csv.gz',
       row_count: 1,
       course_count: 1,
@@ -447,6 +452,7 @@ describe('CatalogImportService gzip upload planning', () => {
       actorId: ACTOR_ID,
       rowCount: 1,
       batches: [{ batchIndex: 0 }],
+      requestId: IMPORT_ID,
     });
     expect(repository.completeInput?.batches[0]?.batchChecksum).toMatch(
       /^[0-9a-f]{64}$/u,
@@ -456,7 +462,7 @@ describe('CatalogImportService gzip upload planning', () => {
   it('rejects malformed manifests before opening a plan', async () => {
     const repository = new FakeImportRepository();
     await expect(
-      service(repository).upload(ACTOR_ID, {
+      service(repository).upload(ACTOR_ID, IMPORT_ID, {
         filename: 'courses.csv.gz',
         manifestValue: {},
         csvBytes: new Uint8Array(),

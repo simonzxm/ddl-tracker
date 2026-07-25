@@ -225,7 +225,7 @@ Bearer API 不使用 cookie。为第三方客户端支持 CORS 时不得启用 c
 - 不使用 module global 保存当前用户、数据库 client 或请求缓存。
 - 使用 Web Crypto 生成 token、UUID 和 HMAC；不能使用 `Math.random()`。
 - 错误通过结构化 JSON 映射，禁止 `passThroughOnException()`。
-- 大量课程 CSV 在 admin CLI 本地解析，Worker 只接收有上限的规范化批次。
+- 日常课程目录导入由 admin CLI 上传一个有上限的 `.csv.gz` 与 manifest；Worker 独立限制 multipart、压缩 part 和解压后 CSV，完成解析、规范化并原子保存完整 plan。旧 `plan` 路由仍只接收有上限的规范化批次，作为兼容与故障恢复入口。
 
 ## 排名参考实现
 

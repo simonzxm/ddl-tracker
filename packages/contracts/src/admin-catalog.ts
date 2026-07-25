@@ -135,6 +135,21 @@ export const catalogPlanBatchResponseSchema = z
   })
   .strict();
 
+export const catalogUploadResponseSchema = z
+  .object({
+    import_id: uuidV7Schema,
+    filename: normalizedTextSchema(1, 255),
+    checksum: sha256Schema,
+    manifest_hash: sha256Schema,
+    row_count: z.number().int().nonnegative(),
+    course_count: z.number().int().nonnegative(),
+    class_section_count: z.number().int().nonnegative(),
+    total_batches: z.number().int().positive(),
+    warnings: z.array(z.string().max(500)).max(100),
+    diff: catalogImportDiffSchema,
+  })
+  .strict();
+
 export const catalogApplyAllRequestSchema = z
   .object({
     confirm_deactivations: z.boolean(),
@@ -151,10 +166,32 @@ export const catalogApplyResponseSchema = z
   })
   .strict();
 
+export const catalogCancelRequestSchema = z
+  .object({
+    reason: normalizedTextSchema(1, 500),
+  })
+  .strict();
+
+export const catalogCancelResponseSchema = z
+  .object({
+    import_id: uuidV7Schema,
+    status: z.literal('cancelled'),
+    replayed: z.boolean(),
+  })
+  .strict();
+
+export const catalogImportStatusValueSchema = z.enum([
+  'planned',
+  'applied',
+  'failed',
+  'cancelled',
+  'expired',
+]);
+
 export const catalogImportStatusSchema = z
   .object({
     import_id: uuidV7Schema,
-    status: z.enum(['planned', 'applied', 'failed']),
+    status: catalogImportStatusValueSchema,
     received_batches: z.number().int().nonnegative(),
     applied_batches: z.number().int().nonnegative(),
     total_batches: z.number().int().positive(),
@@ -169,4 +206,12 @@ export type CatalogPlanBatchRequest = z.infer<
 export type CatalogImportDiff = z.infer<typeof catalogImportDiffSchema>;
 export type CatalogApplyAllRequest = z.infer<
   typeof catalogApplyAllRequestSchema
+>;
+export type CatalogUploadResponse = z.infer<
+  typeof catalogUploadResponseSchema
+>;
+export type CatalogCancelRequest = z.infer<typeof catalogCancelRequestSchema>;
+export type CatalogCancelResponse = z.infer<typeof catalogCancelResponseSchema>;
+export type CatalogImportStatusValue = z.infer<
+  typeof catalogImportStatusValueSchema
 >;

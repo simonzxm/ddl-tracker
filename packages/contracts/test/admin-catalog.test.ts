@@ -2,7 +2,10 @@ import { describe, expect, it } from 'vitest';
 
 import {
   catalogApplyAllRequestSchema,
+  catalogCancelRequestSchema,
+  catalogImportStatusSchema,
   catalogPlanBatchRequestSchema,
+  catalogUploadResponseSchema,
 } from '../src/admin-catalog.js';
 
 const ID = '018f0000-0000-7000-8000-000000000001';
@@ -134,5 +137,53 @@ describe('admin catalog import contracts', () => {
         confirm_deactivations: true,
       }),
     ).toThrow();
+  });
+
+  it('describes a complete server-side gzip upload plan', () => {
+    expect(
+      catalogUploadResponseSchema.parse({
+        import_id: ID,
+        filename: 'courses.csv.gz',
+        checksum: HASH,
+        manifest_hash: HASH,
+        row_count: 1,
+        course_count: 1,
+        class_section_count: 1,
+        total_batches: 1,
+        warnings: [],
+        diff: {
+          terms: { added: 1, updated: 0, unchanged: 0, deactivated: 0 },
+          courses: { added: 1, updated: 0, unchanged: 0, deactivated: 0 },
+          class_sections: {
+            added: 1,
+            updated: 0,
+            unchanged: 0,
+            deactivated: 0,
+          },
+          field_changes: {},
+          deactivated_class_section_ids: [],
+          checksum_previously_applied: false,
+        },
+      }),
+    ).toMatchObject({ filename: 'courses.csv.gz', total_batches: 1 });
+  });
+
+  it('normalizes cancellation reasons and exposes terminal statuses', () => {
+    expect(catalogCancelRequestSchema.parse({ reason: '  superseded  ' })).toEqual({
+      reason: 'superseded',
+    });
+    for (const status of ['cancelled', 'expired'] as const) {
+      expect(
+        catalogImportStatusSchema.parse({
+          import_id: ID,
+          status,
+          received_batches: 1,
+          applied_batches: 0,
+          total_batches: 1,
+          diff: null,
+          failure_message: null,
+        }),
+      ).toMatchObject({ status });
+    }
   });
 });

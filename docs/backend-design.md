@@ -105,7 +105,10 @@ POST   /api/v1/sync
 
 POST   /api/v1/admin/bootstrap
 POST   /api/v1/admin/catalog/imports/plan
+POST   /api/v1/admin/catalog/imports/upload
 POST   /api/v1/admin/catalog/imports/:import_id/apply-all
+POST   /api/v1/admin/catalog/imports/:import_id/cancel
+GET    /api/v1/admin/catalog/imports/:import_id
 GET    /api/v1/admin/reports
 POST   /api/v1/admin/reports/:report_id/resolve
 POST   /api/v1/admin/tasks/:source_task_id/merge
@@ -151,7 +154,7 @@ Bearer API 不使用 cookie。为第三方客户端支持 CORS 时不得启用 c
 | `moderation_actions` | hide/restore/suspend/restore 等动作及理由 |
 | `operation_receipts` | `(user_id, operation_id)` 唯一；请求摘要与首次稳定结果；保留 180 天 |
 | `sync_events` | 全局单调 sequence、event UUID、scope、type、schema version、payload；保留至少 180 天 |
-| `catalog_imports` | checksum、manifest、文件名、行数、diff、actor、状态 |
+| `catalog_imports` | checksum、manifest、文件名、行数、diff、actor、`planned/applied/failed/cancelled/expired` 状态 |
 | `audit_log` | append-only 管理动作、actor、target、reason、result、request ID |
 
 ### 不变式

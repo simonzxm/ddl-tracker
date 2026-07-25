@@ -7,7 +7,7 @@ MVP 包含 Cloudflare Worker API、PostgreSQL 数据模型与迁移、离线同�
 ## 已实现能力
 
 - 校内邮箱验证码认证、opaque bearer session、账户资料与删除。
-- 学期、课程、教学班查询与可续传 CSV 导入。
+- 学期、课程、教学班查询，以及专用 `.csv.gz` 上传、可审阅 plan、原子 apply 和可续传兼容导入。
 - 账户快照、教学班快照、增量 push/pull、幂等 receipt 与 cursor retention。
 - 共享任务、不可变提案、准确性判断、评论修订与举报。
 - 私人待办、私人任务详情、个人任务状态与显式发布。

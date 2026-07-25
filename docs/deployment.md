@@ -32,7 +32,7 @@ cp apps/api/wrangler.production.example.jsonc \
 
 - `APP_ENVIRONMENT = production`。
 - `nodejs_compat`。
-- 当前 Workers Free plan 不配置 `limits.cpu_ms`；目录导入由 CLI 将每批课程和教学班分别限制在 100 条以内。升级到付费 Standard plan 后才可显式配置 CPU budget。
+- 当前 Workers Free plan 不配置 `limits.cpu_ms`；专用目录上传限制 multipart 5 MiB、gzip 4 MiB、解压 CSV 10 MiB，并将规范化数据分为每类最多 100 条的存储 batch。升级到付费 Standard plan 后才可显式配置 CPU budget。
 - retention cleanup cron。
 - Workers logs 与 traces 开启。
 
@@ -155,6 +155,7 @@ pnpm exec wrangler versions deploy VERSION_ID@100% \
 - sync rejection spike。
 - Tunnel health。
 - retention cron 最近一次结果。
+- retention 结果中的 `catalog_imports` 数量；正常情况下应接近 0，持续增长表示维护者生成 plan 后未处理。
 
 ## Worker 回滚
 

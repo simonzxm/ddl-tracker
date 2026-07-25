@@ -1,6 +1,6 @@
 # 课程目录导入
 
-课程原始数据由外部管理系统追踪，不提交本仓库。维护者使用 admin CLI 在本地解析 CSV、生成差异计划，再通过受保护 API 分批提交规范化记录。CLI 不直连 PostgreSQL。
+课程原始数据由外部管理系统追踪，不提交本仓库。维护者优先使用 admin CLI 将一个 `.csv.gz` 与 manifest 上传到受保护 API；服务端独立解压、校验并在单个事务中生成完整差异计划。CLI 不直连 PostgreSQL。
 
 ## 当前来源事实
 
@@ -100,7 +100,8 @@ admin CLI 必须：
 - 所有文本转 Unicode NFC、统一换行并去除首尾空白；外部代码只去首尾空白，不能移除前导零。
 - 空字符串转换为 null；数值字段严格解析，不能默认为 0。
 - 计算整个原始文件 SHA-256、行数、header hash 和 manifest hash。
-- 只向后端发送有上限的规范化批次，不把 1.3 MB 文件作为一个 Worker request 上传。
+- `validate` 和兼容用 `plan` 在本地执行同一套共享 parser；不能维护两套字段规则。
+- 推荐的 `upload` 原样发送 gzip，不在客户端拆成多个请求。服务端限制整个 multipart 为 5 MiB、gzip part 为 4 MiB、manifest 为 16 KiB、解压 CSV 为 10 MiB，并校验 gzip magic，防止 gzip bomb。
 
 ## Plan 阶段
 
@@ -113,6 +114,10 @@ admin CLI 必须：
 - checksum 是否曾成功导入。
 
 Plan 保存为 `catalog_imports` 记录并返回 import ID。它绑定 checksum、manifest、actor 和目标数据库环境；文件或数据库基线改变后不能应用旧 plan，必须重算。
+
+专用 `upload` 在服务端一次完成解析、规范化、分 batch、读取一致的数据库基线和保存 diff。基线读取与全部 batch 的集合式插入位于同一个 `REPEATABLE READ` 事务；任何一步失败都不会留下半截 plan。旧 `plan` 分批接口保留作兼容与故障恢复入口，但不是日常导入首选。
+
+未应用的 plan 可以由维护者附带理由取消；取消保留 import 元数据和审计记录，并删除 batch payload。超过 24 小时仍为 `planned` 的记录由 retention cron 标记为 `expired`，同样释放 payload。`applied`、`failed`、`cancelled` 和 `expired` 都是终态，不能再 apply。
 
 ## Apply 阶段
 
@@ -131,13 +136,15 @@ Plan 保存为 `catalog_imports` 记录并返回 import ID。它绑定 checksum�
 命令名可以在实现时调整，但能力必须对应：
 
 ```text
-catalog validate <csv|csv.gz> --manifest <json>
-catalog plan <csv|csv.gz> --manifest <json>
-catalog apply <import-id> [--confirm-deactivations]
-catalog status <import-id>
+catalog validate --csv <csv|csv.gz> --manifest <json>
+catalog upload --csv <csv.gz> --manifest <json> --api <url>
+catalog plan --csv <csv|csv.gz> --manifest <json> --api <url> --environment <name>
+catalog apply --import <import-id> --api <url>
+catalog status --import <import-id> --api <url>
+catalog cancel --import <import-id> --reason <text> --api <url>
 ```
 
-CLI 按 gzip magic 自动解压 `.csv.gz`，解压后的 CSV 与未压缩输入使用完全相同的校验、checksum 和规范化流程。CLI 使用普通邮箱认证获得的 maintainer bearer session，不使用数据库连接串。输出默认人类可读，同时支持 `--json` 供自动化处理。
+可运行 `catalog <command> --help` 查看完整 option。`validate`/`plan` 按 gzip magic 自动解压，`upload` 则强制 `.csv.gz` 与 gzip magic，并把压缩内容交给服务端重新验证。`apply` 与 `cancel` 都要求输入包含 import ID 的精确确认文本；存在停用项时 `apply` 还要求确认停用数量。CLI 使用普通邮箱认证获得的 maintainer bearer session，不使用数据库连接串；token 只从 `DDL_TRACKER_ADMIN_TOKEN` 或 `--token-env` 指定的环境变量读取。
 
 ## 仓库与敏感信息
 

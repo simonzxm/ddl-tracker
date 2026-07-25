@@ -44,21 +44,24 @@ importers:
 
   apps/admin-cli:
     dependencies:
+      '@ddl-tracker/catalog-import':
+        specifier: workspace:*
+        version: link:../../packages/catalog-import
       '@ddl-tracker/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
       commander:
         specifier: 15.0.0
         version: 15.0.0
-      csv-parse:
-        specifier: 7.0.1
-        version: 7.0.1
       zod:
         specifier: 4.4.3
         version: 4.4.3
 
   apps/api:
     dependencies:
+      '@ddl-tracker/catalog-import':
+        specifier: workspace:*
+        version: link:../../packages/catalog-import
       '@ddl-tracker/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
@@ -74,6 +77,18 @@ importers:
       pg:
         specifier: 8.22.0
         version: 8.22.0
+      zod:
+        specifier: 4.4.3
+        version: 4.4.3
+
+  packages/catalog-import:
+    dependencies:
+      '@ddl-tracker/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      csv-parse:
+        specifier: 7.0.1
+        version: 7.0.1
       zod:
         specifier: 4.4.3
         version: 4.4.3

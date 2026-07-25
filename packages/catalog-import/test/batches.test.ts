@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { splitCatalogBatches } from '../src/catalog/batches.js';
+import { splitCatalogBatches } from '../src/batches.js';
 
 function course(index: number) {
   return {

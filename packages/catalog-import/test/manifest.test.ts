@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   hashCatalogManifest,
   parseCatalogManifest,
-} from '../src/catalog/manifest.js';
+} from '../src/manifest.js';
 
 const manifest = {
   schema_version: 1,

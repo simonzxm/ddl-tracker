@@ -6,9 +6,6 @@
     "tsBuildInfoFile": "dist/.tsbuildinfo",
     "types": ["node"]
   },
-  "include": ["src/**/*.ts", "worker-configuration.d.ts"],
-  "references": [
-    { "path": "../../packages/contracts" },
-    { "path": "../../packages/catalog-import" }
-  ]
+  "include": ["src/**/*.ts"],
+  "references": [{ "path": "../contracts" }]
 }

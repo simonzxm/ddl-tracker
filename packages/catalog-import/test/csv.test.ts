@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { parseCatalogCsv } from '../src/catalog/csv.js';
-import { parseCatalogManifest } from '../src/catalog/manifest.js';
+import { parseCatalogCsv } from '../src/csv.js';
+import { parseCatalogManifest } from '../src/manifest.js';
 
 const manifest = parseCatalogManifest({
   schema_version: 1,

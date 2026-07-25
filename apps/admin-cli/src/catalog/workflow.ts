@@ -1,15 +1,16 @@
+import {
+  parseCatalogCsv,
+  parseCatalogManifest,
+  splitCatalogBatches,
+  type CatalogBatch,
+  type CatalogManifest,
+  type ParsedCatalogCsv,
+} from '@ddl-tracker/catalog-import';
 import type {
   CatalogApplyAllRequest,
   CatalogImportDiff,
   CatalogPlanBatchRequest,
 } from '@ddl-tracker/contracts';
-
-import { splitCatalogBatches, type CatalogBatch } from './batches.js';
-import { parseCatalogCsv, type ParsedCatalogCsv } from './csv.js';
-import {
-  parseCatalogManifest,
-  type CatalogManifest,
-} from './manifest.js';
 
 export interface CatalogPlanResponse {
   import_id: string;

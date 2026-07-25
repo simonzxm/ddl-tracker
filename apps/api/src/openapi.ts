@@ -58,6 +58,18 @@ const response = (description: string, schemaRef?: string) => ({
   ...(schemaRef === undefined ? {} : { content: jsonContent(schemaRef) }),
 });
 
+const importExampleId = '018f0000-0000-7000-8000-000000000001';
+const emptyImportDiffExample = {
+  terms: { added: 0, updated: 0, unchanged: 1, deactivated: 0 },
+  courses: { added: 0, updated: 0, unchanged: 1, deactivated: 0 },
+  class_sections: { added: 0, updated: 0, unchanged: 1, deactivated: 0 },
+  field_changes: {},
+  deactivated_courses: [],
+  deactivated_class_sections: [],
+  deactivated_class_section_ids: [],
+  checksum_previously_applied: false,
+};
+
 const bearer = [{ bearerAuth: [] }];
 const rateLimitedResponse = {
   description: 'Persistent request limit exceeded.',
@@ -326,11 +338,37 @@ export const openApiDocument = addRateLimitResponses({
                 },
                 additionalProperties: false,
               },
+              example: {
+                catalog: 'courses.csv.gz (binary)',
+                manifest: 'manifest.json (binary)',
+              },
             },
           },
         },
         responses: {
-          '200': response('Complete catalog import plan.', 'CatalogUploadResponse'),
+          '200': {
+            description: 'Complete catalog import plan.',
+            content: {
+              'application/json': {
+                schema: {
+                  $ref: '#/components/schemas/CatalogUploadResponse',
+                },
+                example: {
+                  import_id: importExampleId,
+                  replayed: false,
+                  filename: 'courses.csv.gz',
+                  checksum: 'a'.repeat(64),
+                  manifest_hash: 'b'.repeat(64),
+                  row_count: 3025,
+                  course_count: 1890,
+                  class_section_count: 3025,
+                  total_batches: 31,
+                  warnings: [],
+                  diff: emptyImportDiffExample,
+                },
+              },
+            },
+          },
           '413': response('Compressed or expanded payload too large.', 'ApiError'),
           '415': response('Multipart content type required.', 'ApiError'),
         },
@@ -355,9 +393,33 @@ export const openApiDocument = addRateLimitResponses({
         summary: 'Cancel a planned catalog import',
         security: bearer,
         parameters: [uuidParameter('import_id', 'Catalog import UUIDv7.')],
-        requestBody: requestBody('CatalogCancelRequest'),
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                $ref: '#/components/schemas/CatalogCancelRequest',
+              },
+              example: { reason: 'Superseded by a corrected source file.' },
+            },
+          },
+        },
         responses: {
-          '200': response('Catalog import cancelled.', 'CatalogCancelResponse'),
+          '200': {
+            description: 'Catalog import cancelled.',
+            content: {
+              'application/json': {
+                schema: {
+                  $ref: '#/components/schemas/CatalogCancelResponse',
+                },
+                example: {
+                  import_id: importExampleId,
+                  status: 'cancelled',
+                  replayed: false,
+                },
+              },
+            },
+          },
           '409': response('Catalog import is already terminal.', 'ApiError'),
         },
       },

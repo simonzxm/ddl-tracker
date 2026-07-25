@@ -81,6 +81,30 @@ describe('OpenAPI document', () => {
     }
   });
 
+  it('includes fixed upload and cancellation examples', () => {
+    expect(
+      openApiDocument.paths['/v1/admin/catalog/imports/upload'].post.responses[
+        '200'
+      ],
+    ).toMatchObject({
+      content: {
+        'application/json': {
+          example: { filename: 'courses.csv.gz', replayed: false },
+        },
+      },
+    });
+    expect(
+      openApiDocument.paths['/v1/admin/catalog/imports/{import_id}/cancel'].post
+        .requestBody,
+    ).toMatchObject({
+      content: {
+        'application/json': {
+          example: { reason: 'Superseded by a corrected source file.' },
+        },
+      },
+    });
+  });
+
   it('contains no runtime secret names or configured values', () => {
     const serialized = JSON.stringify(openApiDocument);
     for (const forbidden of [

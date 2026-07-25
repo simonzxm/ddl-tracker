@@ -13,6 +13,15 @@ function response(body: unknown, status = 200): Response {
 }
 
 describe('AdminApiClient', () => {
+  const diff = {
+    terms: { added: 1, updated: 0, unchanged: 0, deactivated: 0 },
+    courses: { added: 1, updated: 0, unchanged: 0, deactivated: 0 },
+    class_sections: { added: 1, updated: 0, unchanged: 0, deactivated: 0 },
+    field_changes: {},
+    deactivated_class_section_ids: [],
+    checksum_previously_applied: false,
+  };
+
   it('sends one request for an atomic full apply', async () => {
     const fetcher = vi.fn(async () =>
       response({
@@ -98,6 +107,68 @@ describe('AdminApiClient', () => {
     expect(new Headers(init.headers).get('authorization')).toBe(
       'Bearer secret-token',
     );
+  });
+
+  it('uploads multipart gzip data without overriding its boundary', async () => {
+    const fetcher = vi.fn(async () =>
+      response({
+        import_id: IMPORT_ID,
+        filename: 'courses.csv.gz',
+        checksum: HASH,
+        manifest_hash: HASH,
+        row_count: 1,
+        course_count: 1,
+        class_section_count: 1,
+        total_batches: 1,
+        warnings: [],
+        diff,
+      }),
+    );
+    const client = new AdminApiClient({
+      baseUrl: 'https://api.example.test',
+      token: 'token',
+      fetcher,
+    });
+
+    await client.upload({
+      filename: 'courses.csv.gz',
+      catalogGzip: new Uint8Array([0x1f, 0x8b]),
+      manifestJson: '{"schema_version":1}',
+    });
+    const call = fetcher.mock.calls[0] as unknown as
+      | [string, RequestInit]
+      | undefined;
+    expect(call?.[0]).toBe(
+      'https://api.example.test/api/v1/admin/catalog/imports/upload',
+    );
+    expect(call?.[1].body).toBeInstanceOf(FormData);
+    expect(new Headers(call?.[1].headers).get('content-type')).toBeNull();
+  });
+
+  it('sends cancellation reasons as JSON', async () => {
+    const fetcher = vi.fn(async () =>
+      response({
+        import_id: IMPORT_ID,
+        status: 'cancelled',
+        replayed: false,
+      }),
+    );
+    const client = new AdminApiClient({
+      baseUrl: 'https://api.example.test',
+      token: 'token',
+      fetcher,
+    });
+
+    await client.cancel(IMPORT_ID, { reason: 'Superseded upload' });
+    const call = fetcher.mock.calls[0] as unknown as
+      | [string, RequestInit]
+      | undefined;
+    expect(call?.[0]).toBe(
+      `https://api.example.test/api/v1/admin/catalog/imports/${IMPORT_ID}/cancel`,
+    );
+    expect(JSON.parse(String(call?.[1].body))).toEqual({
+      reason: 'Superseded upload',
+    });
   });
 
   it('reads import status', async () => {

@@ -1,9 +1,12 @@
 import {
   apiErrorSchema,
   catalogApplyResponseSchema,
+  catalogCancelResponseSchema,
   catalogImportStatusSchema,
   catalogPlanBatchResponseSchema,
+  catalogUploadResponseSchema,
   type CatalogApplyAllRequest,
+  type CatalogCancelRequest,
   type CatalogPlanBatchRequest,
 } from '@ddl-tracker/contracts';
 import type { z } from 'zod';
@@ -62,6 +65,31 @@ export class AdminApiClient {
     );
   }
 
+  upload(input: {
+    filename: string;
+    catalogGzip: Uint8Array;
+    manifestJson: string;
+  }) {
+    const form = new FormData();
+    form.set(
+      'catalog',
+      new Blob([Uint8Array.from(input.catalogGzip).buffer], {
+        type: 'application/gzip',
+      }),
+      input.filename,
+    );
+    form.set(
+      'manifest',
+      new Blob([input.manifestJson], { type: 'application/json' }),
+      'manifest.json',
+    );
+    return this.#request(
+      '/api/v1/admin/catalog/imports/upload',
+      { method: 'POST', body: form },
+      catalogUploadResponseSchema,
+    );
+  }
+
   applyAll(importId: string, request: CatalogApplyAllRequest) {
     return this.#request(
       `/api/v1/admin/catalog/imports/${encodeURIComponent(importId)}/apply-all`,
@@ -70,6 +98,17 @@ export class AdminApiClient {
         body: JSON.stringify(request),
       },
       catalogApplyResponseSchema,
+    );
+  }
+
+  cancel(importId: string, request: CatalogCancelRequest) {
+    return this.#request(
+      `/api/v1/admin/catalog/imports/${encodeURIComponent(importId)}/cancel`,
+      {
+        method: 'POST',
+        body: JSON.stringify(request),
+      },
+      catalogCancelResponseSchema,
     );
   }
 
@@ -89,7 +128,7 @@ export class AdminApiClient {
     const headers = new Headers(init.headers);
     headers.set('authorization', `Bearer ${this.#token}`);
     headers.set('accept', 'application/json');
-    if (init.body !== undefined) {
+    if (typeof init.body === 'string') {
       headers.set('content-type', 'application/json; charset=utf-8');
     }
 

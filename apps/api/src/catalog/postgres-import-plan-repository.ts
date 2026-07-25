@@ -6,6 +6,7 @@ import {
   normalizedCatalogCourseSchema,
   normalizedCatalogTermSchema,
   type CatalogImportDiff,
+  type CatalogImportStatusValue,
   type CatalogPlanBatchRequest,
 } from '@ddl-tracker/contracts';
 
@@ -35,7 +36,7 @@ interface ImportRow {
   baseline_hash: string | null;
   deactivation_count: number;
   diff: unknown;
-  status: 'planned' | 'applied' | 'failed';
+  status: CatalogImportStatusValue;
   failure_message: string | null;
 }
 

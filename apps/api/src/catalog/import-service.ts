@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import {
   createUuidV7,
   type CatalogImportDiff,
+  type CatalogImportStatusValue,
   type CatalogPlanBatchRequest,
 } from '@ddl-tracker/contracts';
 
@@ -30,7 +31,7 @@ export interface CatalogImportRecord {
   baselineHash: string | null;
   deactivationCount: number;
   diff: CatalogImportDiff | null;
-  status: 'planned' | 'applied' | 'failed';
+  status: CatalogImportStatusValue;
   failureMessage: string | null;
 }
 
@@ -59,7 +60,7 @@ export type SavePlanBatchOutcome =
 
 export interface CatalogImportStatus {
   import_id: string;
-  status: 'planned' | 'applied' | 'failed';
+  status: CatalogImportStatusValue;
   received_batches: number;
   applied_batches: number;
   total_batches: number;

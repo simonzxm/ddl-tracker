@@ -9,6 +9,7 @@ import {
 import type {
   CatalogApplyAllRequest,
   CatalogImportDiff,
+  CatalogImportStatusValue,
   CatalogPlanBatchRequest,
 } from '@ddl-tracker/contracts';
 
@@ -32,7 +33,7 @@ export interface CatalogApplyResponse {
 
 export interface CatalogStatusResponse {
   import_id: string;
-  status: 'planned' | 'applied' | 'failed';
+  status: CatalogImportStatusValue;
   received_batches: number;
   applied_batches: number;
   total_batches: number;
@@ -168,6 +169,9 @@ export async function applyCatalogImport(
   const status = await client.getStatus(importId);
   if (status.status === 'failed') {
     throw new Error(status.failure_message ?? 'Catalog import previously failed.');
+  }
+  if (status.status === 'cancelled' || status.status === 'expired') {
+    throw new Error(`Catalog import is ${status.status}.`);
   }
   if (status.status === 'applied') {
     return {

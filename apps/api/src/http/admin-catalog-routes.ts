@@ -4,6 +4,7 @@ import {
   parseUuidV7,
   type CatalogApplyAllRequest,
   type CatalogImportDiff,
+  type CatalogImportStatusValue,
   type CatalogPlanBatchRequest,
 } from '@ddl-tracker/contracts';
 import type { Hono } from 'hono';
@@ -47,7 +48,7 @@ export interface AdminCatalogRouteDependencies {
   }>;
   getStatus(importId: string): Promise<{
     import_id: string;
-    status: 'planned' | 'applied' | 'failed';
+    status: CatalogImportStatusValue;
     received_batches: number;
     applied_batches: number;
     total_batches: number;

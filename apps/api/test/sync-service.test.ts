@@ -15,6 +15,7 @@ import { SyncService } from '../src/sync/sync-service.js';
 const USER_ID = '018f0000-0000-7000-8000-000000002701';
 const SECTION_ID = '018f0000-0000-7000-8000-000000002702';
 const RECORD_ID = '018f0000-0000-7000-8000-000000002703';
+const COURSE_ID = '018f0000-0000-7000-8000-000000002705';
 const REQUEST_ID = '018f0000-0000-7000-8000-000000002704';
 const NOW = new Date('2026-07-19T12:00:00.000Z');
 const SECRET = 's'.repeat(64);
@@ -44,8 +45,20 @@ function reader() {
       records: [
         {
           record_type: 'personal_todo',
+          schema_version: 1,
           id: RECORD_ID,
-          payload: { revision: 3, title: 'Mine' },
+          payload: {
+            id: RECORD_ID,
+            class_section_id: null,
+            title: 'Mine',
+            deadline: null,
+            note: null,
+            state: 'pending',
+            revision: 3,
+            deleted_at: null,
+            created_at: NOW.toISOString(),
+            updated_at: NOW.toISOString(),
+          },
         },
       ],
       complete: true,
@@ -55,8 +68,24 @@ function reader() {
       records: [
         {
           record_type: 'class_section',
+          schema_version: 1,
           id: SECTION_ID,
-          payload: { revision: 2, active: true },
+          payload: {
+            id: SECTION_ID,
+            course_id: COURSE_ID,
+            external_section_id: 'section-1',
+            section_number: '01',
+            department_code: null,
+            department_name: null,
+            instructors: [],
+            campus: null,
+            capacity: null,
+            schedule_text: null,
+            active: true,
+            revision: 2,
+            created_at: NOW.toISOString(),
+            updated_at: NOW.toISOString(),
+          },
         },
       ],
       complete: true,

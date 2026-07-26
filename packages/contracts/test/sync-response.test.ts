@@ -7,6 +7,7 @@ import {
 const REQUEST_ID = '018f0000-0000-7000-8000-000000000001';
 const OPERATION_ID = '018f0000-0000-7000-8000-000000000002';
 const EVENT_ID = '018f0000-0000-7000-8000-000000000003';
+const TASK_ID = '018f0000-0000-7000-8000-000000000004';
 
 describe('operation results', () => {
   it('accepts applied and replayed results with stable result objects', () => {
@@ -87,10 +88,16 @@ describe('incremental sync response', () => {
         events: [
           {
             event_id: EVENT_ID,
-            schema_version: 1,
+            schema_version: 2,
             type: 'personal_task_state_upserted',
             occurred_at: '2026-09-01T00:30:00Z',
-            payload: { revision: 4 },
+            payload: {
+              course_task_id: TASK_ID,
+              state: 'completed',
+              revision: 4,
+              created_at: '2026-09-01T00:30:00Z',
+              updated_at: '2026-09-01T00:30:00Z',
+            },
           },
         ],
         next_cursor: 'opaque-next',
@@ -108,10 +115,16 @@ describe('incremental sync response', () => {
         events: [
           {
             event_id: EVENT_ID,
-            schema_version: 1,
+            schema_version: 2,
             type: 'personal_task_state_upserted',
             occurred_at: '2026-09-01T00:30:00Z',
-            payload: {},
+            payload: {
+              course_task_id: TASK_ID,
+              state: 'completed',
+              revision: 4,
+              created_at: '2026-09-01T00:30:00Z',
+              updated_at: '2026-09-01T00:30:00Z',
+            },
             sequence: 10,
           },
         ],

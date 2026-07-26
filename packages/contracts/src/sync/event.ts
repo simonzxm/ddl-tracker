@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { rfc3339TimestampSchema, uuidV7Schema } from '../schema.js';
+import { syncEventV2Schema, type SyncEventV2 } from './event-v2.js';
 
 export const syncEventScopeSchema = z.enum([
   'private_user',
@@ -34,20 +34,13 @@ export const syncEventTypeSchema = z.enum([
   'task_comment_restored',
   'public_user_profile_updated',
   'public_user_deleted',
-  'content_report_status_updated',
+  'reporter_content_report_updated',
+  'maintainer_content_report_updated',
   'class_section_deactivated',
 ]);
 
-export const syncEventSchema = z
-  .object({
-    event_id: uuidV7Schema,
-    schema_version: z.literal(1),
-    type: syncEventTypeSchema,
-    occurred_at: rfc3339TimestampSchema,
-    payload: z.record(z.string(), z.unknown()),
-  })
-  .strict();
+export const syncEventSchema = syncEventV2Schema;
 
 export type SyncEventScope = z.infer<typeof syncEventScopeSchema>;
 export type SyncEventType = z.infer<typeof syncEventTypeSchema>;
-export type SyncEvent = z.infer<typeof syncEventSchema>;
+export type SyncEvent = SyncEventV2;

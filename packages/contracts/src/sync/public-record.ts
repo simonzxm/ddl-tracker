@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import {
+  evidenceUrlSchema,
   normalizedTextSchema,
   nullableNormalizedTextSchema,
   rfc3339TimestampSchema,
@@ -8,7 +9,6 @@ import {
 } from '../schema.js';
 
 const revisionSchema = z.number().int().positive();
-const nullableIdentifierTextSchema = z.string().min(1).max(300).nullable();
 
 export const classSectionRecordSchema = z
   .object({
@@ -50,7 +50,7 @@ export const taskProposalRecordSchema = z
     deadline: rfc3339TimestampSchema,
     description: nullableNormalizedTextSchema(2000),
     evidence_note: nullableNormalizedTextSchema(500),
-    evidence_url: nullableIdentifierTextSchema,
+    evidence_url: evidenceUrlSchema.nullable(),
     content_fingerprint: z.string().regex(/^[0-9a-f]{64}$/u),
     state: z.literal('visible'),
     revision: revisionSchema,

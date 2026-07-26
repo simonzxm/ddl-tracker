@@ -86,6 +86,16 @@ export function canonicalizeHttpsUrl(value: string): string {
   return url.toString();
 }
 
+export function canonicalizeEvidenceUrl(value: string): string {
+  const canonical = canonicalizeHttpsUrl(value);
+  if (new TextEncoder().encode(canonical).byteLength > 2048) {
+    throw new ContractValidationError(
+      'Evidence URL must contain at most 2048 UTF-8 bytes.',
+    );
+  }
+  return canonical;
+}
+
 export function canonicalizeTimestamp(value: string): string {
   const trimmed = value.trim();
   if (!RFC_3339_PRECISE_TIMESTAMP.test(trimmed)) {

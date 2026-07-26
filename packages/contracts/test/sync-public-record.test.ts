@@ -69,6 +69,26 @@ describe('public sync records', () => {
     });
   });
 
+  it('uses the same evidence URL contract as proposal input', () => {
+    const evidenceUrl = `https://example.com/${'a'.repeat(320)}`;
+    expect(
+      taskProposalRecordSchema.parse({
+        id: PROPOSAL_ID,
+        course_task_id: TASK_ID,
+        author_id: USER_ID,
+        title: 'Project report',
+        deadline: '2026-09-02T00:00:00Z',
+        description: null,
+        evidence_note: null,
+        evidence_url: evidenceUrl,
+        content_fingerprint: 'a'.repeat(64),
+        state: 'visible',
+        revision: 1,
+        created_at: CREATED_AT,
+      }).evidence_url,
+    ).toBe(evidenceUrl);
+  });
+
   it('rejects incomplete records and unknown fields', () => {
     expect(() =>
       courseTaskRecordSchema.parse({

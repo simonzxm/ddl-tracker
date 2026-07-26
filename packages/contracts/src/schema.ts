@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import {
+  canonicalizeEvidenceUrl,
   canonicalizeTimestamp,
   countUnicodeScalars,
   normalizePlainText,
@@ -25,6 +26,10 @@ function transformedString(
 
 export const uuidV7Schema = transformedString(parseUuidV7);
 export const rfc3339TimestampSchema = transformedString(canonicalizeTimestamp);
+export const evidenceUrlSchema = transformedString(canonicalizeEvidenceUrl).meta({
+  format: 'uri',
+  maxLength: 2048,
+});
 export const opaqueTokenSchema = z.string().min(1).max(4096);
 export const localDateSchema = z
   .string()

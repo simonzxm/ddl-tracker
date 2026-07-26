@@ -38,7 +38,7 @@ const expectedPaths = [
 describe('OpenAPI document', () => {
   it('documents every implemented path with contract components', () => {
     expect(openApiDocument.openapi).toBe('3.1.0');
-    expect(openApiDocument.info.version).toBe('1.1.0');
+    expect(openApiDocument.info.version).toBe('2.0.0');
     expect(openApiDocument.servers).toEqual([{ url: '/api' }]);
     expect(Object.keys(openApiDocument.paths).sort()).toEqual(
       expectedPaths.sort(),

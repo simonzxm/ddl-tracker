@@ -1,13 +1,16 @@
 import { z } from 'zod';
 
 import { opaqueTokenSchema, uuidV7Schema } from '../schema.js';
-import { operationBatchSchema } from './operation.js';
+import {
+  operationBatchSchema,
+  studentOperationSchema,
+} from './operation.js';
 import {
   MAX_SYNC_PAGE_SIZE,
   SYNC_PROTOCOL_VERSION,
 } from './limits.js';
 
-const emptyOperationsSchema = z.array(z.never()).max(0);
+const emptyOperationsSchema = z.array(studentOperationSchema).max(0);
 const snapshotFields = {
   snapshot_token: opaqueTokenSchema.nullable(),
   page_token: opaqueTokenSchema.nullable(),

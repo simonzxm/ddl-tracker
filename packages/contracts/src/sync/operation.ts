@@ -26,12 +26,14 @@ export const studentOperationTypeSchema = z.enum([
   'create_content_report',
 ]);
 
-export const operationEnvelopeSchema = z
-  .union([
-    privateOperationSchema,
-    contributionOperationSchema,
-    discussionOperationSchema,
-  ])
+export const studentOperationSchema = z
+  .discriminatedUnion('type', [
+    ...privateOperationSchema.options,
+    ...contributionOperationSchema.options,
+    ...discussionOperationSchema.options,
+  ]);
+
+export const operationEnvelopeSchema = studentOperationSchema
   .superRefine((operation, context) => {
     for (const [field, value] of Object.entries(operation.payload)) {
       if (field.endsWith('_id') && value === operation.operation_id) {

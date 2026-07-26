@@ -46,7 +46,9 @@ describe('OpenAPI document', () => {
     expect(openApiDocument.components.securitySchemes).toHaveProperty(
       'bearerAuth',
     );
+    expect(openApiDocument.components.schemas).toHaveProperty('CurrentUser');
     expect(openApiDocument.components.schemas).toHaveProperty('SyncRequest');
+    expect(openApiDocument.components.schemas).toHaveProperty('StudentOperation');
     expect(openApiDocument.components.schemas).toHaveProperty('SyncEvent');
     expect(openApiDocument.components.schemas).toHaveProperty('SnapshotRecord');
     expect(openApiDocument.components.schemas).toHaveProperty('ApiError');
@@ -126,16 +128,35 @@ describe('OpenAPI document', () => {
   });
 
   it('publishes typed sync unions with stable discriminators', () => {
-    const syncEvent = openApiDocument.components.schemas.SyncEvent;
-    const snapshotRecord = openApiDocument.components.schemas.SnapshotRecord;
+    const schemas = openApiDocument.components.schemas as Record<
+      string,
+      Record<string, unknown>
+    >;
+    const syncEvent = schemas['SyncEvent'];
+    const snapshotRecord = schemas['SnapshotRecord'];
 
     expect(syncEvent).toMatchObject({
-      discriminator: { propertyName: 'type' },
-      oneOf: expect.any(Array),
+      discriminator: {
+        propertyName: 'type',
+        mapping: expect.objectContaining({
+          catalog_revision_changed:
+            '#/components/schemas/SyncEventCatalogRevisionChanged',
+        }),
+      },
+      oneOf: expect.arrayContaining([
+        { $ref: '#/components/schemas/SyncEventCatalogRevisionChanged' },
+      ]),
     });
     expect(snapshotRecord).toMatchObject({
-      discriminator: { propertyName: 'record_type' },
-      oneOf: expect.any(Array),
+      discriminator: {
+        propertyName: 'record_type',
+        mapping: expect.objectContaining({
+          catalog_revision: '#/components/schemas/SnapshotRecordCatalogRevision',
+        }),
+      },
+      oneOf: expect.arrayContaining([
+        { $ref: '#/components/schemas/SnapshotRecordCatalogRevision' },
+      ]),
     });
     expect(syncEvent).not.toHaveProperty('anyOf');
     expect(snapshotRecord).not.toHaveProperty('anyOf');
@@ -143,6 +164,43 @@ describe('OpenAPI document', () => {
     expect(JSON.stringify(snapshotRecord)).not.toContain(
       '"additionalProperties":{}',
     );
+
+    expect(openApiDocument.components.schemas.SyncRequest).toMatchObject({
+      discriminator: {
+        propertyName: 'mode',
+        mapping: expect.objectContaining({
+          incremental: '#/components/schemas/SyncRequestIncremental',
+        }),
+      },
+      oneOf: expect.arrayContaining([
+        { $ref: '#/components/schemas/SyncRequestIncremental' },
+      ]),
+    });
+    expect(openApiDocument.components.schemas.StudentOperation).toMatchObject({
+      discriminator: {
+        propertyName: 'type',
+        mapping: expect.objectContaining({
+          set_accuracy_vote:
+            '#/components/schemas/StudentOperationSetAccuracyVote',
+        }),
+      },
+      oneOf: expect.arrayContaining([
+        { $ref: '#/components/schemas/StudentOperationSetAccuracyVote' },
+      ]),
+    });
+    expect(
+      schemas['SyncRequestAccountSnapshot'],
+    ).toMatchObject({
+      properties: {
+        operations: {
+          maxItems: 0,
+          items: { $ref: '#/components/schemas/StudentOperation' },
+        },
+      },
+    });
+    expect(
+      JSON.stringify(schemas['SyncRequestAccountSnapshot']),
+    ).not.toContain('"not":{}');
 
     expect(
       openApiDocument.components.schemas.IncrementalSyncResponse,

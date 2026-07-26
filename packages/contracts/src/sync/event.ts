@@ -10,6 +10,7 @@ export const syncEventScopeSchema = z.enum([
 ]);
 
 export const syncEventTypeSchema = z.enum([
+  'catalog_revision_changed',
   'class_section_followed',
   'class_section_unfollowed',
   'course_task_created',

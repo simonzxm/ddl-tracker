@@ -18,6 +18,7 @@ type AuthenticatedGlobalEvent = Extract<
   PublicSyncEventV2,
   {
     type:
+      | 'catalog_revision_changed'
       | 'public_user_profile_updated'
       | 'public_user_deleted'
       | 'class_section_deactivated';

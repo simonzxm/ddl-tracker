@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import {
   accuracyVoteRecordSchema,
+  catalogRevisionRecordSchema,
   classSectionRecordSchema,
   contentTombstoneSchema,
   courseTaskRecordSchema,
@@ -33,6 +34,10 @@ function snapshotRecord<const Type extends string, Payload extends z.ZodType>(
     .strict();
 }
 
+export const catalogRevisionSnapshotRecordSchema = snapshotRecord(
+  'catalog_revision',
+  catalogRevisionRecordSchema,
+);
 export const publicUserProfileSnapshotRecordSchema = snapshotRecord(
   'public_user_profile',
   publicUserProfileRecordSchema,
@@ -95,6 +100,7 @@ export const contentTombstoneSnapshotRecordSchema = snapshotRecord(
 );
 
 export const snapshotRecordV2Schema = z.discriminatedUnion('record_type', [
+  catalogRevisionSnapshotRecordSchema,
   publicUserProfileSnapshotRecordSchema,
   followedClassSectionSnapshotRecordSchema,
   classSectionSnapshotRecordSchema,

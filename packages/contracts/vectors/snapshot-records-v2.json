@@ -2,6 +2,14 @@
   "protocol_version": 2,
   "records": [
     {
+      "record_type": "catalog_revision",
+      "schema_version": 1,
+      "payload": {
+        "revision": 7,
+        "updated_at": "2026-09-01T00:30:00Z"
+      }
+    },
+    {
       "record_type": "public_user_profile",
       "schema_version": 1,
       "payload": {

@@ -383,6 +383,16 @@
         "revision": 3,
         "updated_at": "2026-09-01T00:30:00Z"
       }
+    },
+    {
+      "event_id": "018f0000-0000-7000-8000-00000000011c",
+      "schema_version": 2,
+      "type": "catalog_revision_changed",
+      "occurred_at": "2026-09-01T00:30:00Z",
+      "payload": {
+        "revision": 7,
+        "updated_at": "2026-09-01T00:30:00Z"
+      }
     }
   ]
 }

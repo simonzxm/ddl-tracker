@@ -31,6 +31,22 @@ describe('snapshot record v2', () => {
     }
   });
 
+  it('restores the current catalog revision', () => {
+    const record = snapshotRecordV2Schema.parse({
+      record_type: 'catalog_revision',
+      schema_version: 1,
+      payload: {
+        revision: 7,
+        updated_at: NOW,
+      },
+    });
+
+    expect(record).toMatchObject({
+      record_type: 'catalog_revision',
+      payload: { revision: 7 },
+    });
+  });
+
   it('restores complete reporter report state', () => {
     const record = snapshotRecordV2Schema.parse({
       record_type: 'reporter_content_report',

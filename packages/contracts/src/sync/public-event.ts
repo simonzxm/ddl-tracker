@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import { rfc3339TimestampSchema, uuidV7Schema } from '../schema.js';
 import {
+  catalogRevisionRecordSchema,
   classSectionRecordSchema,
   courseTaskRecordSchema,
   deletedTaskCommentTombstoneSchema,
@@ -58,6 +59,10 @@ const classSectionDeactivatedPayloadSchema = classSectionRecordSchema.pick({
   path: ['active'],
 });
 
+export const catalogRevisionChangedEventV2Schema = syncEvent(
+  'catalog_revision_changed',
+  catalogRevisionRecordSchema,
+);
 export const courseTaskCreatedEventV2Schema = syncEvent(
   'course_task_created',
   courseTaskRecordSchema,
@@ -124,6 +129,7 @@ export const classSectionDeactivatedEventV2Schema = syncEvent(
 );
 
 export const publicSyncEventV2Schema = z.discriminatedUnion('type', [
+  catalogRevisionChangedEventV2Schema,
   courseTaskCreatedEventV2Schema,
   courseTaskMergedEventV2Schema,
   courseTaskHiddenEventV2Schema,

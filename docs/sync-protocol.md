@@ -47,7 +47,7 @@
 
 第一页开始前，服务端记录全局事件 anchor，并创建短期 opaque snapshot token。快照包含：
 
-- 当前用户资料、关注教学班关系、全部私人待办、个人任务详情、个人任务状态和本人提交的内容举报。
+- 当前 catalog revision、当前用户资料、关注教学班关系、全部私人待办、个人任务详情、个人任务状态和本人提交的内容举报。
 - 当前关注教学班的公开课程任务、可见提案、投票聚合、当前用户自己的投票、当前评论和所引用公开用户资料。
 - 合并、隐藏、删除和停用所需的当前 tombstone 状态。
 
@@ -237,6 +237,8 @@ Mutable 操作必须携带 `expected_revision`。创建使用 revision `1`；每
 
 所有事件使用全局单调数据库 sequence 排序，但 sequence 不直接暴露；cursor 是带版本的 opaque 表示。事件 ID 是 UUIDv7，用于客户端幂等。
 
+`catalog_revision_changed` 在一次目录导入完整提交时只产生一次；客户端收到更高 revision 后使学期、课程和教学班目录缓存失效并重新获取。account snapshot 同时包含当前 revision，因此 cursor 过期或重装后不会依赖历史失效事件。
+
 事件 scope：
 
 - `private_user`：只对一个用户可见，例如个人待办、自己的 vote、举报状态。
@@ -249,6 +251,7 @@ Mutable 操作必须携带 `expected_revision`。创建使用 revision `1`；每
 ### 主要事件类型
 
 ```text
+catalog_revision_changed              # 全局目录缓存失效；携带单调 revision
 class_section_followed
 class_section_unfollowed
 course_task_created

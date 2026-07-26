@@ -23,6 +23,7 @@ import {
   classSectionsResponseSchema,
   commentRevisionPageSchema,
   coursesResponseSchema,
+  currentUserSchema,
   emailChallengeRequestSchema,
   emailChallengeResponseSchema,
   emailVerificationRequestSchema,
@@ -31,6 +32,7 @@ import {
   publicUserSchema,
   sessionSchema,
   snapshotRecordSchema,
+  studentOperationSchema,
   syncEventSchema,
   syncRequestSchema,
   termsResponseSchema,
@@ -45,17 +47,51 @@ function component(schema: ZodType): Record<string, unknown> {
   });
 }
 
-function discriminatedComponent(
-  schema: ZodType,
+interface NamedDiscriminatedComponents {
+  root: Record<string, unknown>;
+  components: Record<string, Record<string, unknown>>;
+}
+
+function pascalCase(value: string): string {
+  return value
+    .split('_')
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join('');
+}
+
+function namedDiscriminatedComponents(
+  schema: ZodType & { options: readonly ZodType[] },
   propertyName: string,
-): Record<string, unknown> {
-  const value = component(schema);
-  if (Array.isArray(value.anyOf)) {
-    value.oneOf = value.anyOf;
-    delete value.anyOf;
+  prefix: string,
+): NamedDiscriminatedComponents {
+  const components: Record<string, Record<string, unknown>> = {};
+  const mapping: Record<string, string> = {};
+  const oneOf: { $ref: string }[] = [];
+
+  for (const option of schema.options) {
+    const shape = (option as unknown as {
+      shape: Record<string, { value?: unknown }>;
+    }).shape;
+    const discriminator = shape[propertyName]?.value;
+    if (typeof discriminator !== 'string') {
+      throw new Error(
+        `OpenAPI ${prefix} option is missing literal ${propertyName}.`,
+      );
+    }
+    const name = `${prefix}${pascalCase(discriminator)}`;
+    const reference = `#/components/schemas/${name}`;
+    components[name] = component(option);
+    mapping[discriminator] = reference;
+    oneOf.push({ $ref: reference });
   }
-  value.discriminator = { propertyName };
-  return value;
+
+  return {
+    root: {
+      oneOf,
+      discriminator: { propertyName, mapping },
+    },
+    components,
+  };
 }
 
 function withArrayItemReference(
@@ -63,7 +99,14 @@ function withArrayItemReference(
   propertyName: string,
   schemaName: string,
 ): Record<string, unknown> {
-  const value = component(schema);
+  return setArrayItemReference(component(schema), propertyName, schemaName);
+}
+
+function setArrayItemReference(
+  value: Record<string, unknown>,
+  propertyName: string,
+  schemaName: string,
+): Record<string, unknown> {
   const properties = objectValue(value.properties, 'schema properties');
   const property = objectValue(
     properties[propertyName],
@@ -134,6 +177,38 @@ const paginationParameters = [
     schema: { type: 'integer', minimum: 1, maximum: 100, default: 50 },
   },
 ];
+
+const syncRequestComponents = namedDiscriminatedComponents(
+  syncRequestSchema,
+  'mode',
+  'SyncRequest',
+);
+const studentOperationComponents = namedDiscriminatedComponents(
+  studentOperationSchema,
+  'type',
+  'StudentOperation',
+);
+const syncEventComponents = namedDiscriminatedComponents(
+  syncEventSchema,
+  'type',
+  'SyncEvent',
+);
+const snapshotRecordComponents = namedDiscriminatedComponents(
+  snapshotRecordSchema,
+  'record_type',
+  'SnapshotRecord',
+);
+for (const requestName of [
+  'SyncRequestAccountSnapshot',
+  'SyncRequestClassSectionSnapshot',
+  'SyncRequestIncremental',
+]) {
+  const request = syncRequestComponents.components[requestName];
+  if (request === undefined) {
+    throw new Error(`OpenAPI ${requestName} component is missing.`);
+  }
+  setArrayItemReference(request, 'operations', 'StudentOperation');
+}
 
 export const openApiDocument = addRateLimitResponses({
   openapi: '3.1.0',
@@ -211,7 +286,7 @@ export const openApiDocument = addRateLimitResponses({
         summary: 'Read the current public profile',
         security: bearer,
         responses: {
-          '200': response('Current user.', 'PublicUser'),
+          '200': response('Current user.', 'CurrentUser'),
           '401': response('Authentication required.', 'ApiError'),
         },
       },
@@ -233,7 +308,7 @@ export const openApiDocument = addRateLimitResponses({
         security: bearer,
         requestBody: requestBody('ProfileUpdateRequest'),
         responses: {
-          '200': response('Updated user.', 'PublicUser'),
+          '200': response('Updated user.', 'CurrentUser'),
           '409': response('Revision or username conflict.', 'ApiError'),
         },
       },
@@ -555,6 +630,7 @@ export const openApiDocument = addRateLimitResponses({
         verificationResponseSchema.options[1],
       ),
       PublicUser: component(publicUserSchema),
+      CurrentUser: component(currentUserSchema),
       ProfileUpdateRequest: component(profileUpdateRequestSchema),
       Session: component(sessionSchema),
       SessionList: {
@@ -569,12 +645,14 @@ export const openApiDocument = addRateLimitResponses({
       CoursesResponse: component(coursesResponseSchema),
       ClassSectionsResponse: component(classSectionsResponseSchema),
       CommentRevisionPage: component(commentRevisionPageSchema),
-      SyncRequest: component(syncRequestSchema),
-      SyncEvent: discriminatedComponent(syncEventSchema, 'type'),
-      SnapshotRecord: discriminatedComponent(
-        snapshotRecordSchema,
-        'record_type',
-      ),
+      ...syncRequestComponents.components,
+      ...studentOperationComponents.components,
+      ...syncEventComponents.components,
+      ...snapshotRecordComponents.components,
+      SyncRequest: syncRequestComponents.root,
+      StudentOperation: studentOperationComponents.root,
+      SyncEvent: syncEventComponents.root,
+      SnapshotRecord: snapshotRecordComponents.root,
       IncrementalSyncResponse: withArrayItemReference(
         incrementalSyncResponseSchema,
         'events',
@@ -596,7 +674,15 @@ export const openApiDocument = addRateLimitResponses({
           { $ref: '#/components/schemas/AccountSnapshotResponse' },
           { $ref: '#/components/schemas/ClassSectionSnapshotResponse' },
         ],
-        discriminator: { propertyName: 'mode' },
+        discriminator: {
+          propertyName: 'mode',
+          mapping: {
+            incremental: '#/components/schemas/IncrementalSyncResponse',
+            account_snapshot: '#/components/schemas/AccountSnapshotResponse',
+            class_section_snapshot:
+              '#/components/schemas/ClassSectionSnapshotResponse',
+          },
+        },
       },
       CatalogPlanBatchRequest: component(catalogPlanBatchRequestSchema),
       CatalogPlanBatchResponse: component(catalogPlanBatchResponseSchema),

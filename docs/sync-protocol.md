@@ -283,10 +283,10 @@ Event payload 必须通过其 `type` 对应的严格 schema，并携带客户端
 - create、upsert、restore：携带完整当前记录；restore 不能只发送 `{id, state}`。
 - delete、hide：携带对应实体的完整 tombstone，包括实体类型、ID、状态和 revision；删除还携带 `deleted_at`。
 - merge、redirect：携带可持久化的 source、target/canonical、revision 与 `created_at`。
-- aggregate update：携带完整当前 aggregate 与 `updated_at`。
+- aggregate update：携带完整当前 aggregate、单调 `revision` 与 `updated_at`。
 - 举报事件按 audience 拆分为两个 event type，不能由同一个 type 承载两种 payload。
 
-投票事件对其他用户只包含新 aggregate；当前用户另收自己的 vote state。禁止在 public event 中放 voter ID。
+投票事件对其他用户只包含带单调 revision 的新 aggregate；当前用户另收自己的 vote state。`none` 作为带 revision 的持久撤回状态保留，使旧事件或跨页 snapshot 不能复活已撤回判断。禁止在 public event 中放 voter ID。
 
 ## Cursor 与保留
 

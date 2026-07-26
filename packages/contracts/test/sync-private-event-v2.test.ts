@@ -45,6 +45,7 @@ describe('private sync events v2', () => {
         payload: {
           proposal_id: ENTITY_ID,
           value: 'none',
+          revision: 3,
           reason: 'task_merge_conflict',
         },
       }),

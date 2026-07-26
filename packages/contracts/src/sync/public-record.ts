@@ -77,6 +77,7 @@ export const proposalVoteTotalsRecordSchema = z
     proposal_id: uuidV7Schema,
     up: z.number().int().nonnegative(),
     down: z.number().int().nonnegative(),
+    revision: revisionSchema,
     updated_at: rfc3339TimestampSchema,
   })
   .strict();
@@ -84,7 +85,8 @@ export const proposalVoteTotalsRecordSchema = z
 export const accuracyVoteRecordSchema = z
   .object({
     proposal_id: uuidV7Schema,
-    value: z.enum(['up', 'down']),
+    value: z.enum(['up', 'down', 'none']),
+    revision: revisionSchema,
     updated_at: rfc3339TimestampSchema,
   })
   .strict();

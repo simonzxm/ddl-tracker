@@ -73,6 +73,49 @@ describe('createWorkerHandler', () => {
     expect(createClient).not.toHaveBeenCalled();
   });
 
+  it('returns a generic 503 when the database connection cannot be opened', async () => {
+    const client = {
+      connect: vi.fn(async () => {
+        throw new Error('postgresql://secret-host/private');
+      }),
+      end: vi.fn(async () => undefined),
+    };
+    const entries: unknown[] = [];
+    const handler = createWorkerHandler({
+      createClient: () => client as unknown as Client,
+      mailDelivery,
+      logRequest: (entry) => {
+        entries.push(entry);
+      },
+    });
+
+    const response = await handler.fetch(
+      new Request('https://api.example/api/v1/terms'),
+      environment(),
+      context,
+    );
+    const body = await response.text();
+
+    expect(response.status).toBe(503);
+    expect(response.headers.get('access-control-allow-origin')).toBe('*');
+    expect(response.headers.get('retry-after')).toBe('1');
+    expect(response.headers.get('x-request-id')).toMatch(/^[0-9a-f-]{36}$/u);
+    expect(JSON.parse(body)).toMatchObject({
+      code: 'temporarily_unavailable',
+      message: 'Service is temporarily unavailable.',
+      retryable: true,
+    });
+    expect(body).not.toContain('secret-host');
+    expect(client.end).not.toHaveBeenCalled();
+    expect(entries).toEqual([
+      expect.objectContaining({
+        method: 'GET',
+        route: '/api/v1/terms',
+        status: 503,
+      }),
+    ]);
+  });
+
   it('connects one Hyperdrive client and closes it after a request', async () => {
     const client = fakeClient();
     const createClient = vi.fn(() => client as unknown as Client);

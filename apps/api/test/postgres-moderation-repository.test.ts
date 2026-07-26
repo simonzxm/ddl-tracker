@@ -257,12 +257,17 @@ describePostgres('PostgresModerationRepository', () => {
         type: 'maintainer_content_report_updated',
       },
     ]);
-    expect(events.rows[0]?.payload).toEqual({
+    expect(events.rows[0]?.payload).toMatchObject({
       report_id: REPORT_ID,
+      target_type: 'proposal',
+      target_id: PROPOSAL_ID,
+      reason: 'inaccurate',
+      details: 'Wrong date',
       status: 'resolved',
       resolution: 'Proposal hidden.',
       resolved_at: NOW.toISOString(),
     });
+    expect(events.rows[0]?.payload).not.toHaveProperty('reporter_id');
     expect(events.rows[1]?.payload).toMatchObject({
       report_id: REPORT_ID,
       reporter_id: REPORTER_ID,

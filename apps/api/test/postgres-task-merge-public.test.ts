@@ -195,6 +195,7 @@ describePostgres('PostgresTaskMergeRepository public graph', () => {
     }>('select user_id, proposal_id, direction from accuracy_votes order by user_id');
     expect(votes.rows).toEqual([
       { user_id: U1, proposal_id: TARGET_PROPOSAL, direction: 'up' },
+      { user_id: U2, proposal_id: TARGET_PROPOSAL, direction: 'none' },
       { user_id: U3, proposal_id: TARGET_PROPOSAL, direction: 'down' },
     ]);
     const totals = await client.query<{ up: number; down: number }>(
@@ -225,21 +226,45 @@ describePostgres('PostgresTaskMergeRepository public graph', () => {
     expect(eventCounts.rows[0]).toEqual({
       merged: '1',
       redirected: '1',
-      reconsider: '1',
+      reconsider: '2',
       audits: '1',
     });
     const reconsider = await client.query<{
-      payload: { proposal_id: string; value: string; reason: string };
+      scope_user_id: string;
+      payload: {
+        proposal_id: string;
+        value: string;
+        revision: number;
+        updated_at: string;
+        reason: string;
+      };
     }>(
-      `select payload from sync_events
-       where type = 'accuracy_vote_updated' and scope = 'private_user'`,
+      `select scope_user_id, payload from sync_events
+       where type = 'accuracy_vote_updated' and scope = 'private_user'
+       order by scope_user_id`,
     );
-    expect(reconsider.rows[0]?.payload).toEqual({
-      proposal_id: TARGET_PROPOSAL,
-      value: 'none',
-      updated_at: NOW.toISOString(),
-      reason: 'task_merge_conflict',
-    });
+    expect(reconsider.rows).toEqual([
+      {
+        scope_user_id: U2,
+        payload: {
+          proposal_id: TARGET_PROPOSAL,
+          value: 'none',
+          revision: 2,
+          updated_at: NOW.toISOString(),
+          reason: 'task_merge_conflict',
+        },
+      },
+      {
+        scope_user_id: U3,
+        payload: {
+          proposal_id: TARGET_PROPOSAL,
+          value: 'down',
+          revision: 2,
+          updated_at: NOW.toISOString(),
+          reason: 'task_merge_moved',
+        },
+      },
+    ]);
 
     const structuralEvents = await client.query<{
       type: string;
@@ -288,6 +313,7 @@ describePostgres('PostgresTaskMergeRepository public graph', () => {
       proposal_id: TARGET_PROPOSAL,
       up: 1,
       down: 1,
+      revision: 2,
       updated_at: NOW.toISOString(),
     });
   });

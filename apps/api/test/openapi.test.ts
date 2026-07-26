@@ -47,6 +47,8 @@ describe('OpenAPI document', () => {
       'bearerAuth',
     );
     expect(openApiDocument.components.schemas).toHaveProperty('SyncRequest');
+    expect(openApiDocument.components.schemas).toHaveProperty('SyncEvent');
+    expect(openApiDocument.components.schemas).toHaveProperty('SnapshotRecord');
     expect(openApiDocument.components.schemas).toHaveProperty('ApiError');
     expect(openApiDocument.components.schemas).toHaveProperty(
       'CatalogApplyAllRequest',
@@ -101,6 +103,45 @@ describe('OpenAPI document', () => {
       content: {
         'application/json': {
           example: { reason: 'Superseded by a corrected source file.' },
+        },
+      },
+    });
+  });
+
+  it('publishes typed sync unions with stable discriminators', () => {
+    const syncEvent = openApiDocument.components.schemas.SyncEvent;
+    const snapshotRecord = openApiDocument.components.schemas.SnapshotRecord;
+
+    expect(syncEvent).toMatchObject({
+      discriminator: { propertyName: 'type' },
+      oneOf: expect.any(Array),
+    });
+    expect(snapshotRecord).toMatchObject({
+      discriminator: { propertyName: 'record_type' },
+      oneOf: expect.any(Array),
+    });
+    expect(syncEvent).not.toHaveProperty('anyOf');
+    expect(snapshotRecord).not.toHaveProperty('anyOf');
+    expect(JSON.stringify(syncEvent)).not.toContain('"additionalProperties":{}');
+    expect(JSON.stringify(snapshotRecord)).not.toContain(
+      '"additionalProperties":{}',
+    );
+
+    expect(
+      openApiDocument.components.schemas.IncrementalSyncResponse,
+    ).toMatchObject({
+      properties: {
+        events: {
+          items: { $ref: '#/components/schemas/SyncEvent' },
+        },
+      },
+    });
+    expect(
+      openApiDocument.components.schemas.AccountSnapshotResponse,
+    ).toMatchObject({
+      properties: {
+        records: {
+          items: { $ref: '#/components/schemas/SnapshotRecord' },
         },
       },
     });

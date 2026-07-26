@@ -30,6 +30,8 @@ import {
   profileUpdateRequestSchema,
   publicUserSchema,
   sessionSchema,
+  snapshotRecordSchema,
+  syncEventSchema,
   syncRequestSchema,
   termsResponseSchema,
   verificationResponseSchema,
@@ -41,6 +43,41 @@ function component(schema: ZodType): Record<string, unknown> {
     target: 'draft-2020-12',
     unrepresentable: 'any',
   });
+}
+
+function discriminatedComponent(
+  schema: ZodType,
+  propertyName: string,
+): Record<string, unknown> {
+  const value = component(schema);
+  if (Array.isArray(value.anyOf)) {
+    value.oneOf = value.anyOf;
+    delete value.anyOf;
+  }
+  value.discriminator = { propertyName };
+  return value;
+}
+
+function withArrayItemReference(
+  schema: ZodType,
+  propertyName: string,
+  schemaName: string,
+): Record<string, unknown> {
+  const value = component(schema);
+  const properties = objectValue(value.properties, 'schema properties');
+  const property = objectValue(
+    properties[propertyName],
+    `${propertyName} property`,
+  );
+  property.items = { $ref: `#/components/schemas/${schemaName}` };
+  return value;
+}
+
+function objectValue(value: unknown, label: string): Record<string, unknown> {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    throw new Error(`OpenAPI ${label} is not an object.`);
+  }
+  return value as Record<string, unknown>;
 }
 
 const jsonContent = (schemaRef: string) => ({
@@ -533,15 +570,33 @@ export const openApiDocument = addRateLimitResponses({
       ClassSectionsResponse: component(classSectionsResponseSchema),
       CommentRevisionPage: component(commentRevisionPageSchema),
       SyncRequest: component(syncRequestSchema),
-      IncrementalSyncResponse: component(incrementalSyncResponseSchema),
-      AccountSnapshotResponse: component(accountSnapshotResponseSchema),
-      ClassSectionSnapshotResponse: component(classSectionSnapshotResponseSchema),
+      SyncEvent: discriminatedComponent(syncEventSchema, 'type'),
+      SnapshotRecord: discriminatedComponent(
+        snapshotRecordSchema,
+        'record_type',
+      ),
+      IncrementalSyncResponse: withArrayItemReference(
+        incrementalSyncResponseSchema,
+        'events',
+        'SyncEvent',
+      ),
+      AccountSnapshotResponse: withArrayItemReference(
+        accountSnapshotResponseSchema,
+        'records',
+        'SnapshotRecord',
+      ),
+      ClassSectionSnapshotResponse: withArrayItemReference(
+        classSectionSnapshotResponseSchema,
+        'records',
+        'SnapshotRecord',
+      ),
       SyncResponse: {
         oneOf: [
           { $ref: '#/components/schemas/IncrementalSyncResponse' },
           { $ref: '#/components/schemas/AccountSnapshotResponse' },
           { $ref: '#/components/schemas/ClassSectionSnapshotResponse' },
         ],
+        discriminator: { propertyName: 'mode' },
       },
       CatalogPlanBatchRequest: component(catalogPlanBatchRequestSchema),
       CatalogPlanBatchResponse: component(catalogPlanBatchResponseSchema),

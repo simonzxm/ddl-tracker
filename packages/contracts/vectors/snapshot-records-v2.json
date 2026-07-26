@@ -1,0 +1,184 @@
+{
+  "protocol_version": 2,
+  "records": [
+    {
+      "record_type": "public_user_profile",
+      "schema_version": 1,
+      "payload": {
+        "id": "018f0000-0000-7000-8000-000000000001",
+        "username": "student_1",
+        "display_name": "Student One",
+        "avatar_url": null,
+        "bio": null,
+        "status": "active",
+        "revision": 2,
+        "created_at": "2026-09-01T00:00:00Z",
+        "updated_at": "2026-09-01T00:30:00Z"
+      }
+    },
+    {
+      "record_type": "followed_class_section",
+      "schema_version": 1,
+      "payload": {
+        "class_section_id": "018f0000-0000-7000-8000-000000000002",
+        "followed_at": "2026-09-01T00:30:00Z"
+      }
+    },
+    {
+      "record_type": "class_section",
+      "schema_version": 1,
+      "payload": {
+        "id": "018f0000-0000-7000-8000-000000000002",
+        "course_id": "018f0000-0000-7000-8000-000000000003",
+        "external_section_id": "2026-001",
+        "section_number": "01",
+        "department_code": "CS",
+        "department_name": "Computer Science",
+        "instructors": ["Ada Lovelace"],
+        "campus": "Xianlin",
+        "capacity": 120,
+        "schedule_text": "Monday 08:00",
+        "active": true,
+        "revision": 2,
+        "created_at": "2026-09-01T00:00:00Z",
+        "updated_at": "2026-09-01T00:30:00Z"
+      }
+    },
+    {
+      "record_type": "course_task",
+      "schema_version": 1,
+      "payload": {
+        "id": "018f0000-0000-7000-8000-000000000004",
+        "class_section_id": "018f0000-0000-7000-8000-000000000002",
+        "created_by": "018f0000-0000-7000-8000-000000000001",
+        "state": "visible",
+        "revision": 1,
+        "created_at": "2026-09-01T00:00:00Z",
+        "updated_at": "2026-09-01T00:00:00Z"
+      }
+    },
+    {
+      "record_type": "task_proposal",
+      "schema_version": 1,
+      "payload": {
+        "id": "018f0000-0000-7000-8000-000000000005",
+        "course_task_id": "018f0000-0000-7000-8000-000000000004",
+        "author_id": "018f0000-0000-7000-8000-000000000001",
+        "title": "Project report",
+        "deadline": "2026-09-02T00:00:00Z",
+        "description": null,
+        "evidence_note": null,
+        "evidence_url": null,
+        "content_fingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "state": "visible",
+        "revision": 1,
+        "created_at": "2026-09-01T00:00:00Z"
+      }
+    },
+    {
+      "record_type": "proposal_vote_totals",
+      "schema_version": 1,
+      "payload": {
+        "proposal_id": "018f0000-0000-7000-8000-000000000005",
+        "up": 4,
+        "down": 1,
+        "updated_at": "2026-09-01T00:30:00Z"
+      }
+    },
+    {
+      "record_type": "accuracy_vote",
+      "schema_version": 1,
+      "payload": {
+        "proposal_id": "018f0000-0000-7000-8000-000000000005",
+        "value": "up",
+        "updated_at": "2026-09-01T00:30:00Z"
+      }
+    },
+    {
+      "record_type": "proposal_redirect",
+      "schema_version": 1,
+      "payload": {
+        "source_proposal_id": "018f0000-0000-7000-8000-000000000009",
+        "canonical_proposal_id": "018f0000-0000-7000-8000-000000000005",
+        "revision": 2,
+        "created_at": "2026-09-01T00:30:00Z"
+      }
+    },
+    {
+      "record_type": "task_merge",
+      "schema_version": 1,
+      "payload": {
+        "source_task_id": "018f0000-0000-7000-8000-000000000008",
+        "target_task_id": "018f0000-0000-7000-8000-000000000004",
+        "reason": "Duplicate course task.",
+        "revision": 2,
+        "created_at": "2026-09-01T00:30:00Z"
+      }
+    },
+    {
+      "record_type": "personal_todo",
+      "schema_version": 1,
+      "payload": {
+        "id": "018f0000-0000-7000-8000-000000000007",
+        "class_section_id": "018f0000-0000-7000-8000-000000000002",
+        "title": "Read chapter 3",
+        "deadline": null,
+        "note": "Review examples.",
+        "state": "pending",
+        "revision": 1,
+        "deleted_at": null,
+        "created_at": "2026-09-01T00:00:00Z",
+        "updated_at": "2026-09-01T00:30:00Z"
+      }
+    },
+    {
+      "record_type": "personal_task_details",
+      "schema_version": 1,
+      "payload": {
+        "course_task_id": "018f0000-0000-7000-8000-000000000004",
+        "private_title": "My project title",
+        "private_deadline": null,
+        "private_note": "Only visible to me.",
+        "revision": 2,
+        "created_at": "2026-09-01T00:00:00Z",
+        "updated_at": "2026-09-01T00:30:00Z"
+      }
+    },
+    {
+      "record_type": "personal_task_state",
+      "schema_version": 1,
+      "payload": {
+        "course_task_id": "018f0000-0000-7000-8000-000000000004",
+        "state": "completed",
+        "revision": 3,
+        "created_at": "2026-09-01T00:00:00Z",
+        "updated_at": "2026-09-01T00:30:00Z"
+      }
+    },
+    {
+      "record_type": "task_comment",
+      "schema_version": 1,
+      "payload": {
+        "id": "018f0000-0000-7000-8000-000000000006",
+        "course_task_id": "018f0000-0000-7000-8000-000000000004",
+        "author_id": "018f0000-0000-7000-8000-000000000001",
+        "body": "The deadline was announced in class.",
+        "revision": 2,
+        "state": "visible",
+        "deleted_at": null,
+        "created_at": "2026-09-01T00:00:00Z",
+        "updated_at": "2026-09-01T00:30:00Z"
+      }
+    },
+    {
+      "record_type": "content_tombstone",
+      "schema_version": 1,
+      "payload": {
+        "entity_type": "course_task",
+        "entity_id": "018f0000-0000-7000-8000-000000000008",
+        "state": "hidden",
+        "revision": 3
+      }
+    }
+  ]
+}

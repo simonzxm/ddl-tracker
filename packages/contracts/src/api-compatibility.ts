@@ -1,9 +1,9 @@
 import { z } from 'zod';
 
-export const apiContractVersionSchema = z.enum(['1.0.0', '1.1.0']);
+export const apiContractVersionSchema = z.enum(['1.0.0', '1.1.0', '2.0.0']);
 export type ApiContractVersion = z.infer<typeof apiContractVersionSchema>;
 
-export const API_CONTRACT_VERSION: ApiContractVersion = '1.1.0';
+export const API_CONTRACT_VERSION: ApiContractVersion = '2.0.0';
 
 const apiCapabilitySchema = z.enum([
   'catalog_plan_batches',
@@ -14,6 +14,9 @@ const apiCapabilitySchema = z.enum([
   'catalog_terminal_expiry',
   'catalog_deactivation_identifiers',
   'catalog_upload_replay',
+  'typed_sync_protocol_v2',
+  'typed_sync_events',
+  'typed_snapshot_records',
 ]);
 
 const catalogImportStatusValueSchema = z.enum([
@@ -55,9 +58,10 @@ export const apiCompatibilityMatrixSchema = z
       .object({
         '1.0.0': contractReleaseSchema,
         '1.1.0': contractReleaseSchema,
+        '2.0.0': contractReleaseSchema,
       })
       .strict(),
-    matrix: z.array(compatibilityPairSchema).length(4),
+    matrix: z.array(compatibilityPairSchema).length(9),
   })
   .strict();
 

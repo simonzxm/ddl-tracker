@@ -1,6 +1,7 @@
 import type { Client } from 'pg';
 
 import { HttpError } from '../http/errors.js';
+import { PostgresSyncEventStore } from '../sync/postgres-event-store.js';
 
 type ContentTargetType = 'course_task' | 'proposal' | 'comment';
 type ReportStatus = 'open' | 'resolved' | 'dismissed';
@@ -12,6 +13,7 @@ interface ContentMutationRow {
 
 export class PostgresModerationRepository {
   readonly #client: Client;
+  readonly #events: PostgresSyncEventStore;
   readonly #createId: () => string;
   readonly #now: () => Date;
 
@@ -20,6 +22,9 @@ export class PostgresModerationRepository {
     options: { createId: () => string; now?: () => Date },
   ) {
     this.#client = client;
+    this.#events = new PostgresSyncEventStore(client, {
+      createId: options.createId,
+    });
     this.#createId = options.createId;
     this.#now = options.now ?? (() => new Date());
   }
@@ -72,9 +77,6 @@ export class PostgresModerationRepository {
         now,
       );
       const action = input.hidden ? 'hide' : 'restore';
-      const eventType = `${this.#eventPrefix(input.targetType)}_${
-        input.hidden ? 'hidden' : 'restored'
-      }`;
       await this.#client.query(
         `insert into moderation_actions (
            id, actor_id, action, target_type, target_id, reason,
@@ -95,22 +97,14 @@ export class PostgresModerationRepository {
         result: { state: desired, revision: updated.revision },
         now,
       });
-      await this.#client.query(
-        `insert into sync_events (
-           event_id, scope, class_section_id, type, schema_version,
-           payload, occurred_at
-         ) values ($1, 'class_section_public', $2, $3, 1, $4::jsonb, $5)`,
-        [
-          this.#createId(), updated.class_section_id, eventType,
-          JSON.stringify({
-            target_type: input.targetType,
-            target_id: input.targetId,
-            state: desired,
-            revision: updated.revision,
-          }),
-          now,
-        ],
-      );
+      await this.#appendContentEvent({
+        targetType: input.targetType,
+        targetId: input.targetId,
+        hidden: input.hidden,
+        classSectionId: updated.class_section_id,
+        revision: updated.revision,
+        now,
+      });
       return { state: desired, revision: updated.revision, changed: true };
     });
   }
@@ -392,12 +386,192 @@ export class PostgresModerationRepository {
     return requiredRow(result.rows[0]);
   }
 
-  #eventPrefix(targetType: ContentTargetType): string {
-    switch (targetType) {
-      case 'course_task': return 'course_task';
-      case 'proposal': return 'task_proposal';
-      case 'comment': return 'task_comment';
+  async #appendContentEvent(input: {
+    targetType: ContentTargetType;
+    targetId: string;
+    hidden: boolean;
+    classSectionId: string;
+    revision: number;
+    now: Date;
+  }): Promise<void> {
+    if (input.hidden) {
+      switch (input.targetType) {
+        case 'course_task':
+          await this.#events.append({
+            scope: 'class_section_public',
+            classSectionId: input.classSectionId,
+            occurredAt: input.now,
+            event: {
+              type: 'course_task_hidden',
+              payload: {
+                entity_type: 'course_task',
+                entity_id: input.targetId,
+                state: 'hidden',
+                revision: input.revision,
+              },
+            },
+          });
+          return;
+        case 'proposal':
+          await this.#events.append({
+            scope: 'class_section_public',
+            classSectionId: input.classSectionId,
+            occurredAt: input.now,
+            event: {
+              type: 'task_proposal_hidden',
+              payload: {
+                entity_type: 'task_proposal',
+                entity_id: input.targetId,
+                state: 'hidden',
+                revision: input.revision,
+              },
+            },
+          });
+          return;
+        case 'comment':
+          await this.#events.append({
+            scope: 'class_section_public',
+            classSectionId: input.classSectionId,
+            occurredAt: input.now,
+            event: {
+              type: 'task_comment_hidden',
+              payload: {
+                entity_type: 'task_comment',
+                entity_id: input.targetId,
+                state: 'hidden',
+                revision: input.revision,
+              },
+            },
+          });
+          return;
+      }
     }
+
+    if (input.targetType === 'course_task') {
+      const result = await this.#client.query<{
+        id: string;
+        class_section_id: string;
+        created_by: string | null;
+        revision: number;
+        created_at: Date;
+        updated_at: Date;
+      }>(
+        `select id, class_section_id, created_by, revision,
+                created_at, updated_at
+         from course_tasks
+         where id = $1 and state = 'visible'`,
+        [input.targetId],
+      );
+      const row = requiredRow(result.rows[0]);
+      await this.#events.append({
+        scope: 'class_section_public',
+        classSectionId: input.classSectionId,
+        occurredAt: input.now,
+        event: {
+          type: 'course_task_restored',
+          payload: {
+            id: row.id,
+            class_section_id: row.class_section_id,
+            created_by: row.created_by,
+            state: 'visible',
+            revision: row.revision,
+            created_at: row.created_at.toISOString(),
+            updated_at: row.updated_at.toISOString(),
+          },
+        },
+      });
+      return;
+    }
+
+    if (input.targetType === 'proposal') {
+      const result = await this.#client.query<{
+        id: string;
+        task_id: string;
+        author_id: string | null;
+        title: string;
+        deadline: Date;
+        description: string | null;
+        evidence_note: string | null;
+        evidence_url: string | null;
+        content_fingerprint: string;
+        revision: number;
+        created_at: Date;
+      }>(
+        `select id, task_id, author_id, title, deadline, description,
+                evidence_note, evidence_url, content_fingerprint,
+                revision, created_at
+         from task_proposals
+         where id = $1 and state = 'visible'`,
+        [input.targetId],
+      );
+      const row = requiredRow(result.rows[0]);
+      await this.#events.append({
+        scope: 'class_section_public',
+        classSectionId: input.classSectionId,
+        occurredAt: input.now,
+        event: {
+          type: 'task_proposal_restored',
+          payload: {
+            id: row.id,
+            course_task_id: row.task_id,
+            author_id: row.author_id,
+            title: row.title,
+            deadline: row.deadline.toISOString(),
+            description: row.description,
+            evidence_note: row.evidence_note,
+            evidence_url: row.evidence_url,
+            content_fingerprint: row.content_fingerprint,
+            state: 'visible',
+            revision: row.revision,
+            created_at: row.created_at.toISOString(),
+          },
+        },
+      });
+      return;
+    }
+
+    const result = await this.#client.query<{
+      id: string;
+      task_id: string;
+      author_id: string | null;
+      current_revision: number;
+      body: string;
+      created_at: Date;
+      updated_at: Date;
+    }>(
+      `select c.id, c.task_id, c.author_id, c.current_revision,
+              latest.body, c.created_at, c.updated_at
+       from task_comments c
+       join lateral (
+         select body
+         from comment_revisions r
+         where r.comment_id = c.id
+         order by r.revision desc
+         limit 1
+       ) latest on true
+       where c.id = $1 and c.state = 'visible' and c.deleted_at is null`,
+      [input.targetId],
+    );
+    const row = requiredRow(result.rows[0]);
+    await this.#events.append({
+      scope: 'class_section_public',
+      classSectionId: input.classSectionId,
+      occurredAt: input.now,
+      event: {
+        type: 'task_comment_restored',
+        payload: {
+          id: row.id,
+          course_task_id: row.task_id,
+          author_id: row.author_id,
+          body: row.body,
+          revision: row.current_revision,
+          state: 'visible',
+          deleted_at: null,
+          created_at: row.created_at.toISOString(),
+          updated_at: row.updated_at.toISOString(),
+        },
+      },
+    });
   }
 
   #validateLimit(limit: number): void {

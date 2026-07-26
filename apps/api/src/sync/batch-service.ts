@@ -1,8 +1,16 @@
-import type { OperationEnvelope } from '@ddl-tracker/contracts';
+import type {
+  OperationEnvelope,
+  StudentOperationType,
+} from '@ddl-tracker/contracts';
 
 const RECEIPT_TTL_MS = 180 * 24 * 60 * 60 * 1000;
 
 export type SyncOperationExecution = Record<string, unknown>;
+
+export type SyncOperationFollowUp = {
+  type: 'class_section_snapshot';
+  class_section_id: string;
+} | null;
 
 export interface SyncOperationErrorValue {
   code: string;
@@ -30,11 +38,13 @@ export interface StoredOperationReceipt {
 export type SyncOperationResult =
   | {
       operation_id: string;
+      operation_type: StudentOperationType;
       status: 'applied' | 'replayed';
-      result: SyncOperationExecution;
+      follow_up: SyncOperationFollowUp;
     }
   | {
       operation_id: string;
+      operation_type: StudentOperationType;
       status: 'rejected' | 'dependency_failed';
       error: SyncOperationErrorValue;
     };
@@ -112,8 +122,25 @@ function rejectionValue(error: SyncOperationRejection): SyncOperationErrorValue 
   };
 }
 
+function followUpFor(
+  operation: OperationEnvelope,
+  execution: SyncOperationExecution,
+): SyncOperationFollowUp {
+  if (
+    operation.type === 'follow_class_section' &&
+    execution.class_section_snapshot_required === true
+  ) {
+    return {
+      type: 'class_section_snapshot',
+      class_section_id: operation.payload.class_section_id,
+    };
+  }
+  return null;
+}
+
 function resultFromReceipt(
   receipt: StoredOperationReceipt,
+  operation: OperationEnvelope,
 ): SyncOperationResult {
   if (receipt.status === 'applied') {
     if (receipt.result === null) {
@@ -121,8 +148,9 @@ function resultFromReceipt(
     }
     return {
       operation_id: receipt.operationId,
+      operation_type: operation.type,
       status: 'replayed',
-      result: receipt.result,
+      follow_up: followUpFor(operation, receipt.result),
     };
   }
   if (receipt.error === null) {
@@ -130,6 +158,7 @@ function resultFromReceipt(
   }
   return {
     operation_id: receipt.operationId,
+    operation_type: operation.type,
     status: receipt.status,
     error: receipt.error,
   };
@@ -164,9 +193,10 @@ export class SyncBatchService {
         if (receipt !== null) {
           const result =
             receipt.requestDigest === requestDigest
-              ? resultFromReceipt(receipt)
+              ? resultFromReceipt(receipt, operation)
               : {
                   operation_id: operation.operation_id,
+                  operation_type: operation.type,
                   status: 'rejected' as const,
                   error: {
                     code: 'operation_id_reused',
@@ -201,6 +231,7 @@ export class SyncBatchService {
           const now = this.#now();
           const result: SyncOperationResult = {
             operation_id: operation.operation_id,
+            operation_type: operation.type,
             status: 'dependency_failed',
             error,
           };
@@ -240,8 +271,9 @@ export class SyncBatchService {
               });
               return {
                 operation_id: operation.operation_id,
+                operation_type: operation.type,
                 status: 'applied' as const,
-                result: execution,
+                follow_up: followUpFor(operation, execution),
               };
             },
           );
@@ -255,6 +287,7 @@ export class SyncBatchService {
           const now = this.#now();
           const result: SyncOperationResult = {
             operation_id: operation.operation_id,
+            operation_type: operation.type,
             status: 'rejected',
             error: stableError,
           };

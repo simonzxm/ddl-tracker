@@ -10,13 +10,17 @@ const EVENT_ID = '018f0000-0000-7000-8000-000000000003';
 const TASK_ID = '018f0000-0000-7000-8000-000000000004';
 
 describe('operation results', () => {
-  it('accepts applied and replayed results with stable result objects', () => {
+  it('accepts applied and replayed results with typed follow-up work', () => {
     for (const status of ['applied', 'replayed'] as const) {
       expect(
         operationResultSchema.parse({
           operation_id: OPERATION_ID,
+          operation_type: 'follow_class_section',
           status,
-          result: { revision: 4 },
+          follow_up: {
+            type: 'class_section_snapshot',
+            class_section_id: TASK_ID,
+          },
         }).status,
       ).toBe(status);
     }
@@ -26,6 +30,7 @@ describe('operation results', () => {
     expect(
       operationResultSchema.parse({
         operation_id: OPERATION_ID,
+        operation_type: 'update_personal_todo',
         status: 'rejected',
         error: {
           code: 'revision_conflict',
@@ -39,6 +44,7 @@ describe('operation results', () => {
     expect(
       operationResultSchema.parse({
         operation_id: OPERATION_ID,
+        operation_type: 'create_task_comment',
         status: 'dependency_failed',
         error: {
           code: 'dependency_failed',
@@ -50,16 +56,18 @@ describe('operation results', () => {
     ).toBe('dependency_failed');
   });
 
-  it('rejects success without result and dependency failure with another code', () => {
+  it('rejects success without a typed follow-up field and dependency failure with another code', () => {
     expect(() =>
       operationResultSchema.parse({
         operation_id: OPERATION_ID,
+        operation_type: 'set_accuracy_vote',
         status: 'applied',
       }),
     ).toThrow();
     expect(() =>
       operationResultSchema.parse({
         operation_id: OPERATION_ID,
+        operation_type: 'create_task_comment',
         status: 'dependency_failed',
         error: {
           code: 'revision_conflict',
@@ -82,8 +90,9 @@ describe('incremental sync response', () => {
         operation_results: [
           {
             operation_id: OPERATION_ID,
+            operation_type: 'set_personal_task_state',
             status: 'applied',
-            result: { revision: 4 },
+            follow_up: null,
           },
         ],
         events: [

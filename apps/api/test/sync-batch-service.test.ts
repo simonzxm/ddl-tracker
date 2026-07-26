@@ -61,7 +61,11 @@ class FakeTransaction implements SyncBatchTransaction {
         details: { current_revision: 2 },
       });
     }
-    return { entity_id: value.operation_id, revision: 1 };
+    return {
+      entity_id: value.operation_id,
+      revision: 1,
+      class_section_snapshot_required: value.type === 'follow_class_section',
+    };
   }
 
   withSavepoint<T>(_name: string, callback: () => Promise<T>): Promise<T> {
@@ -90,6 +94,13 @@ describe('SyncBatchService', () => {
     const results = await service.execute(USER_ID, [operation(OP_1), operation(OP_2)]);
 
     expect(results.map(({ status }) => status)).toEqual(['applied', 'applied']);
+    expect(results[0]).toMatchObject({
+      operation_type: 'follow_class_section',
+      follow_up: {
+        type: 'class_section_snapshot',
+        class_section_id: '018f0000-0000-7000-8000-000000001405',
+      },
+    });
     expect(repository.transaction.executions).toEqual([OP_1, OP_2]);
     expect(repository.transaction.receipts.size).toBe(2);
     expect(repository.committed).toBe(true);
@@ -104,7 +115,15 @@ describe('SyncBatchService', () => {
     const replay = await service.execute(USER_ID, [operation(OP_1)]);
 
     expect(replay).toEqual([
-      expect.objectContaining({ operation_id: OP_1, status: 'replayed' }),
+      expect.objectContaining({
+        operation_id: OP_1,
+        operation_type: 'follow_class_section',
+        status: 'replayed',
+        follow_up: {
+          type: 'class_section_snapshot',
+          class_section_id: '018f0000-0000-7000-8000-000000001405',
+        },
+      }),
     ]);
     expect(repository.transaction.executions).toEqual([]);
   });

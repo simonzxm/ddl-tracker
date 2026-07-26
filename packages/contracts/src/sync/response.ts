@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { apiErrorCodeSchema } from '../error.js';
 import { opaqueTokenSchema, uuidV7Schema } from '../schema.js';
 import { syncEventSchema } from './event.js';
+import { studentOperationTypeSchema } from './operation.js';
 import {
   MAX_SYNC_OPERATIONS,
   MAX_SYNC_PAGE_SIZE,
@@ -15,17 +16,26 @@ const operationErrorFields = {
   retryable: z.literal(false),
 };
 
+export const operationFollowUpSchema = z
+  .object({
+    type: z.literal('class_section_snapshot'),
+    class_section_id: uuidV7Schema,
+  })
+  .strict();
+
 const successResultSchema = z
   .object({
     operation_id: uuidV7Schema,
+    operation_type: studentOperationTypeSchema,
     status: z.enum(['applied', 'replayed']),
-    result: z.record(z.string(), z.unknown()),
+    follow_up: operationFollowUpSchema.nullable(),
   })
   .strict();
 
 const rejectedResultSchema = z
   .object({
     operation_id: uuidV7Schema,
+    operation_type: studentOperationTypeSchema,
     status: z.literal('rejected'),
     error: z
       .object({
@@ -39,6 +49,7 @@ const rejectedResultSchema = z
 const dependencyFailedResultSchema = z
   .object({
     operation_id: uuidV7Schema,
+    operation_type: studentOperationTypeSchema,
     status: z.literal('dependency_failed'),
     error: z
       .object({

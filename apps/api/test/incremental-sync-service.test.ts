@@ -48,8 +48,12 @@ function batchExecutor(): SyncBatchExecutor & {
     execute: vi.fn(async () => [
       {
         operation_id: OPERATION_ID,
+        operation_type: 'follow_class_section' as const,
         status: 'applied' as const,
-        result: { followed: true },
+        follow_up: {
+          type: 'class_section_snapshot' as const,
+          class_section_id: '018f0000-0000-7000-8000-000000002305',
+        },
       },
     ]),
   };

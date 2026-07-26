@@ -2,6 +2,10 @@ import { z } from 'zod';
 
 import { opaqueTokenSchema, uuidV7Schema } from '../schema.js';
 import { MAX_SYNC_PAGE_SIZE, SYNC_PROTOCOL_VERSION } from './limits.js';
+import {
+  snapshotRecordV2Schema,
+  type SnapshotRecordV2,
+} from './snapshot-record.js';
 
 export const snapshotRecordTypeSchema = z.enum([
   'public_user_profile',
@@ -20,14 +24,7 @@ export const snapshotRecordTypeSchema = z.enum([
   'content_tombstone',
 ]);
 
-export const snapshotRecordSchema = z
-  .object({
-    record_type: snapshotRecordTypeSchema,
-    id: uuidV7Schema,
-    revision: z.number().int().min(0),
-    payload: z.record(z.string(), z.unknown()),
-  })
-  .strict();
+export const snapshotRecordSchema = snapshotRecordV2Schema;
 
 const snapshotFields = {
   protocol_version: z.literal(SYNC_PROTOCOL_VERSION),
@@ -115,4 +112,4 @@ export const classSectionSnapshotResponseSchema = z
     );
   });
 
-export type SnapshotRecord = z.infer<typeof snapshotRecordSchema>;
+export type SnapshotRecord = SnapshotRecordV2;

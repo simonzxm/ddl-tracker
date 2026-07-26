@@ -28,7 +28,7 @@ function accountRequest(
   overrides: Partial<AccountRequest> = {},
 ): AccountRequest {
   return {
-    protocol_version: 1,
+    protocol_version: 2,
     mode: 'account_snapshot',
     snapshot_token: null,
     page_token: null,
@@ -100,7 +100,7 @@ function service(options?: { reader?: ReturnType<typeof reader> }) {
   const snapshotReader = options?.reader ?? reader();
   const incremental = {
     execute: vi.fn(async () => ({
-      protocol_version: 1 as const,
+      protocol_version: 2 as const,
       request_id: REQUEST_ID,
       operation_results: [],
       events: [],
@@ -127,7 +127,7 @@ describe('SyncService', () => {
   it('delegates incremental sync unchanged', async () => {
     const fixture = service();
     const request: IncrementalRequest = {
-      protocol_version: 1,
+      protocol_version: 2,
       mode: 'incremental',
       cursor: await fixture.cursorCodec.encode(USER_ID, 0),
       event_limit: 10,
@@ -160,7 +160,11 @@ describe('SyncService', () => {
     expect(response.snapshot_complete).toBe(true);
     expect(response.records[0]).toMatchObject({
       record_type: 'personal_todo',
-      revision: 3,
+      schema_version: 1,
+      payload: {
+        id: RECORD_ID,
+        revision: 3,
+      },
     });
     expect((await fixture.cursorCodec.decode(response.next_cursor ?? '', USER_ID)).sequence).toBe(42);
     expect(fixture.snapshotReader.readAnchor).toHaveBeenCalledOnce();
@@ -212,7 +216,7 @@ describe('SyncService', () => {
     const fixture = service();
     const cursor = await fixture.cursorCodec.encode(USER_ID, 7);
     const request: ClassRequest = {
-      protocol_version: 1,
+      protocol_version: 2,
       mode: 'class_section_snapshot',
       cursor,
       class_section_id: SECTION_ID,

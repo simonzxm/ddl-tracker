@@ -2,6 +2,7 @@ import {
   accountSnapshotResponseSchema,
   classSectionSnapshotResponseSchema,
   snapshotRecordSchema,
+  SYNC_PROTOCOL_VERSION,
   type SyncRequest,
 } from '@ddl-tracker/contracts';
 
@@ -95,16 +96,9 @@ function invalidSnapshot(message: string, cause?: unknown): HttpError {
 }
 
 function wireRecords(page: SnapshotPage) {
-  return page.records.map((record) => {
-    const revision =
-      'revision' in record.payload ? record.payload.revision : 0;
-    return snapshotRecordSchema.parse({
-      record_type: record.record_type,
-      id: record.id,
-      revision,
-      payload: record.payload,
-    });
-  });
+  return page.records.map(({ id: _sortId, ...record }) =>
+    snapshotRecordSchema.parse(record),
+  );
 }
 
 export class SyncService {
@@ -175,7 +169,7 @@ export class SyncService {
       this.#now(),
     );
     return accountSnapshotResponseSchema.parse({
-      protocol_version: 1,
+      protocol_version: SYNC_PROTOCOL_VERSION,
       mode: 'account_snapshot',
       request_id: requestId,
       records: wireRecords(page),
@@ -216,7 +210,7 @@ export class SyncService {
       this.#now(),
     );
     return classSectionSnapshotResponseSchema.parse({
-      protocol_version: 1,
+      protocol_version: SYNC_PROTOCOL_VERSION,
       mode: 'class_section_snapshot',
       class_section_id: request.class_section_id,
       request_id: requestId,

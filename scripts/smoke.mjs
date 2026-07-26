@@ -65,7 +65,7 @@ if (token !== undefined && token.length > 0) {
     method: 'POST',
     headers: { ...headers, 'content-type': 'application/json' },
     body: JSON.stringify({
-      protocol_version: 1,
+      protocol_version: 2,
       mode: 'account_snapshot',
       snapshot_token: null,
       page_token: null,

@@ -7,18 +7,29 @@ import {
 const REQUEST_ID = '018f0000-0000-7000-8000-000000000001';
 const RECORD_ID = '018f0000-0000-7000-8000-000000000002';
 const SECTION_ID = '018f0000-0000-7000-8000-000000000003';
+const NOW = '2026-09-01T00:30:00Z';
 const record = {
   record_type: 'personal_todo',
-  id: RECORD_ID,
-  revision: 3,
-  payload: { title: 'Read' },
+  schema_version: 1,
+  payload: {
+    id: RECORD_ID,
+    class_section_id: null,
+    title: 'Read',
+    deadline: null,
+    note: null,
+    state: 'pending',
+    revision: 3,
+    deleted_at: null,
+    created_at: NOW,
+    updated_at: NOW,
+  },
 };
 
 describe('account snapshot pagination', () => {
   it('requires a page token before completion', () => {
     expect(
       accountSnapshotResponseSchema.parse({
-        protocol_version: 1,
+        protocol_version: 2,
         mode: 'account_snapshot',
         request_id: REQUEST_ID,
         records: [record],
@@ -33,7 +44,7 @@ describe('account snapshot pagination', () => {
   it('returns the anchor cursor only on the complete page', () => {
     expect(
       accountSnapshotResponseSchema.parse({
-        protocol_version: 1,
+        protocol_version: 2,
         mode: 'account_snapshot',
         request_id: REQUEST_ID,
         records: [],
@@ -46,7 +57,7 @@ describe('account snapshot pagination', () => {
 
     expect(() =>
       accountSnapshotResponseSchema.parse({
-        protocol_version: 1,
+        protocol_version: 2,
         mode: 'account_snapshot',
         request_id: REQUEST_ID,
         records: [],
@@ -63,7 +74,7 @@ describe('class-section snapshot pagination', () => {
   it('returns the original resume cursor only on completion', () => {
     expect(
       classSectionSnapshotResponseSchema.parse({
-        protocol_version: 1,
+        protocol_version: 2,
         mode: 'class_section_snapshot',
         request_id: REQUEST_ID,
         class_section_id: SECTION_ID,
@@ -79,7 +90,7 @@ describe('class-section snapshot pagination', () => {
   it('rejects cursors on incomplete pages and unknown record types', () => {
     expect(() =>
       classSectionSnapshotResponseSchema.parse({
-        protocol_version: 1,
+        protocol_version: 2,
         mode: 'class_section_snapshot',
         request_id: REQUEST_ID,
         class_section_id: SECTION_ID,
@@ -92,7 +103,7 @@ describe('class-section snapshot pagination', () => {
     ).toThrow();
     expect(() =>
       accountSnapshotResponseSchema.parse({
-        protocol_version: 1,
+        protocol_version: 2,
         mode: 'account_snapshot',
         request_id: REQUEST_ID,
         records: [{ ...record, record_type: 'password_hash' }],

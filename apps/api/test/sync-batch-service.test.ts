@@ -56,9 +56,9 @@ class FakeTransaction implements SyncBatchTransaction {
     }
     if (this.rejected.has(value.operation_id)) {
       throw new SyncOperationRejection({
-        code: 'revision_conflict',
-        message: 'Revision changed.',
-        details: { current_revision: 2 },
+        code: 'conflict',
+        message: 'Operation was rejected.',
+        details: {},
       });
     }
     return {

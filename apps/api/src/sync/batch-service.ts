@@ -1,6 +1,7 @@
-import type {
-  OperationEnvelope,
-  StudentOperationType,
+import {
+  operationResultSchema,
+  type OperationEnvelope,
+  type OperationResult,
 } from '@ddl-tracker/contracts';
 
 const RECEIPT_TTL_MS = 180 * 24 * 60 * 60 * 1000;
@@ -35,19 +36,7 @@ export interface StoredOperationReceipt {
   expiresAt: Date;
 }
 
-export type SyncOperationResult =
-  | {
-      operation_id: string;
-      operation_type: StudentOperationType;
-      status: 'applied' | 'replayed';
-      follow_up: SyncOperationFollowUp;
-    }
-  | {
-      operation_id: string;
-      operation_type: StudentOperationType;
-      status: 'rejected' | 'dependency_failed';
-      error: SyncOperationErrorValue;
-    };
+export type SyncOperationResult = OperationResult;
 
 export interface SyncBatchTransaction {
   getReceipt(
@@ -146,22 +135,22 @@ function resultFromReceipt(
     if (receipt.result === null) {
       throw new Error('Applied operation receipt is missing its result.');
     }
-    return {
+    return operationResultSchema.parse({
       operation_id: receipt.operationId,
       operation_type: operation.type,
       status: 'replayed',
       follow_up: followUpFor(operation, receipt.result),
-    };
+    });
   }
   if (receipt.error === null) {
     throw new Error('Rejected operation receipt is missing its error.');
   }
-  return {
+  return operationResultSchema.parse({
     operation_id: receipt.operationId,
     operation_type: operation.type,
     status: receipt.status,
     error: receipt.error,
-  };
+  });
 }
 
 export class SyncBatchService {
@@ -194,18 +183,18 @@ export class SyncBatchService {
           const result =
             receipt.requestDigest === requestDigest
               ? resultFromReceipt(receipt, operation)
-              : {
+              : operationResultSchema.parse({
                   operation_id: operation.operation_id,
                   operation_type: operation.type,
-                  status: 'rejected' as const,
+                  status: 'rejected',
                   error: {
                     code: 'operation_id_reused',
                     details: {},
                     message:
                       'Operation ID was already used with different content.',
-                    retryable: false as const,
+                    retryable: false,
                   },
-                };
+                });
           results.push(result);
           resultByOperationId.set(operation.operation_id, result);
           continue;
@@ -229,12 +218,12 @@ export class SyncBatchService {
             retryable: false,
           };
           const now = this.#now();
-          const result: SyncOperationResult = {
+          const result = operationResultSchema.parse({
             operation_id: operation.operation_id,
             operation_type: operation.type,
             status: 'dependency_failed',
             error,
-          };
+          });
           await transaction.saveReceipt({
             userId,
             operationId: operation.operation_id,
@@ -269,12 +258,12 @@ export class SyncBatchService {
                 createdAt: now,
                 expiresAt: new Date(now.getTime() + RECEIPT_TTL_MS),
               });
-              return {
+              return operationResultSchema.parse({
                 operation_id: operation.operation_id,
                 operation_type: operation.type,
-                status: 'applied' as const,
+                status: 'applied',
                 follow_up: followUpFor(operation, execution),
-              };
+              });
             },
           );
           results.push(result);
@@ -285,12 +274,12 @@ export class SyncBatchService {
           }
           const stableError = rejectionValue(error);
           const now = this.#now();
-          const result: SyncOperationResult = {
+          const result = operationResultSchema.parse({
             operation_id: operation.operation_id,
             operation_type: operation.type,
             status: 'rejected',
             error: stableError,
-          };
+          });
           await transaction.saveReceipt({
             userId,
             operationId: operation.operation_id,

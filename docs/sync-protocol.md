@@ -96,7 +96,7 @@
 
 完成后响应给出 `resume_cursor`，等于请求开始时的原 cursor。客户端从该 cursor 重新做 incremental pull，以覆盖快照过程中发生的变化；其他 scope 可能收到重复事件，必须幂等处理。
 
-浏览快照不建立关注关系。成功执行 `follow_class_section` 后，operation result 会标记 `class_section_snapshot_required = true`；客户端必须取得快照后再认为该班已完整同步。
+浏览快照不建立关注关系。成功执行 `follow_class_section` 后，operation result 的 `follow_up` 会要求取得对应教学班快照；客户端完成该快照前不能认为该班已完整同步。
 
 ### 增量 push/pull
 
@@ -132,11 +132,9 @@
   "operation_results": [
     {
       "operation_id": "018f...",
+      "operation_type": "set_personal_task_state",
       "status": "applied",
-      "result": {
-        "course_task_id": "018f...",
-        "revision": 4
-      }
+      "follow_up": null
     }
   ],
   "events": [
@@ -226,7 +224,7 @@ Mutable 操作必须携带 `expected_revision`。创建使用 revision `1`；每
 - 每个 accepted operation 的状态修改、聚合、事件和 receipt 原子产生。
 - 连接丢失、serialization failure 或最终 commit 失败时整个批次失败，HTTP 返回可重试错误，不返回任何 operation 已成功的声明。
 
-`operation_results` 顺序必须与请求 operations 一致，状态只能是：
+`operation_results` 顺序必须与请求 operations 一致。每项重复给出稳定的 `operation_type`；成功项的 `follow_up` 为 `null`，或明确要求客户端执行一次 `class_section_snapshot`。服务端实体状态由同一响应中的事件收敛，不在成功结果中复制任意键值对象。状态只能是：
 
 - `applied`：首次成功执行。
 - `replayed`：先前已执行，返回相同结果。

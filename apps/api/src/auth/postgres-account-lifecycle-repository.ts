@@ -24,6 +24,8 @@ function toPublicUser(row: UserRow): PublicUser {
     id: row.id,
     username: row.username,
     displayName: row.display_name,
+    avatarUrl: row.avatar_url,
+    bio: row.bio,
     status: row.status,
     profileRevision: row.profile_revision,
   };
@@ -59,6 +61,8 @@ export class PostgresAccountLifecycleRepository
     userId: string;
     username: string;
     displayName: string;
+    avatarUrl: string | null;
+    bio: string | null;
     expectedRevision: number;
     now: Date;
     eventId: string;
@@ -72,17 +76,21 @@ export class PostgresAccountLifecycleRepository
            set username = $2,
                username_key = $2,
                display_name = $3,
+               avatar_url = $4,
+               bio = $5,
                profile_revision = profile_revision + 1,
-               updated_at = $5
+               updated_at = $7
            where id = $1
              and status = 'active'
-             and profile_revision = $4
+             and profile_revision = $6
            returning id, username, display_name, avatar_url, bio, status,
                      profile_revision, created_at, updated_at`,
           [
             input.userId,
             input.username,
             input.displayName,
+            input.avatarUrl,
+            input.bio,
             input.expectedRevision,
             input.now,
           ],

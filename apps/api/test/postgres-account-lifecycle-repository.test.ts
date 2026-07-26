@@ -57,13 +57,20 @@ describePostgres('PostgresAccountLifecycleRepository', () => {
         userId: USER_ID,
         username: 'new_name',
         displayName: 'New Name',
+        avatarUrl: 'https://example.com/avatar.png',
+        bio: 'Course representative',
         expectedRevision: 1,
         now: NOW,
         eventId: EVENT_ID,
       }),
     ).resolves.toMatchObject({
       kind: 'success',
-      user: { username: 'new_name', profileRevision: 2 },
+      user: {
+        username: 'new_name',
+        avatarUrl: 'https://example.com/avatar.png',
+        bio: 'Course representative',
+        profileRevision: 2,
+      },
     });
 
     const event = await client.query<{ type: string; payload: unknown }>(
@@ -76,8 +83,8 @@ describePostgres('PostgresAccountLifecycleRepository', () => {
         id: USER_ID,
         username: 'new_name',
         display_name: 'New Name',
-        avatar_url: null,
-        bio: null,
+        avatar_url: 'https://example.com/avatar.png',
+        bio: 'Course representative',
         status: 'active',
         revision: 2,
         updated_at: NOW.toISOString(),
@@ -93,6 +100,8 @@ describePostgres('PostgresAccountLifecycleRepository', () => {
         userId: USER_ID,
         username: 'new_name',
         displayName: 'New Name',
+        avatarUrl: null,
+        bio: null,
         expectedRevision: 9,
         now: NOW,
         eventId: EVENT_ID,

@@ -18,6 +18,8 @@ const user: PublicUser = {
   id: USER_ID,
   username: 'student',
   displayName: 'Student',
+      avatarUrl: null,
+      bio: null,
   status: 'active',
   profileRevision: 1,
 };
@@ -31,6 +33,10 @@ class FakeAccountRepository implements AccountRepository {
 
   async findUserByIdentity(): Promise<PublicUser | null> {
     return this.accountByIdentity;
+  }
+
+  findRoles(): Promise<'maintainer'[]> {
+    return Promise.resolve(['maintainer']);
   }
 
   async saveRegistrationIdentity(input: RegistrationIdentity): Promise<void> {
@@ -148,6 +154,7 @@ describe('AccountService', () => {
       access_token: 'registration-secret',
       token_type: 'Bearer',
       user,
+      roles: ['maintainer'],
     });
     expect(repository.sessions).toHaveLength(1);
     expect(repository.sessions[0]).toMatchObject({

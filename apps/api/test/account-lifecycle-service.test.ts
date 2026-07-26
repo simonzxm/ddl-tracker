@@ -11,6 +11,8 @@ const user: PublicUser = {
   id: USER_ID,
   username: 'student',
   displayName: 'Student',
+      avatarUrl: null,
+      bio: null,
   status: 'active',
   profileRevision: 1,
 };
@@ -44,6 +46,8 @@ describe('AccountLifecycleService', () => {
       service.updateProfile(USER_ID, {
         username: 'new_name',
         displayName: 'New Name',
+        avatarUrl: null,
+        bio: null,
         expectedRevision: 1,
       }),
     ).resolves.toMatchObject({ username: 'new_name', profileRevision: 2 });
@@ -61,6 +65,8 @@ describe('AccountLifecycleService', () => {
       service.updateProfile(USER_ID, {
         username: 'new_name',
         displayName: 'New Name',
+        avatarUrl: null,
+        bio: null,
         expectedRevision: 1,
       }),
     ).rejects.toMatchObject({
@@ -78,6 +84,8 @@ describe('AccountLifecycleService', () => {
       service.updateProfile(USER_ID, {
         username: 'taken_name',
         displayName: 'Name',
+        avatarUrl: null,
+        bio: null,
         expectedRevision: 1,
       }),
     ).rejects.toMatchObject({ code: 'username_taken' });
@@ -85,6 +93,8 @@ describe('AccountLifecycleService', () => {
       service.updateProfile(USER_ID, {
         username: 'INVALID',
         displayName: 'Name',
+        avatarUrl: null,
+        bio: null,
         expectedRevision: 1,
       }),
     ).rejects.toMatchObject({ code: 'invalid_request' });

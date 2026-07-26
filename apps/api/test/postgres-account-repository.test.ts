@@ -31,6 +31,8 @@ function publicUser(overrides?: Partial<PublicUser>): PublicUser {
     id: '018f0000-0000-7000-8000-000000000102',
     username: 'student',
     displayName: 'Student',
+      avatarUrl: null,
+      bio: null,
     status: 'active',
     profileRevision: 1,
     ...overrides,
@@ -85,7 +87,14 @@ describePostgres('PostgresAccountRepository', () => {
         session: session(),
       }),
     ).resolves.toBe('success');
+    await client.query(
+      `insert into user_roles (user_id, role) values ($1, 'maintainer')`,
+      [publicUser().id],
+    );
 
+    await expect(repository.findRoles(publicUser().id)).resolves.toEqual([
+      'maintainer',
+    ]);
     await expect(
       repository.findUserByIdentity('email', 'student@example.edu'),
     ).resolves.toEqual(publicUser());
@@ -94,7 +103,7 @@ describePostgres('PostgresAccountRepository', () => {
     ).resolves.toMatchObject({
       user: publicUser(),
       session: session(),
-      roles: [],
+      roles: ['maintainer'],
     });
 
     await expect(

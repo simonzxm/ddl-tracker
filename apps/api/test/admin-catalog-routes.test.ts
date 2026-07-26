@@ -17,6 +17,8 @@ function principal(maintainer: boolean): AuthenticatedPrincipal {
       id: USER_ID,
       username: 'maintainer',
       displayName: 'Maintainer',
+      avatarUrl: null,
+      bio: null,
       status: 'active',
       profileRevision: 1,
     },

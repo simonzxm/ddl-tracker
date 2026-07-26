@@ -1,0 +1,420 @@
+{
+  "protocol_version": 2,
+  "responses": [
+    {
+      "name": "account_first_page",
+      "schema": "account_snapshot",
+      "value": {
+        "protocol_version": 2,
+        "mode": "account_snapshot",
+        "request_id": "018f0000-0000-7000-8000-000000000001",
+        "records": [
+          {
+            "record_type": "catalog_revision",
+            "schema_version": 1,
+            "payload": {
+              "revision": 7,
+              "updated_at": "2026-09-01T00:30:00Z"
+            }
+          }
+        ],
+        "snapshot_token": "snapshot-account",
+        "next_page_token": "page-2",
+        "snapshot_complete": false,
+        "next_cursor": null
+      }
+    },
+    {
+      "name": "account_middle_page",
+      "schema": "account_snapshot",
+      "value": {
+        "protocol_version": 2,
+        "mode": "account_snapshot",
+        "request_id": "018f0000-0000-7000-8000-000000000001",
+        "records": [
+          {
+            "record_type": "personal_todo",
+            "schema_version": 1,
+            "payload": {
+              "id": "018f0000-0000-7000-8000-000000000030",
+              "class_section_id": null,
+              "title": "Read chapter 3",
+              "deadline": null,
+              "note": null,
+              "state": "pending",
+              "revision": 2,
+              "deleted_at": null,
+              "created_at": "2026-09-01T00:30:00Z",
+              "updated_at": "2026-09-01T00:30:00Z"
+            }
+          }
+        ],
+        "snapshot_token": "snapshot-account",
+        "next_page_token": "page-3",
+        "snapshot_complete": false,
+        "next_cursor": null
+      }
+    },
+    {
+      "name": "account_complete_page",
+      "schema": "account_snapshot",
+      "value": {
+        "protocol_version": 2,
+        "mode": "account_snapshot",
+        "request_id": "018f0000-0000-7000-8000-000000000001",
+        "records": [],
+        "snapshot_token": "snapshot-account",
+        "next_page_token": null,
+        "snapshot_complete": true,
+        "next_cursor": "cursor-anchor"
+      }
+    },
+    {
+      "name": "class_section_complete",
+      "schema": "class_section_snapshot",
+      "value": {
+        "protocol_version": 2,
+        "mode": "class_section_snapshot",
+        "request_id": "018f0000-0000-7000-8000-000000000001",
+        "class_section_id": "018f0000-0000-7000-8000-000000000020",
+        "records": [
+          {
+            "record_type": "class_section",
+            "schema_version": 1,
+            "payload": {
+              "id": "018f0000-0000-7000-8000-000000000020",
+              "course_id": "018f0000-0000-7000-8000-000000000021",
+              "external_section_id": "2026-001",
+              "section_number": "01",
+              "department_code": "CS",
+              "department_name": "Computer Science",
+              "instructors": [
+                "Ada Lovelace"
+              ],
+              "campus": "Xianlin",
+              "capacity": 120,
+              "schedule_text": "Monday 08:00",
+              "active": true,
+              "revision": 2,
+              "created_at": "2026-09-01T00:30:00Z",
+              "updated_at": "2026-09-01T00:30:00Z"
+            }
+          }
+        ],
+        "snapshot_token": "snapshot-section",
+        "next_page_token": null,
+        "snapshot_complete": true,
+        "resume_cursor": "cursor-before-section"
+      }
+    },
+    {
+      "name": "incremental_all_operation_statuses",
+      "schema": "incremental",
+      "value": {
+        "protocol_version": 2,
+        "mode": "incremental",
+        "request_id": "018f0000-0000-7000-8000-000000000001",
+        "operation_results": [
+          {
+            "operation_id": "018f0000-0000-7000-8000-000000000010",
+            "operation_type": "create_personal_todo",
+            "status": "applied",
+            "follow_up": null
+          },
+          {
+            "operation_id": "018f0000-0000-7000-8000-000000000011",
+            "operation_type": "follow_class_section",
+            "status": "replayed",
+            "follow_up": {
+              "type": "class_section_snapshot",
+              "class_section_id": "018f0000-0000-7000-8000-000000000020"
+            }
+          },
+          {
+            "operation_id": "018f0000-0000-7000-8000-000000000012",
+            "operation_type": "update_personal_todo",
+            "status": "rejected",
+            "error": {
+              "code": "revision_conflict",
+              "details": {
+                "entity_type": "personal_todo",
+                "expected_revision": 1,
+                "current_revision": 2,
+                "current": {
+                  "id": "018f0000-0000-7000-8000-000000000030",
+                  "class_section_id": null,
+                  "title": "Read chapter 3",
+                  "deadline": null,
+                  "note": null,
+                  "state": "pending",
+                  "revision": 2,
+                  "deleted_at": null,
+                  "created_at": "2026-09-01T00:30:00Z",
+                  "updated_at": "2026-09-01T00:30:00Z"
+                }
+              },
+              "message": "Personal todo revision does not match.",
+              "retryable": false
+            }
+          },
+          {
+            "operation_id": "018f0000-0000-7000-8000-000000000013",
+            "operation_type": "delete_personal_todo",
+            "status": "dependency_failed",
+            "error": {
+              "code": "dependency_failed",
+              "details": {
+                "failed_operation_ids": [
+                  "018f0000-0000-7000-8000-000000000012"
+                ]
+              },
+              "message": "A declared operation dependency failed.",
+              "retryable": false
+            }
+          }
+        ],
+        "events": [
+          {
+            "event_id": "018f0000-0000-7000-8000-000000000040",
+            "schema_version": 2,
+            "type": "personal_todo_upserted",
+            "occurred_at": "2026-09-01T00:30:00Z",
+            "payload": {
+              "id": "018f0000-0000-7000-8000-000000000030",
+              "class_section_id": null,
+              "title": "Read chapter 3",
+              "deadline": null,
+              "note": null,
+              "state": "pending",
+              "revision": 2,
+              "deleted_at": null,
+              "created_at": "2026-09-01T00:30:00Z",
+              "updated_at": "2026-09-01T00:30:00Z"
+            }
+          }
+        ],
+        "next_cursor": "cursor-next",
+        "has_more": false
+      }
+    }
+  ],
+  "errors": [
+    {
+      "name": "cursor_expired",
+      "value": {
+        "code": "cursor_expired",
+        "details": {
+          "minimum_sequence": 42
+        },
+        "message": "Sync cursor expired.",
+        "retryable": false,
+        "request_id": "018f0000-0000-7000-8000-000000000001"
+      }
+    }
+  ],
+  "invalid_responses": [
+    {
+      "name": "unknown_protocol_version",
+      "schema": "incremental",
+      "value": {
+        "protocol_version": 3,
+        "mode": "incremental",
+        "request_id": "018f0000-0000-7000-8000-000000000001",
+        "operation_results": [
+          {
+            "operation_id": "018f0000-0000-7000-8000-000000000010",
+            "operation_type": "create_personal_todo",
+            "status": "applied",
+            "follow_up": null
+          },
+          {
+            "operation_id": "018f0000-0000-7000-8000-000000000011",
+            "operation_type": "follow_class_section",
+            "status": "replayed",
+            "follow_up": {
+              "type": "class_section_snapshot",
+              "class_section_id": "018f0000-0000-7000-8000-000000000020"
+            }
+          },
+          {
+            "operation_id": "018f0000-0000-7000-8000-000000000012",
+            "operation_type": "update_personal_todo",
+            "status": "rejected",
+            "error": {
+              "code": "revision_conflict",
+              "details": {
+                "entity_type": "personal_todo",
+                "expected_revision": 1,
+                "current_revision": 2,
+                "current": {
+                  "id": "018f0000-0000-7000-8000-000000000030",
+                  "class_section_id": null,
+                  "title": "Read chapter 3",
+                  "deadline": null,
+                  "note": null,
+                  "state": "pending",
+                  "revision": 2,
+                  "deleted_at": null,
+                  "created_at": "2026-09-01T00:30:00Z",
+                  "updated_at": "2026-09-01T00:30:00Z"
+                }
+              },
+              "message": "Personal todo revision does not match.",
+              "retryable": false
+            }
+          },
+          {
+            "operation_id": "018f0000-0000-7000-8000-000000000013",
+            "operation_type": "delete_personal_todo",
+            "status": "dependency_failed",
+            "error": {
+              "code": "dependency_failed",
+              "details": {
+                "failed_operation_ids": [
+                  "018f0000-0000-7000-8000-000000000012"
+                ]
+              },
+              "message": "A declared operation dependency failed.",
+              "retryable": false
+            }
+          }
+        ],
+        "events": [
+          {
+            "event_id": "018f0000-0000-7000-8000-000000000040",
+            "schema_version": 2,
+            "type": "personal_todo_upserted",
+            "occurred_at": "2026-09-01T00:30:00Z",
+            "payload": {
+              "id": "018f0000-0000-7000-8000-000000000030",
+              "class_section_id": null,
+              "title": "Read chapter 3",
+              "deadline": null,
+              "note": null,
+              "state": "pending",
+              "revision": 2,
+              "deleted_at": null,
+              "created_at": "2026-09-01T00:30:00Z",
+              "updated_at": "2026-09-01T00:30:00Z"
+            }
+          }
+        ],
+        "next_cursor": "cursor-next",
+        "has_more": false
+      }
+    },
+    {
+      "name": "unknown_event_version",
+      "schema": "incremental",
+      "value": {
+        "protocol_version": 2,
+        "mode": "incremental",
+        "request_id": "018f0000-0000-7000-8000-000000000001",
+        "operation_results": [
+          {
+            "operation_id": "018f0000-0000-7000-8000-000000000010",
+            "operation_type": "create_personal_todo",
+            "status": "applied",
+            "follow_up": null
+          },
+          {
+            "operation_id": "018f0000-0000-7000-8000-000000000011",
+            "operation_type": "follow_class_section",
+            "status": "replayed",
+            "follow_up": {
+              "type": "class_section_snapshot",
+              "class_section_id": "018f0000-0000-7000-8000-000000000020"
+            }
+          },
+          {
+            "operation_id": "018f0000-0000-7000-8000-000000000012",
+            "operation_type": "update_personal_todo",
+            "status": "rejected",
+            "error": {
+              "code": "revision_conflict",
+              "details": {
+                "entity_type": "personal_todo",
+                "expected_revision": 1,
+                "current_revision": 2,
+                "current": {
+                  "id": "018f0000-0000-7000-8000-000000000030",
+                  "class_section_id": null,
+                  "title": "Read chapter 3",
+                  "deadline": null,
+                  "note": null,
+                  "state": "pending",
+                  "revision": 2,
+                  "deleted_at": null,
+                  "created_at": "2026-09-01T00:30:00Z",
+                  "updated_at": "2026-09-01T00:30:00Z"
+                }
+              },
+              "message": "Personal todo revision does not match.",
+              "retryable": false
+            }
+          },
+          {
+            "operation_id": "018f0000-0000-7000-8000-000000000013",
+            "operation_type": "delete_personal_todo",
+            "status": "dependency_failed",
+            "error": {
+              "code": "dependency_failed",
+              "details": {
+                "failed_operation_ids": [
+                  "018f0000-0000-7000-8000-000000000012"
+                ]
+              },
+              "message": "A declared operation dependency failed.",
+              "retryable": false
+            }
+          }
+        ],
+        "events": [
+          {
+            "event_id": "018f0000-0000-7000-8000-000000000040",
+            "schema_version": 99,
+            "type": "personal_todo_upserted",
+            "occurred_at": "2026-09-01T00:30:00Z",
+            "payload": {
+              "id": "018f0000-0000-7000-8000-000000000030",
+              "class_section_id": null,
+              "title": "Read chapter 3",
+              "deadline": null,
+              "note": null,
+              "state": "pending",
+              "revision": 2,
+              "deleted_at": null,
+              "created_at": "2026-09-01T00:30:00Z",
+              "updated_at": "2026-09-01T00:30:00Z"
+            }
+          }
+        ],
+        "next_cursor": "cursor-next",
+        "has_more": false
+      }
+    },
+    {
+      "name": "unknown_snapshot_record_version",
+      "schema": "account_snapshot",
+      "value": {
+        "protocol_version": 2,
+        "mode": "account_snapshot",
+        "request_id": "018f0000-0000-7000-8000-000000000001",
+        "records": [
+          {
+            "record_type": "catalog_revision",
+            "schema_version": 2,
+            "payload": {
+              "revision": 7,
+              "updated_at": "2026-09-01T00:30:00Z"
+            }
+          }
+        ],
+        "snapshot_token": "snapshot-account",
+        "next_page_token": null,
+        "snapshot_complete": true,
+        "next_cursor": "cursor-anchor"
+      }
+    }
+  ]
+}

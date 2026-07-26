@@ -1,11 +1,30 @@
 import type { Client } from 'pg';
 
 import { HttpError } from '../http/errors.js';
+import { PostgresSyncEventStore } from '../sync/postgres-event-store.js';
+
+interface PublicProfileRow {
+  id: string;
+  username: string;
+  display_name: string;
+  avatar_url: string | null;
+  bio: string | null;
+  status: 'active' | 'suspended';
+  profile_revision: number;
+  created_at: Date;
+  updated_at: Date;
+}
+
+type LockedUserRow = Omit<PublicProfileRow, 'status'> & {
+  status: PublicProfileRow['status'] | 'deleted';
+  maintainer: boolean;
+};
 
 const MAINTAINER_LOCK = 4_819_251;
 
 export class PostgresMaintainerAccessRepository {
   readonly #client: Client;
+  readonly #events: PostgresSyncEventStore;
   readonly #createId: () => string;
   readonly #now: () => Date;
 
@@ -14,6 +33,9 @@ export class PostgresMaintainerAccessRepository {
     options: { createId: () => string; now?: () => Date },
   ) {
     this.#client = client;
+    this.#events = new PostgresSyncEventStore(client, {
+      createId: options.createId,
+    });
     this.#createId = options.createId;
     this.#now = options.now ?? (() => new Date());
   }
@@ -125,11 +147,9 @@ export class PostgresMaintainerAccessRepository {
   }): Promise<{ status: 'active' | 'suspended'; changed: boolean }> {
     return this.#transaction(async () => {
       await this.#lockMaintainers();
-      const user = await this.#client.query<{
-        status: 'active' | 'suspended' | 'deleted';
-        maintainer: boolean;
-      }>(
-        `select u.status,
+      const user = await this.#client.query<LockedUserRow>(
+        `select u.id, u.username, u.display_name, u.avatar_url, u.bio,
+                u.status, u.profile_revision, u.created_at, u.updated_at,
                 exists (
                   select 1 from user_roles r
                   where r.user_id = u.id and r.role = 'maintainer'
@@ -163,13 +183,19 @@ export class PostgresMaintainerAccessRepository {
         }
       }
       const now = this.#now();
-      await this.#client.query(
+      const updated = await this.#client.query<PublicProfileRow>(
         `update users
          set status = $2, profile_revision = profile_revision + 1,
              updated_at = $3
-         where id = $1`,
+         where id = $1
+         returning id, username, display_name, avatar_url, bio, status,
+                   profile_revision, created_at, updated_at`,
         [input.targetUserId, desired, now],
       );
+      const updatedProfile = updated.rows[0];
+      if (updatedProfile === undefined) {
+        throw new Error('Updated user profile was not returned.');
+      }
       if (input.suspended) {
         await this.#client.query(
           `update sessions
@@ -203,17 +229,24 @@ export class PostgresMaintainerAccessRepository {
         requestId: input.requestId,
         result: { status: desired },
       });
-      await this.#client.query(
-        `insert into sync_events (
-           event_id, scope, type, schema_version, payload, occurred_at
-         ) values ($1, 'authenticated_global', 'public_user_profile_updated',
-                   1, $2::jsonb, $3)`,
-        [
-          this.#createId(),
-          JSON.stringify({ user_id: input.targetUserId, status: desired }),
-          now,
-        ],
-      );
+      await this.#events.append({
+        scope: 'authenticated_global',
+        occurredAt: now,
+        event: {
+          type: 'public_user_profile_updated',
+          payload: {
+            id: updatedProfile.id,
+            username: updatedProfile.username,
+            display_name: updatedProfile.display_name,
+            avatar_url: updatedProfile.avatar_url,
+            bio: updatedProfile.bio,
+            status: updatedProfile.status,
+            revision: updatedProfile.profile_revision,
+            created_at: updatedProfile.created_at.toISOString(),
+            updated_at: updatedProfile.updated_at.toISOString(),
+          },
+        },
+      });
       return { status: desired, changed: true };
     });
   }

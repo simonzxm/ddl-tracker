@@ -20,6 +20,21 @@ export const termStatusOverride = pgEnum('term_status_override', [
   'archived',
 ]);
 
+export const catalogRevision = pgTable(
+  'catalog_revision',
+  {
+    singletonId: integer('singleton_id').primaryKey().default(1),
+    revision: integer('revision').default(1).notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    check('catalog_revision_singleton', sql`${table.singletonId} = 1`),
+    check('catalog_revision_positive', sql`${table.revision} > 0`),
+  ],
+);
+
 export const academicTerms = pgTable(
   'academic_terms',
   {

@@ -23,7 +23,7 @@ const SECRET = '0123456789abcdef0123456789abcdef';
 
 function request(cursor: string): IncrementalSyncRequest {
   return {
-    protocol_version: 1,
+    protocol_version: 2,
     mode: 'incremental',
     cursor,
     event_limit: 200,
@@ -111,7 +111,7 @@ describe('IncrementalSyncService', () => {
       batches.execute.mock.invocationCallOrder[0] ?? Number.MAX_SAFE_INTEGER,
     );
     expect(response).toMatchObject({
-      protocol_version: 1,
+      protocol_version: 2,
       request_id: REQUEST_ID,
       operation_results: [{ status: 'applied' }],
       events: [{ event_id: EVENT_ID }],

@@ -1,4 +1,8 @@
-import type { OperationEnvelope, SyncRequest } from '@ddl-tracker/contracts';
+import {
+  SYNC_PROTOCOL_VERSION,
+  type OperationEnvelope,
+  type SyncRequest,
+} from '@ddl-tracker/contracts';
 
 type IncrementalSyncRequest = Extract<SyncRequest, { mode: 'incremental' }>;
 
@@ -47,7 +51,7 @@ export class IncrementalSyncService {
     requestId: string;
     request: IncrementalSyncRequest;
   }): Promise<{
-    protocol_version: 1;
+    protocol_version: typeof SYNC_PROTOCOL_VERSION;
     request_id: string;
     operation_results: SyncOperationResult[];
     events: SyncEventPage['events'];
@@ -94,7 +98,7 @@ export class IncrementalSyncService {
     );
 
     return {
-      protocol_version: 1,
+      protocol_version: SYNC_PROTOCOL_VERSION,
       request_id: input.requestId,
       operation_results: operationResults,
       events: page.events,

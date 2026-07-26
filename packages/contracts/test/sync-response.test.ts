@@ -76,7 +76,7 @@ describe('incremental sync response', () => {
   it('accepts committed partial success with events and an opaque cursor', () => {
     expect(
       incrementalSyncResponseSchema.parse({
-        protocol_version: 1,
+        protocol_version: 2,
         request_id: REQUEST_ID,
         operation_results: [
           {
@@ -109,7 +109,7 @@ describe('incremental sync response', () => {
   it('rejects leaked sequence and oversized result pages through child schemas', () => {
     expect(() =>
       incrementalSyncResponseSchema.parse({
-        protocol_version: 1,
+        protocol_version: 2,
         request_id: REQUEST_ID,
         operation_results: [],
         events: [

@@ -8,7 +8,7 @@ describe('sync request modes', () => {
   it('accepts account snapshots without cursors or operations', () => {
     expect(
       syncRequestSchema.parse({
-        protocol_version: 1,
+        protocol_version: 2,
         mode: 'account_snapshot',
         snapshot_token: null,
         page_token: null,
@@ -21,7 +21,7 @@ describe('sync request modes', () => {
   it('accepts class-section snapshots with an opaque resume cursor', () => {
     expect(
       syncRequestSchema.parse({
-        protocol_version: 1,
+        protocol_version: 2,
         mode: 'class_section_snapshot',
         cursor: 'cursor-1',
         class_section_id: ID,
@@ -36,7 +36,7 @@ describe('sync request modes', () => {
   it('accepts incremental push and pull within documented limits', () => {
     expect(
       syncRequestSchema.parse({
-        protocol_version: 1,
+        protocol_version: 2,
         mode: 'incremental',
         cursor: 'cursor-1',
         event_limit: 500,
@@ -54,7 +54,7 @@ describe('sync request modes', () => {
   it('rejects mixed modes, unsupported versions, and oversized pages', () => {
     expect(() =>
       syncRequestSchema.parse({
-        protocol_version: 1,
+        protocol_version: 2,
         mode: 'account_snapshot',
         cursor: 'not-allowed',
         snapshot_token: null,
@@ -65,7 +65,7 @@ describe('sync request modes', () => {
     ).toThrow();
     expect(() =>
       syncRequestSchema.parse({
-        protocol_version: 2,
+        protocol_version: 1,
         mode: 'incremental',
         cursor: 'cursor-1',
         event_limit: 200,
@@ -74,7 +74,7 @@ describe('sync request modes', () => {
     ).toThrow();
     expect(() =>
       syncRequestSchema.parse({
-        protocol_version: 1,
+        protocol_version: 2,
         mode: 'incremental',
         cursor: 'cursor-1',
         event_limit: 501,

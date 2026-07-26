@@ -43,7 +43,7 @@ function dependencies(): SyncRouteDependencies & {
     authenticate: vi.fn(async () => principal()),
     rateLimit: vi.fn(async () => undefined),
     handle: vi.fn(async () => ({
-      protocol_version: 1,
+      protocol_version: 2,
       request_id: REQUEST_ID,
       operation_results: [],
       events: [],
@@ -67,7 +67,7 @@ describe('sync route', () => {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
-        protocol_version: 1,
+        protocol_version: 2,
         mode: 'incremental',
         cursor: CURSOR,
         event_limit: 200,
@@ -87,7 +87,7 @@ describe('sync route', () => {
         'content-type': 'application/json',
       },
       body: JSON.stringify({
-        protocol_version: 1,
+        protocol_version: 2,
         mode: 'incremental',
         cursor: CURSOR,
         event_limit: 200,
@@ -122,7 +122,7 @@ describe('sync route', () => {
         'content-type': 'application/json',
       },
       body: JSON.stringify({
-        protocol_version: 1,
+        protocol_version: 2,
         mode: 'incremental',
         cursor: CURSOR,
         event_limit: 200,
@@ -149,7 +149,7 @@ describe('sync route', () => {
         'content-type': 'application/json',
       },
       body: JSON.stringify({
-        protocol_version: 1,
+        protocol_version: 2,
         mode: 'incremental',
         cursor: CURSOR,
         event_limit: 200,
@@ -165,7 +165,7 @@ describe('sync route', () => {
   it('enforces the actual 512 KiB body limit even without content-length', async () => {
     const deps = dependencies();
     const body = JSON.stringify({
-      protocol_version: 1,
+      protocol_version: 2,
       mode: 'incremental',
       cursor: CURSOR,
       event_limit: 200,

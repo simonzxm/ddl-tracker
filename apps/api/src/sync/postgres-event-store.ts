@@ -28,10 +28,10 @@ type ClassSectionPublicEvent = Exclude<
   AuthenticatedGlobalEvent
 >;
 
-type EventMetadata = {
+interface EventMetadata {
   occurredAt: Date;
   eventId?: string;
-};
+}
 
 export type SyncEventDraft = EventMetadata &
   (

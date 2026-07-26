@@ -96,8 +96,12 @@ function invalidSnapshot(message: string, cause?: unknown): HttpError {
 }
 
 function wireRecords(page: SnapshotPage) {
-  return page.records.map(({ id: _sortId, ...record }) =>
-    snapshotRecordSchema.parse(record),
+  return page.records.map((record) =>
+    snapshotRecordSchema.parse({
+      record_type: record.record_type,
+      schema_version: record.schema_version,
+      payload: record.payload,
+    }),
   );
 }
 

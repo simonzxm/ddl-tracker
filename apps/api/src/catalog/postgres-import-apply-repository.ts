@@ -14,6 +14,7 @@ import type {
 } from './import-apply-service.js';
 import { hashCatalogBaseline } from './import-diff.js';
 import { loadCatalogBaseline } from './postgres-catalog-baseline.js';
+import { PostgresSyncEventStore } from '../sync/postgres-event-store.js';
 
 interface ImportRow {
   id: string;
@@ -485,31 +486,22 @@ export class PostgresCatalogImportApplyRepository
        returning s.id, s.external_section_id, s.revision`,
       [termId, importId, now],
     );
-    if (deactivatedSections.rows.length > 0) {
-      const events = deactivatedSections.rows.map((section) => ({
-        event_id: createId(),
-        id: section.id,
-        external_section_id: section.external_section_id,
-        revision: section.revision,
-      }));
-      await this.#client.query(
-        `insert into sync_events (
-           event_id, scope, type, schema_version, payload, occurred_at
-         )
-         select event.event_id, 'authenticated_global',
-                'class_section_deactivated', 1,
-                jsonb_build_object(
-                  'id', event.id,
-                  'external_section_id', event.external_section_id,
-                  'active', false,
-                  'revision', event.revision
-                ),
-                $2
-         from jsonb_to_recordset($1::jsonb) as event(
-           event_id uuid, id uuid, external_section_id text, revision integer
-         )`,
-        [JSON.stringify(events), now],
-      );
+    const events = new PostgresSyncEventStore(this.#client, { createId });
+    for (const section of deactivatedSections.rows) {
+      await events.append({
+        scope: 'authenticated_global',
+        occurredAt: now,
+        event: {
+          type: 'class_section_deactivated',
+          payload: {
+            id: section.id,
+            external_section_id: section.external_section_id,
+            active: false,
+            revision: section.revision,
+            updated_at: now.toISOString(),
+          },
+        },
+      });
     }
 
     await this.#client.query(

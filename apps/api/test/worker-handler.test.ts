@@ -97,6 +97,7 @@ describe('createWorkerHandler', () => {
 
     expect(response.status).toBe(503);
     expect(response.headers.get('access-control-allow-origin')).toBe('*');
+    expect(response.headers.get('retry-after')).toBe('1');
     expect(response.headers.get('x-request-id')).toMatch(/^[0-9a-f-]{36}$/u);
     await expect(response.json()).resolves.toMatchObject({
       code: 'temporarily_unavailable',

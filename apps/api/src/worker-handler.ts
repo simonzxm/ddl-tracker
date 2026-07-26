@@ -101,6 +101,7 @@ function databaseUnavailableResponse(
   const error = new HttpError({
     code: 'temporarily_unavailable',
     message: 'Service is temporarily unavailable.',
+    retryAfter: 1,
     retryable: true,
     status: 503,
   });
@@ -109,6 +110,7 @@ function databaseUnavailableResponse(
     headers: {
       'access-control-allow-origin': '*',
       'access-control-expose-headers': 'X-Request-ID,Retry-After',
+      'retry-after': '1',
       'x-request-id': requestId,
     },
   });

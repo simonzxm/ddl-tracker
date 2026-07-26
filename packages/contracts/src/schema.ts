@@ -6,7 +6,7 @@ import {
   countUnicodeScalars,
   normalizePlainText,
 } from './validation.js';
-import { parseUuidV7 } from './uuid.js';
+import { parseUuidV7, UUID_V7_PATTERN } from './uuid.js';
 
 function transformedString(
   parser: (value: string) => string,
@@ -24,8 +24,13 @@ function transformedString(
   });
 }
 
-export const uuidV7Schema = transformedString(parseUuidV7);
-export const rfc3339TimestampSchema = transformedString(canonicalizeTimestamp);
+export const uuidV7Schema = transformedString(parseUuidV7).meta({
+  format: 'uuid',
+  pattern: UUID_V7_PATTERN,
+});
+export const rfc3339TimestampSchema = transformedString(
+  canonicalizeTimestamp,
+).meta({ format: 'date-time' });
 export const evidenceUrlSchema = transformedString(canonicalizeEvidenceUrl).meta({
   format: 'uri',
   maxLength: 2048,

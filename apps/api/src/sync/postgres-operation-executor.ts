@@ -300,7 +300,6 @@ export class PostgresStudentOperationExecutor {
   readonly #client: Client;
   readonly #events: PostgresSyncEventStore;
   readonly #now: () => Date;
-  readonly #createId: () => string;
 
   constructor(
     client: Client,
@@ -311,7 +310,6 @@ export class PostgresStudentOperationExecutor {
       createId: options.createId,
     });
     this.#now = options.now ?? (() => new Date());
-    this.#createId = options.createId;
   }
 
   execute(
@@ -385,7 +383,7 @@ export class PostgresStudentOperationExecutor {
     await this.#events.append({
       scope: 'maintainer_private',
       occurredAt,
-      event: { type, payload } as MaintainerEventDraft,
+      event: { type, payload },
     });
   }
 

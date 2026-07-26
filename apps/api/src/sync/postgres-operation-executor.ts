@@ -719,8 +719,9 @@ export class PostgresStudentOperationExecutor {
         throw new Error('Proposal insert returned no row.');
       }
       await this.#client.query(
-        `insert into proposal_vote_totals (proposal_id, up, down, updated_at)
-         values ($1, 0, 0, $2)`,
+        `insert into proposal_vote_totals (
+           proposal_id, up, down, revision, updated_at
+         ) values ($1, 0, 0, 1, $2)`,
         [row.id, input.now],
       );
       return row;
@@ -886,16 +887,21 @@ export class PostgresStudentOperationExecutor {
     });
     await this.#client.query(
       `insert into accuracy_votes (
-         user_id, proposal_id, direction, created_at, updated_at
-       ) values ($1, $2, 'up', $3, $3)`,
+         user_id, proposal_id, direction, revision, created_at, updated_at
+       ) values ($1, $2, 'up', 1, $3, $3)`,
       [userId, proposalId, now],
     );
-    await this.#client.query(
+    const initialTotals = await this.#client.query<{ revision: number }>(
       `update proposal_vote_totals
-       set up = 1, down = 0, updated_at = $2
-       where proposal_id = $1`,
+       set up = 1, down = 0, revision = revision + 1, updated_at = $2
+       where proposal_id = $1
+       returning revision`,
       [proposalId, now],
     );
+    const initialTotalsRevision = initialTotals.rows[0]?.revision;
+    if (initialTotalsRevision === undefined) {
+      throw new Error('Initial proposal vote totals are missing.');
+    }
     await this.#appendPublicEvent(
       classSectionId,
       'course_task_created',
@@ -919,13 +925,24 @@ export class PostgresStudentOperationExecutor {
     await this.#appendPublicEvent(
       classSectionId,
       'proposal_vote_totals_updated',
-      { proposal_id: proposalId, up: 1, down: 0, updated_at: now.toISOString() },
+      {
+        proposal_id: proposalId,
+        up: 1,
+        down: 0,
+        revision: initialTotalsRevision,
+        updated_at: now.toISOString(),
+      },
       now,
     );
     await this.#appendPrivateEvent(
       userId,
       'accuracy_vote_updated',
-      { proposal_id: proposalId, value: 'up', updated_at: now.toISOString() },
+      {
+        proposal_id: proposalId,
+        value: 'up',
+        revision: 1,
+        updated_at: now.toISOString(),
+      },
       now,
     );
     return {
@@ -959,7 +976,13 @@ export class PostgresStudentOperationExecutor {
     await this.#appendPublicEvent(
       task.class_section_id,
       'proposal_vote_totals_updated',
-      { proposal_id: proposalId, up: 0, down: 0, updated_at: now.toISOString() },
+      {
+        proposal_id: proposalId,
+        up: 0,
+        down: 0,
+        revision: 1,
+        updated_at: now.toISOString(),
+      },
       now,
     );
     return { course_task_id: taskId, proposal_id: proposalId };
@@ -995,21 +1018,22 @@ export class PostgresStudentOperationExecutor {
     }
     const task = await this.#loadWritableTask(proposalRow.task_id);
     const now = this.#now();
-    if (value === 'none') {
-      await this.#client.query(
-        `delete from accuracy_votes
-         where user_id = $1 and proposal_id = $2`,
-        [userId, proposalId],
-      );
-    } else {
-      await this.#client.query(
-        `insert into accuracy_votes (
-           user_id, proposal_id, direction, created_at, updated_at
-         ) values ($1, $2, $3, $4, $4)
-         on conflict (user_id, proposal_id) do update
-         set direction = excluded.direction, updated_at = excluded.updated_at`,
-        [userId, proposalId, value, now],
-      );
+    const vote = await this.#client.query<{ revision: number }>(
+      `insert into accuracy_votes (
+         user_id, proposal_id, direction, revision, created_at, updated_at
+       ) values ($1, $2, $3, 1, $4, $4)
+       on conflict (user_id, proposal_id) do update
+       set direction = excluded.direction,
+           revision = accuracy_votes.revision + case
+             when accuracy_votes.direction is distinct from excluded.direction
+             then 1 else 0 end,
+           updated_at = excluded.updated_at
+       returning revision`,
+      [userId, proposalId, value, now],
+    );
+    const voteRevision = vote.rows[0]?.revision;
+    if (voteRevision === undefined) {
+      throw new Error('Accuracy vote upsert returned no row.');
     }
     const counts = await this.#client.query<{ up: string; down: string }>(
       `select
@@ -1021,25 +1045,53 @@ export class PostgresStudentOperationExecutor {
     );
     const up = Number(counts.rows[0]?.up ?? '0');
     const down = Number(counts.rows[0]?.down ?? '0');
-    await this.#client.query(
+    const totals = await this.#client.query<{ revision: number }>(
       `update proposal_vote_totals
-       set up = $2, down = $3, updated_at = $4
-       where proposal_id = $1`,
+       set up = $2,
+           down = $3,
+           revision = revision + case
+             when up is distinct from $2 or down is distinct from $3
+             then 1 else 0 end,
+           updated_at = $4
+       where proposal_id = $1
+       returning revision`,
       [proposalId, up, down, now],
     );
+    const totalsRevision = totals.rows[0]?.revision;
+    if (totalsRevision === undefined) {
+      throw new Error('Proposal vote totals are missing.');
+    }
     await this.#appendPublicEvent(
       task.class_section_id,
       'proposal_vote_totals_updated',
-      { proposal_id: proposalId, up, down, updated_at: now.toISOString() },
+      {
+        proposal_id: proposalId,
+        up,
+        down,
+        revision: totalsRevision,
+        updated_at: now.toISOString(),
+      },
       now,
     );
     await this.#appendPrivateEvent(
       userId,
       'accuracy_vote_updated',
-      { proposal_id: proposalId, value, updated_at: now.toISOString() },
+      {
+        proposal_id: proposalId,
+        value,
+        revision: voteRevision,
+        updated_at: now.toISOString(),
+      },
       now,
     );
-    return { proposal_id: proposalId, value, up, down };
+    return {
+      proposal_id: proposalId,
+      value,
+      vote_revision: voteRevision,
+      up,
+      down,
+      totals_revision: totalsRevision,
+    };
   }
 
   async #loadOwnedComment(

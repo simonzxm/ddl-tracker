@@ -38,22 +38,25 @@ describe('public sync state records', () => {
         proposal_id: PROPOSAL_ID,
         up: 4,
         down: 1,
+        revision: 3,
         updated_at: NOW,
       }),
     ).toEqual({
       proposal_id: PROPOSAL_ID,
       up: 4,
       down: 1,
+      revision: 3,
       updated_at: '2026-09-01T00:30:00.000Z',
     });
 
     expect(
       accuracyVoteRecordSchema.parse({
         proposal_id: PROPOSAL_ID,
-        value: 'down',
+        value: 'none',
+        revision: 4,
         updated_at: NOW,
       }),
-    ).toMatchObject({ value: 'down' });
+    ).toMatchObject({ value: 'none', revision: 4 });
   });
 
   it('parses comments, redirects, and task merges', () => {

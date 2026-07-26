@@ -35,7 +35,8 @@ interface ProposalRow {
 
 interface VoteRow {
   user_id: string;
-  direction: 'up' | 'down';
+  direction: 'up' | 'down' | 'none';
+  revision: number;
 }
 
 interface PrivateDetailsRow {
@@ -573,7 +574,7 @@ export class PostgresTaskMergeRepository {
     now: Date;
   }): Promise<void> {
     const result = await this.#client.query<VoteRow & { proposal_id: string }>(
-      `select user_id, proposal_id, direction
+      `select user_id, proposal_id, direction, revision
        from accuracy_votes
        where proposal_id = any($1::uuid[])
        order by user_id, proposal_id
@@ -583,17 +584,22 @@ export class PostgresTaskMergeRepository {
     const canonicalVotes = new Map(
       result.rows
         .filter((vote) => vote.proposal_id === input.canonicalProposalId)
-        .map((vote) => [vote.user_id, vote.direction]),
+        .map((vote) => [vote.user_id, vote]),
     );
     for (const sourceVote of result.rows.filter(
       (vote) => vote.proposal_id === input.sourceProposalId,
     )) {
-      const canonicalDirection = canonicalVotes.get(sourceVote.user_id);
-      if (canonicalDirection === undefined) {
-        await this.#client.query(
+      const canonicalVote = canonicalVotes.get(sourceVote.user_id);
+      if (sourceVote.direction === 'none') {
+        await this.#deleteVote(sourceVote.user_id, input.sourceProposalId);
+        continue;
+      }
+      if (canonicalVote === undefined) {
+        const moved = await this.#client.query<{ revision: number }>(
           `update accuracy_votes
-           set proposal_id = $2, updated_at = $3
-           where user_id = $1 and proposal_id = $4`,
+           set proposal_id = $2, revision = revision + 1, updated_at = $3
+           where user_id = $1 and proposal_id = $4
+           returning revision`,
           [
             sourceVote.user_id,
             input.canonicalProposalId,
@@ -601,45 +607,120 @@ export class PostgresTaskMergeRepository {
             input.sourceProposalId,
           ],
         );
-        canonicalVotes.set(sourceVote.user_id, sourceVote.direction);
-        continue;
-      }
-      if (canonicalDirection === sourceVote.direction) {
-        await this.#client.query(
-          `delete from accuracy_votes
-           where user_id = $1 and proposal_id = $2`,
-          [sourceVote.user_id, input.sourceProposalId],
+        const revision = moved.rows[0]?.revision;
+        if (revision === undefined) throw new Error('Moved vote returned no row.');
+        const vote = { ...sourceVote, revision };
+        canonicalVotes.set(sourceVote.user_id, vote);
+        await this.#voteEvent(
+          sourceVote.user_id,
+          input.canonicalProposalId,
+          sourceVote.direction,
+          revision,
+          'task_merge_moved',
+          input.now,
         );
         continue;
       }
-      await this.#client.query(
-        `delete from accuracy_votes
-         where user_id = $1 and proposal_id = any($2::uuid[])`,
-        [
+      if (canonicalVote.direction === 'none') {
+        const updated = await this.#client.query<{ revision: number }>(
+          `update accuracy_votes
+           set direction = $3, revision = revision + 1, updated_at = $4
+           where user_id = $1 and proposal_id = $2
+           returning revision`,
+          [
+            sourceVote.user_id,
+            input.canonicalProposalId,
+            sourceVote.direction,
+            input.now,
+          ],
+        );
+        await this.#deleteVote(sourceVote.user_id, input.sourceProposalId);
+        const revision = updated.rows[0]?.revision;
+        if (revision === undefined) throw new Error('Merged vote returned no row.');
+        canonicalVotes.set(sourceVote.user_id, {
+          ...canonicalVote,
+          direction: sourceVote.direction,
+          revision,
+        });
+        await this.#voteEvent(
           sourceVote.user_id,
-          [input.sourceProposalId, input.canonicalProposalId],
-        ],
+          input.canonicalProposalId,
+          sourceVote.direction,
+          revision,
+          'task_merge_moved',
+          input.now,
+        );
+        continue;
+      }
+      await this.#deleteVote(sourceVote.user_id, input.sourceProposalId);
+      if (canonicalVote.direction === sourceVote.direction) continue;
+
+      const cleared = await this.#client.query<{ revision: number }>(
+        `update accuracy_votes
+         set direction = 'none', revision = revision + 1, updated_at = $3
+         where user_id = $1 and proposal_id = $2
+         returning revision`,
+        [sourceVote.user_id, input.canonicalProposalId, input.now],
       );
-      canonicalVotes.delete(sourceVote.user_id);
-      await this.#privateEvent(
+      const revision = cleared.rows[0]?.revision;
+      if (revision === undefined) throw new Error('Cleared vote returned no row.');
+      canonicalVotes.set(sourceVote.user_id, {
+        ...canonicalVote,
+        direction: 'none',
+        revision,
+      });
+      await this.#voteEvent(
         sourceVote.user_id,
-        'accuracy_vote_updated',
-        {
-          proposal_id: input.canonicalProposalId,
-          value: 'none',
-          updated_at: input.now.toISOString(),
-          reason: 'task_merge_conflict',
-        },
+        input.canonicalProposalId,
+        'none',
+        revision,
+        'task_merge_conflict',
         input.now,
       );
     }
     await this.#recomputeTotals(input.canonicalProposalId, input.classSectionId, input.now);
     await this.#client.query(
-      `insert into proposal_vote_totals (proposal_id, up, down, updated_at)
-       values ($1, 0, 0, $2)
+      `insert into proposal_vote_totals (
+         proposal_id, up, down, revision, updated_at
+       ) values ($1, 0, 0, 1, $2)
        on conflict (proposal_id) do update
-       set up = 0, down = 0, updated_at = excluded.updated_at`,
+       set up = 0,
+           down = 0,
+           revision = proposal_vote_totals.revision + case
+             when proposal_vote_totals.up <> 0 or proposal_vote_totals.down <> 0
+             then 1 else 0 end,
+           updated_at = excluded.updated_at`,
       [input.sourceProposalId, input.now],
+    );
+  }
+
+  async #deleteVote(userId: string, proposalId: string): Promise<void> {
+    await this.#client.query(
+      `delete from accuracy_votes
+       where user_id = $1 and proposal_id = $2`,
+      [userId, proposalId],
+    );
+  }
+
+  async #voteEvent(
+    userId: string,
+    proposalId: string,
+    value: 'up' | 'down' | 'none',
+    revision: number,
+    reason: 'task_merge_conflict' | 'task_merge_moved',
+    now: Date,
+  ): Promise<void> {
+    await this.#privateEvent(
+      userId,
+      'accuracy_vote_updated',
+      {
+        proposal_id: proposalId,
+        value,
+        revision,
+        updated_at: now.toISOString(),
+        reason,
+      },
+      now,
     );
   }
 
@@ -657,14 +738,23 @@ export class PostgresTaskMergeRepository {
       [proposalId],
     );
     const row = totals.rows[0] ?? { up: 0, down: 0 };
-    await this.#client.query(
-      `insert into proposal_vote_totals (proposal_id, up, down, updated_at)
-       values ($1, $2, $3, $4)
+    const saved = await this.#client.query<{ revision: number }>(
+      `insert into proposal_vote_totals (
+         proposal_id, up, down, revision, updated_at
+       ) values ($1, $2, $3, 1, $4)
        on conflict (proposal_id) do update
-       set up = excluded.up, down = excluded.down,
-           updated_at = excluded.updated_at`,
+       set up = excluded.up,
+           down = excluded.down,
+           revision = proposal_vote_totals.revision + case
+             when proposal_vote_totals.up is distinct from excluded.up
+               or proposal_vote_totals.down is distinct from excluded.down
+             then 1 else 0 end,
+           updated_at = excluded.updated_at
+       returning revision`,
       [proposalId, row.up, row.down, now],
     );
+    const revision = saved.rows[0]?.revision;
+    if (revision === undefined) throw new Error('Recomputed totals returned no row.');
     await this.#publicEvent(
       classSectionId,
       'proposal_vote_totals_updated',
@@ -672,6 +762,7 @@ export class PostgresTaskMergeRepository {
         proposal_id: proposalId,
         up: row.up,
         down: row.down,
+        revision,
         updated_at: now.toISOString(),
       },
       now,

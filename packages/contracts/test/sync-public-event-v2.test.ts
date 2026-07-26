@@ -77,6 +77,7 @@ describe('public sync events v2', () => {
           proposal_id: TASK_ID,
           up: 2,
           down: 1,
+          revision: 3,
         },
       }),
     ).toThrow();

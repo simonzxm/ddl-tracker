@@ -641,9 +641,10 @@ export class PostgresSnapshotReader {
         proposal_id: string;
         up: number;
         down: number;
+        revision: number;
         updated_at: Date;
       }>(
-        `select proposal_id, up, down, updated_at
+        `select proposal_id, up, down, revision, updated_at
          from proposal_vote_totals
          where proposal_id = any($1::uuid[])`,
         [visibleProposalIds],
@@ -654,16 +655,18 @@ export class PostgresSnapshotReader {
             proposal_id: row.proposal_id,
             up: row.up,
             down: row.down,
+            revision: row.revision,
             updated_at: row.updated_at.toISOString(),
           }),
         );
       }
       const votes = await this.#client.query<{
         proposal_id: string;
-        direction: 'up' | 'down';
+        direction: 'up' | 'down' | 'none';
+        revision: number;
         updated_at: Date;
       }>(
-        `select proposal_id, direction, updated_at
+        `select proposal_id, direction, revision, updated_at
          from accuracy_votes
          where user_id = $1 and proposal_id = any($2::uuid[])`,
         [userId, visibleProposalIds],
@@ -673,6 +676,7 @@ export class PostgresSnapshotReader {
           snapshotRecord('accuracy_vote', row.proposal_id, {
             proposal_id: row.proposal_id,
             value: row.direction,
+            revision: row.revision,
             updated_at: row.updated_at.toISOString(),
           }),
         );

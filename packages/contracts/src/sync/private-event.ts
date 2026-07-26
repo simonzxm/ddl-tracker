@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { rfc3339TimestampSchema, uuidV7Schema } from '../schema.js';
+import { accuracyVoteRecordSchema } from './public-record.js';
 import {
   followedClassSectionRecordSchema,
   personalTaskDetailsRecordSchema,
@@ -41,14 +42,11 @@ const classSectionUnfollowedPayloadSchema = z
   })
   .strict();
 
-const accuracyVoteUpdatedPayloadSchema = z
-  .object({
-    proposal_id: uuidV7Schema,
-    value: z.enum(['up', 'down', 'none']),
-    updated_at: rfc3339TimestampSchema,
-    reason: z.literal('task_merge_conflict').optional(),
-  })
-  .strict();
+const accuracyVoteUpdatedPayloadSchema = accuracyVoteRecordSchema.extend({
+  reason: z
+    .enum(['task_merge_conflict', 'task_merge_moved'])
+    .optional(),
+});
 
 const personalTaskDetailsDeletedPayloadSchema =
   personalTaskDetailsTombstoneSchema.extend({

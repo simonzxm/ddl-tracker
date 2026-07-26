@@ -145,7 +145,10 @@ export function registerAuthRoutes(
       return context.json(result);
     }
     return context.json({
-      ...result,
+      kind: result.kind,
+      access_token: result.access_token,
+      token_type: result.token_type,
+      expires_at: result.expires_at,
       user: toCurrentUser(result.user, result.roles),
     });
   });

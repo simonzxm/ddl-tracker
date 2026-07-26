@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
+import { verificationResponseSchema } from '@ddl-tracker/contracts';
+
 import type {
   AuthenticatedPrincipal,
   PublicUser,
@@ -49,6 +51,7 @@ function dependencies(): AuthRouteDependencies {
       expires_at: '2026-07-19T12:15:00.000Z',
     })),
     registerAccount: vi.fn(async () => ({
+      kind: 'session' as const,
       access_token: 'session-token',
       token_type: 'Bearer' as const,
       expires_at: '2027-01-15T12:00:00.000Z',
@@ -140,6 +143,37 @@ describe('authentication routes', () => {
     });
   });
 
+  it('returns roles only inside the current user for session verification', async () => {
+    const auth = dependencies();
+    auth.verifyChallenge = vi.fn(async () => ({
+      kind: 'session' as const,
+      access_token: 'session-token',
+      token_type: 'Bearer' as const,
+      expires_at: '2027-01-15T12:00:00.000Z',
+      user,
+      roles: ['maintainer'] as 'maintainer'[],
+    }));
+    const response = await app(auth).request('/api/v1/auth/email/verifications', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        challenge_id: REQUEST_ID,
+        email: 'student@example.edu',
+        code: '123456',
+        device_name: 'MacBook',
+        device_metadata: {},
+      }),
+    });
+    const body: unknown = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(verificationResponseSchema.parse(body)).toMatchObject({
+      kind: 'session',
+      user: { roles: ['maintainer'] },
+    });
+    expect(body).not.toHaveProperty('roles');
+  });
+
   it('registers an account and maps the public user to snake case', async () => {
     const auth = dependencies();
     const response = await app(auth).request('/api/v1/accounts/registrations', {
@@ -156,6 +190,7 @@ describe('authentication routes', () => {
 
     expect(response.status).toBe(201);
     await expect(response.json()).resolves.toMatchObject({
+      kind: 'session',
       user: {
         id: USER_ID,
         username: 'student',

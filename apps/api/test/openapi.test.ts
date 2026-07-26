@@ -130,6 +130,11 @@ describe('OpenAPI document', () => {
         created_at: { type: 'string', format: 'date-time' },
       },
     });
+    expect(openApiDocument.components.schemas.ApiError).toMatchObject({
+      properties: {
+        request_id: { type: 'string', format: 'uuid' },
+      },
+    });
   });
 
   it('publishes typed sync unions with stable discriminators', () => {

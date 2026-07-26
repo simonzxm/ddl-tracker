@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { parseUuidV7 } from './uuid.js';
+import { uuidV7Schema } from './schema.js';
 
 export const apiErrorCodeSchema = z.enum([
   'account_suspended',
@@ -29,18 +29,6 @@ export const apiErrorCodeSchema = z.enum([
   'unsupported_media_type',
   'username_taken',
 ]);
-
-const uuidV7Schema = z.string().transform((value, context) => {
-  try {
-    return parseUuidV7(value);
-  } catch (error) {
-    context.addIssue({
-      code: 'custom',
-      message: error instanceof Error ? error.message : 'Invalid UUIDv7.',
-    });
-    return z.NEVER;
-  }
-});
 
 export const apiErrorSchema = z
   .object({

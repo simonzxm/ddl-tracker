@@ -80,7 +80,9 @@ docs/
 
 ## HTTP 表面
 
-所有 HTTP 接口位于 `/api`，业务路径位于 `/api/v1`。具体 schema 由 `packages/contracts` 生成 OpenAPI；稳定错误 code 是客户端逻辑契约，英文 message 仅用于诊断。minor contract release 的客户端/服务端能力与 fallback 见[API 契约兼容矩阵](./api-compatibility.md)。
+所有 HTTP 接口位于 `/api`，业务路径位于 `/api/v1`。具体 schema 由 `packages/contracts` 生成 OpenAPI；稳定错误 code 是客户端逻辑契约，英文 message 仅用于诊断。客户端/服务端能力与兼容性见[API 契约兼容矩阵](./api-compatibility.md)。
+
+同步协议当前为 protocol v2。snapshot record 按 `record_type`、sync event 按 `type` 构成严格判别联合，OpenAPI 必须输出 `oneOf + discriminator`。任何同步 writer 都不能接受任意 `type: string` 与 `Record<string, unknown>` payload；业务 modules 只能把 typed event draft 交给唯一的 PostgreSQL event store，由该 module 统一校验 schema、生成 event ID、绑定 scope target、序列化并插入 `sync_events`。
 
 ```text
 GET    /api/health/live
@@ -153,7 +155,7 @@ Bearer API 不使用 cookie。为第三方客户端支持 CORS 时不得启用 c
 | `task_merges` | source task 唯一、target task、maintainer、reason；禁止循环和跨教学班合并 |
 | `moderation_actions` | hide/restore/suspend/restore 等动作及理由 |
 | `operation_receipts` | `(user_id, operation_id)` 唯一；请求摘要与首次稳定结果；保留 180 天 |
-| `sync_events` | 全局单调 sequence、event UUID、scope、type、schema version、payload；保留至少 180 天 |
+| `sync_events` | 全局单调 sequence、event UUID、scope、type、schema version、严格校验后的 payload；保留至少 180 天 |
 | `catalog_imports` | checksum、manifest、文件名、行数、diff、actor、`planned/applied/failed/cancelled/expired` 状态 |
 | `audit_log` | append-only 管理动作、actor、target、reason、result、request ID |
 
@@ -168,7 +170,9 @@ Bearer API 不使用 cookie。为第三方客户端支持 CORS 时不得启用 c
 - task merge 只能发生在同一 teaching class，source 只能有一个最终 target，解析时跟随重定向到 canonical task。
 - task merge 对完全相同 proposal 建立 redirect；重复 voter 同方向去重，相反方向撤回，再从 vote 明细重新计算 aggregate。
 - task merge 的私人状态按产品规范的确定性优先级归并；若来源详情转为 personal todo，来源状态必须随该 todo 转出。
-- 被删除或隐藏状态使用 tombstone/event 收敛，不能用物理删除破坏离线副本。
+- 被删除或隐藏状态使用 typed tombstone/event 收敛，不能用物理删除破坏离线副本。
+- create、upsert 和 restore event 必须携带完整当前记录；hide/delete 使用实体专属 tombstone；merge/redirect 和 aggregate update 必须携带客户端独立收敛所需的完整字段。
+- snapshot record 顶层只包含 `record_type`、`schema_version` 与 payload；分页排序 ID 是服务端 token 内部数据，不能在 wire envelope 重复实体 ID 或 revision。
 - 账户删除对公开贡献匿名化，对私人数据物理删除或不可恢复销毁。
 - 账户删除同时删除该用户的 private sync event payload 与 operation receipts；全局 sequence 允许留下空洞，公开匿名化事件另行追加。
 

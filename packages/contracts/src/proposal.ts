@@ -1,5 +1,5 @@
 import {
-  canonicalizeHttpsUrl,
+  canonicalizeEvidenceUrl,
   canonicalizeTimestamp,
   ContractValidationError,
   countUnicodeScalars,
@@ -59,13 +59,7 @@ function optionalUrl(value: string | null | undefined): string | null {
     return null;
   }
 
-  const canonical = canonicalizeHttpsUrl(value);
-  if (new TextEncoder().encode(canonical).byteLength > 2048) {
-    throw new ContractValidationError(
-      'Evidence URL must contain at most 2048 UTF-8 bytes.',
-    );
-  }
-  return canonical;
+  return canonicalizeEvidenceUrl(value);
 }
 
 export function canonicalizeProposal(input: ProposalInput): CanonicalProposal {

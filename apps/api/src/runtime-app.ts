@@ -68,7 +68,7 @@ export function createRuntimeApp(
     'SYNC_TOKEN_SECRET',
     env.SYNC_TOKEN_SECRET,
   );
-  const bootstrapToken = requiredSecret(
+  const bootstrapToken = optionalSecret(
     'MAINTAINER_BOOTSTRAP_TOKEN',
     env.MAINTAINER_BOOTSTRAP_TOKEN,
   );
@@ -290,6 +290,14 @@ function requiredSecret(name: string, value: string): string {
     throw new Error(`${name} must contain at least 32 characters.`);
   }
   return value;
+}
+
+function optionalSecret(
+  name: string,
+  value: string | undefined,
+): string | null {
+  if (value === undefined || value.length === 0) return null;
+  return requiredSecret(name, value);
 }
 
 function parseAllowedDomains(value: string): string[] {

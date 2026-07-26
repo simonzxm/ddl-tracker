@@ -10,11 +10,11 @@ export interface MaintainerBootstrapRepository {
 
 export class MaintainerAccessService {
   readonly #repository: MaintainerBootstrapRepository;
-  readonly #bootstrapToken: string;
+  readonly #bootstrapToken: string | null;
 
   constructor(
     repository: MaintainerBootstrapRepository,
-    bootstrapToken: string,
+    bootstrapToken: string | null,
   ) {
     this.#repository = repository;
     this.#bootstrapToken = bootstrapToken;
@@ -25,6 +25,13 @@ export class MaintainerAccessService {
     requestId: string;
     bootstrapToken: string;
   }): Promise<{ maintainer: true }> {
+    if (this.#bootstrapToken === null) {
+      throw new HttpError({
+        code: 'conflict',
+        message: 'Maintainer bootstrap is already closed.',
+        status: 409,
+      });
+    }
     if (!constantTimeEqual(this.#bootstrapToken, input.bootstrapToken)) {
       throw new HttpError({
         code: 'forbidden',

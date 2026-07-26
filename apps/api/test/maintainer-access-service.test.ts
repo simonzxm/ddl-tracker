@@ -22,6 +22,22 @@ describe('MaintainerAccessService', () => {
     expect(repository.bootstrap).not.toHaveBeenCalled();
   });
 
+  it('treats a missing bootstrap secret as a permanently closed bootstrap path', async () => {
+    const repository = {
+      bootstrap: vi.fn(async () => ({ maintainer: true as const })),
+    };
+    const service = new MaintainerAccessService(repository, null);
+
+    await expect(
+      service.bootstrap({
+        actorId: USER_ID,
+        requestId: REQUEST_ID,
+        bootstrapToken: 'irrelevant',
+      }),
+    ).rejects.toMatchObject({ code: 'conflict', status: 409 });
+    expect(repository.bootstrap).not.toHaveBeenCalled();
+  });
+
   it('delegates a valid bootstrap token without returning the secret', async () => {
     const repository = {
       bootstrap: vi.fn(async () => ({ maintainer: true as const })),

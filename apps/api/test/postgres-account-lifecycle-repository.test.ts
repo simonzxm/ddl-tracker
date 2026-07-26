@@ -72,7 +72,16 @@ describePostgres('PostgresAccountLifecycleRepository', () => {
     );
     expect(event.rows[0]).toMatchObject({
       type: 'public_user_profile_updated',
-      payload: { username: 'new_name', profile_revision: 2 },
+      payload: {
+        id: USER_ID,
+        username: 'new_name',
+        display_name: 'New Name',
+        avatar_url: null,
+        bio: null,
+        status: 'active',
+        revision: 2,
+        updated_at: NOW.toISOString(),
+      },
     });
   });
 
@@ -230,6 +239,21 @@ describePostgres('PostgresAccountLifecycleRepository', () => {
       receipts: '0',
       private_events: '0',
       rate_limits: '0',
+    });
+
+    const deletionEvent = await client.query<{
+      type: string;
+      payload: Record<string, unknown>;
+    }>('select type, payload from sync_events where event_id = $1', [EVENT_ID]);
+    expect(deletionEvent.rows[0]).toMatchObject({
+      type: 'public_user_deleted',
+      payload: {
+        id: USER_ID,
+        display_name: '已注销用户',
+        status: 'deleted',
+        revision: 2,
+        deleted_at: NOW.toISOString(),
+      },
     });
 
     const proposal = await client.query<{ author_id: string | null }>(

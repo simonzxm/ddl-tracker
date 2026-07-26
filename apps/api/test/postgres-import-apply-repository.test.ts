@@ -373,6 +373,7 @@ describePostgres('PostgresCatalogImportApplyRepository', () => {
           external_section_id: 'section-missing',
           active: false,
           revision: 2,
+          updated_at: NOW.toISOString(),
         },
       },
     ]);

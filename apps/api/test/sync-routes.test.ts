@@ -16,6 +16,8 @@ function principal(): AuthenticatedPrincipal {
       id: USER_ID,
       username: 'student',
       displayName: 'Student',
+      avatarUrl: null,
+      bio: null,
       status: 'active',
       profileRevision: 1,
     },

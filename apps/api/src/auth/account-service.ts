@@ -20,6 +20,8 @@ export interface PublicUser {
   id: string;
   username: string;
   displayName: string;
+  avatarUrl: string | null;
+  bio: string | null;
   status: 'active' | 'suspended' | 'deleted';
   profileRevision: number;
 }
@@ -59,6 +61,7 @@ export interface AccountRepository {
     provider: 'email',
     normalizedSubject: string,
   ): Promise<PublicUser | null>;
+  findRoles(userId: string): Promise<'maintainer'[]>;
   saveRegistrationIdentity(input: RegistrationIdentity): Promise<void>;
   createSession(input: SessionRecord): Promise<void>;
   registerAccount(input: {
@@ -94,6 +97,7 @@ export type VerificationCompletion =
       token_type: 'Bearer';
       expires_at: string;
       user: PublicUser;
+      roles: 'maintainer'[];
     };
 
 export interface DeviceMetadataInput {
@@ -154,12 +158,14 @@ export class AccountService {
 
     this.#assertActiveUser(existingUser);
     const issued = await this.#issueSession(existingUser.id, device);
+    const roles = await this.#repository.findRoles(existingUser.id);
     return {
       kind: 'session',
       access_token: issued.token,
       token_type: 'Bearer',
       expires_at: issued.session.absoluteExpiresAt.toISOString(),
       user: existingUser,
+      roles,
     };
   }
 
@@ -195,6 +201,8 @@ export class AccountService {
       id: this.#createId(),
       username,
       displayName,
+      avatarUrl: null,
+      bio: null,
       status: 'active',
       profileRevision: 1,
     };

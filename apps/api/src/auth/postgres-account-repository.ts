@@ -12,6 +12,8 @@ interface UserRow {
   id: string;
   username: string;
   display_name: string;
+  avatar_url: string | null;
+  bio: string | null;
   status: PublicUser['status'];
   profile_revision: number;
 }
@@ -41,6 +43,8 @@ function toPublicUser(row: UserRow): PublicUser {
     id: row.id,
     username: row.username,
     displayName: row.display_name,
+    avatarUrl: row.avatar_url,
+    bio: row.bio,
     status: row.status,
     profileRevision: row.profile_revision,
   };
@@ -84,7 +88,8 @@ export class PostgresAccountRepository implements AccountRepository {
     normalizedSubject: string,
   ): Promise<PublicUser | null> {
     const result = await this.#client.query<UserRow>(
-      `select u.id, u.username, u.display_name, u.status, u.profile_revision
+      `select u.id, u.username, u.display_name, u.avatar_url, u.bio,
+              u.status, u.profile_revision
        from institutional_identities i
        join users u on u.id = i.user_id
        where i.provider = $1 and i.normalized_subject = $2
@@ -93,6 +98,14 @@ export class PostgresAccountRepository implements AccountRepository {
     );
     const row = result.rows[0];
     return row === undefined ? null : toPublicUser(row);
+  }
+
+  async findRoles(userId: string): Promise<'maintainer'[]> {
+    const result = await this.#client.query<{ role: 'maintainer' }>(
+      `select role from user_roles where user_id = $1 order by role`,
+      [userId],
+    );
+    return result.rows.map(({ role }) => role);
   }
 
   async saveRegistrationIdentity(input: RegistrationIdentity): Promise<void> {
@@ -210,7 +223,8 @@ export class PostgresAccountRepository implements AccountRepository {
       `select s.id, s.user_id, s.token_hash, s.device_name,
               s.device_metadata, s.created_at, s.last_seen_at,
               s.idle_expires_at, s.absolute_expires_at, s.revoked_at,
-              u.username, u.display_name, u.status, u.profile_revision,
+              u.username, u.display_name, u.avatar_url, u.bio,
+              u.status, u.profile_revision,
               u.id as user_record_id
        from sessions s
        join users u on u.id = s.user_id
@@ -227,20 +241,19 @@ export class PostgresAccountRepository implements AccountRepository {
     if (row === undefined) {
       return null;
     }
-    const roles = await this.#client.query<{ role: 'maintainer' }>(
-      `select role from user_roles where user_id = $1 order by role`,
-      [row.user_id],
-    );
+    const roles = await this.findRoles(row.user_id);
     return {
       user: toPublicUser({
         id: row.user_record_id,
         username: row.username,
         display_name: row.display_name,
+        avatar_url: row.avatar_url,
+        bio: row.bio,
         status: row.status,
         profile_revision: row.profile_revision,
       }),
       session: toSession(row),
-      roles: roles.rows.map(({ role }) => role),
+      roles,
     };
   }
 

@@ -1,7 +1,9 @@
 import { z } from 'zod';
 
 import {
+  evidenceUrlSchema,
   normalizedTextSchema,
+  nullableNormalizedTextSchema,
   opaqueTokenSchema,
   rfc3339TimestampSchema,
   uuidV7Schema,
@@ -27,8 +29,16 @@ export const publicUserSchema = z
     id: uuidV7Schema,
     username: usernameSchema,
     display_name: normalizedTextSchema(1, 64),
+    avatar_url: evidenceUrlSchema.nullable(),
+    bio: nullableNormalizedTextSchema(500),
     status: z.enum(['active', 'suspended', 'deleted']),
     profile_revision: z.number().int().positive(),
+  })
+  .strict();
+
+export const currentUserSchema = publicUserSchema
+  .extend({
+    roles: z.array(z.literal('maintainer')).max(1),
   })
   .strict();
 
@@ -67,7 +77,7 @@ export const sessionVerificationResponseSchema = z
     access_token: opaqueTokenSchema,
     token_type: z.literal('Bearer'),
     expires_at: rfc3339TimestampSchema,
-    user: publicUserSchema,
+    user: currentUserSchema,
   })
   .strict();
 
@@ -103,11 +113,14 @@ export const profileUpdateRequestSchema = z
   .object({
     username: usernameSchema,
     display_name: normalizedTextSchema(1, 64),
+    avatar_url: evidenceUrlSchema.nullable(),
+    bio: nullableNormalizedTextSchema(500),
     expected_revision: z.number().int().positive(),
   })
   .strict();
 
 export type PublicUserWire = z.infer<typeof publicUserSchema>;
+export type CurrentUserWire = z.infer<typeof currentUserSchema>;
 export type EmailChallengeRequest = z.infer<typeof emailChallengeRequestSchema>;
 export type EmailVerificationRequest = z.infer<
   typeof emailVerificationRequestSchema

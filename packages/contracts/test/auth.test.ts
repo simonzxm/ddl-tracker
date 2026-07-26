@@ -4,6 +4,8 @@ import {
   accountRegistrationRequestSchema,
   emailChallengeRequestSchema,
   emailVerificationRequestSchema,
+  currentUserSchema,
+  profileUpdateRequestSchema,
   verificationResponseSchema,
 } from '../src/auth.js';
 
@@ -54,6 +56,35 @@ describe('authentication contracts', () => {
     ).toMatchObject({ username: 'student_1' });
   });
 
+  it('validates current-user capabilities and editable profile fields', () => {
+    expect(
+      currentUserSchema.parse({
+        id: ID,
+        username: 'student',
+        display_name: 'Student',
+        avatar_url: 'HTTPS://Example.COM/avatar.png#crop',
+        bio: '  Course representative  ',
+        status: 'active',
+        profile_revision: 1,
+        roles: ['maintainer'],
+      }),
+    ).toMatchObject({
+      avatar_url: 'https://example.com/avatar.png',
+      bio: 'Course representative',
+      roles: ['maintainer'],
+    });
+
+    expect(
+      profileUpdateRequestSchema.parse({
+        username: 'student',
+        display_name: 'Student',
+        avatar_url: null,
+        bio: null,
+        expected_revision: 1,
+      }),
+    ).toMatchObject({ avatar_url: null, bio: null });
+  });
+
   it('distinguishes registration and session verification responses', () => {
     expect(
       verificationResponseSchema.parse({
@@ -72,8 +103,11 @@ describe('authentication contracts', () => {
           id: ID,
           username: 'student',
           display_name: 'Student',
+          avatar_url: null,
+          bio: null,
           status: 'active',
           profile_revision: 1,
+          roles: [],
         },
       }),
     ).toMatchObject({ kind: 'session' });

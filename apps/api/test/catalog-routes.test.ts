@@ -14,6 +14,8 @@ const principal: AuthenticatedPrincipal = {
     id: '018f0000-0000-7000-8000-000000000004',
     username: 'student',
     displayName: 'Student',
+      avatarUrl: null,
+      bio: null,
     status: 'active',
     profileRevision: 1,
   },

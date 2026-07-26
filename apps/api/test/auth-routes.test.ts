@@ -17,6 +17,8 @@ const user: PublicUser = {
   id: USER_ID,
   username: 'student',
   displayName: 'Student',
+      avatarUrl: null,
+      bio: null,
   status: 'active',
   profileRevision: 1,
 };
@@ -221,6 +223,8 @@ describe('authentication routes', () => {
       body: JSON.stringify({
         username: 'new_name',
         display_name: 'New Name',
+        avatar_url: 'https://example.com/avatar.png',
+        bio: 'Course representative',
         expected_revision: 1,
       }),
     });
@@ -229,12 +233,17 @@ describe('authentication routes', () => {
     expect(auth.updateProfile).toHaveBeenCalledWith(USER_ID, {
       username: 'new_name',
       displayName: 'New Name',
+      avatarUrl: 'https://example.com/avatar.png',
+      bio: 'Course representative',
       expectedRevision: 1,
     });
     await expect(response.json()).resolves.toMatchObject({
       username: 'new_name',
       display_name: 'New Name',
+      avatar_url: null,
+      bio: null,
       profile_revision: 2,
+      roles: [],
     });
   });
 

@@ -16,6 +16,8 @@ function dependencies(maintainer = false) {
           id: USER_ID,
           username: 'student',
           displayName: 'Student',
+      avatarUrl: null,
+      bio: null,
           status: 'active' as const,
           profileRevision: 1,
         },

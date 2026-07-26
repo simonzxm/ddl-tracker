@@ -4,6 +4,7 @@ import {
   emailVerificationRequestSchema,
   parseUuidV7,
   profileUpdateRequestSchema,
+  type CurrentUserWire,
   type PublicUserWire,
 } from '@ddl-tracker/contracts';
 import type { Hono } from 'hono';
@@ -55,6 +56,8 @@ export interface AuthRouteDependencies {
     input: {
       username: string;
       displayName: string;
+      avatarUrl: string | null;
+      bio: string | null;
       expectedRevision: number;
     },
   ): Promise<PublicUser>;
@@ -77,8 +80,20 @@ function toPublicUser(user: PublicUser): PublicUserWire {
     id: user.id,
     username: user.username,
     display_name: user.displayName,
+    avatar_url: user.avatarUrl,
+    bio: user.bio,
     status: user.status,
     profile_revision: user.profileRevision,
+  };
+}
+
+function toCurrentUser(
+  user: PublicUser,
+  roles: 'maintainer'[],
+): CurrentUserWire {
+  return {
+    ...toPublicUser(user),
+    roles,
   };
 }
 
@@ -131,7 +146,7 @@ export function registerAuthRoutes(
     }
     return context.json({
       ...result,
-      user: toPublicUser(result.user),
+      user: toCurrentUser(result.user, result.roles),
     });
   });
 
@@ -151,7 +166,7 @@ export function registerAuthRoutes(
     return context.json(
       {
         ...result,
-        user: toPublicUser(result.user),
+        user: toCurrentUser(result.user, []),
       },
       201,
     );
@@ -162,7 +177,7 @@ export function registerAuthRoutes(
       context.req.header('authorization'),
       dependencies,
     );
-    return context.json(toPublicUser(principal.user));
+    return context.json(toCurrentUser(principal.user, principal.roles));
   });
 
   app.patch('/v1/me/profile', async (context) => {
@@ -178,9 +193,11 @@ export function registerAuthRoutes(
     const updated = await dependencies.updateProfile(principal.user.id, {
       username: body.username,
       displayName: body.display_name,
+      avatarUrl: body.avatar_url,
+      bio: body.bio,
       expectedRevision: body.expected_revision,
     });
-    return context.json(toPublicUser(updated));
+    return context.json(toCurrentUser(updated, principal.roles));
   });
 
   app.delete('/v1/me', async (context) => {

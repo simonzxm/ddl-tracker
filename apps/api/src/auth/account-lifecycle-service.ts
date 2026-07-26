@@ -1,5 +1,7 @@
 import {
   createUuidV7,
+  evidenceUrlSchema,
+  nullableNormalizedTextSchema,
   parseDisplayName,
   parseUsername,
 } from '@ddl-tracker/contracts';
@@ -17,6 +19,8 @@ export interface AccountLifecycleRepository {
     userId: string;
     username: string;
     displayName: string;
+    avatarUrl: string | null;
+    bio: string | null;
     expectedRevision: number;
     now: Date;
     eventId: string;
@@ -48,14 +52,20 @@ export class AccountLifecycleService {
     input: {
       username: string;
       displayName: string;
+      avatarUrl: string | null;
+      bio: string | null;
       expectedRevision: number;
     },
   ): Promise<PublicUser> {
     let username: string;
     let displayName: string;
+    let avatarUrl: string | null;
+    let bio: string | null;
     try {
       username = parseUsername(input.username);
       displayName = parseDisplayName(input.displayName);
+      avatarUrl = evidenceUrlSchema.nullable().parse(input.avatarUrl);
+      bio = nullableNormalizedTextSchema(500).parse(input.bio);
     } catch (error) {
       throw new HttpError({
         code: 'invalid_request',
@@ -69,6 +79,8 @@ export class AccountLifecycleService {
       userId,
       username,
       displayName,
+      avatarUrl,
+      bio,
       expectedRevision: input.expectedRevision,
       now: this.#now(),
       eventId: this.#createId(),
@@ -93,6 +105,8 @@ export class AccountLifecycleService {
           id: outcome.current.id,
           username: outcome.current.username,
           display_name: outcome.current.displayName,
+          avatar_url: outcome.current.avatarUrl,
+          bio: outcome.current.bio,
           status: outcome.current.status,
           profile_revision: outcome.current.profileRevision,
         },

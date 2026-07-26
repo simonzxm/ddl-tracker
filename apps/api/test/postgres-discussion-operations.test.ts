@@ -220,18 +220,33 @@ describePostgres('PostgresStudentOperationExecutor discussion operations', () =>
     const events = await client.query<{
       scope: string;
       scope_user_id: string | null;
-      payload: unknown;
+      type: string;
+      payload: Record<string, unknown>;
     }>(
-      `select scope, scope_user_id, payload from sync_events
-       where type = 'content_report_status_updated'
+      `select scope, scope_user_id, type, payload from sync_events
+       where type in (
+         'reporter_content_report_updated',
+         'maintainer_content_report_updated'
+       )
        order by sequence`,
     );
-    expect(events.rows.map(({ scope }) => scope)).toEqual([
-      'private_user',
-      'maintainer_private',
+    expect(events.rows.map(({ scope, type }) => ({ scope, type }))).toEqual([
+      {
+        scope: 'private_user',
+        type: 'reporter_content_report_updated',
+      },
+      {
+        scope: 'maintainer_private',
+        type: 'maintainer_content_report_updated',
+      },
     ]);
     expect(events.rows[0]?.scope_user_id).toBe(USER_ID);
-    expect(JSON.stringify(events.rows)).not.toContain('class_section_public');
+    expect(events.rows[0]?.payload).not.toHaveProperty('reporter_id');
+    expect(events.rows[0]?.payload).not.toHaveProperty('details');
+    expect(events.rows[1]?.payload).toMatchObject({
+      reporter_id: USER_ID,
+      details: 'Deadline is wrong',
+    });
   });
 
   it('rejects reports for missing targets without creating private records', async () => {

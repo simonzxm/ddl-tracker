@@ -12,6 +12,23 @@ import {
   SyncOperationRejection,
   type SyncOperationExecution,
 } from './batch-service.js';
+import {
+  PostgresSyncEventStore,
+  type SyncEventDraft,
+} from './postgres-event-store.js';
+
+type PrivateEventDraft = Extract<
+  SyncEventDraft,
+  { scope: 'private_user' }
+>['event'];
+type PublicEventDraft = Extract<
+  SyncEventDraft,
+  { scope: 'class_section_public' }
+>['event'];
+type MaintainerEventDraft = Extract<
+  SyncEventDraft,
+  { scope: 'maintainer_private' }
+>['event'];
 
 interface CommentRow {
   id: string;
@@ -121,6 +138,47 @@ function integerField(payload: Record<string, unknown>, field: string): number {
   return value as number;
 }
 
+function accuracyVoteValue(
+  payload: Record<string, unknown>,
+): 'up' | 'down' | 'none' {
+  const value = stringField(payload, 'value');
+  if (value !== 'up' && value !== 'down' && value !== 'none') {
+    throw new Error('Validated accuracy vote value is invalid.');
+  }
+  return value;
+}
+
+function reportTargetType(
+  payload: Record<string, unknown>,
+): 'course_task' | 'proposal' | 'comment' | 'user' {
+  const value = stringField(payload, 'target_type');
+  if (
+    value !== 'course_task' &&
+    value !== 'proposal' &&
+    value !== 'comment' &&
+    value !== 'user'
+  ) {
+    throw new Error('Validated report target type is invalid.');
+  }
+  return value;
+}
+
+function reportReason(
+  payload: Record<string, unknown>,
+): 'inaccurate' | 'spam' | 'abuse' | 'privacy' | 'other' {
+  const value = stringField(payload, 'reason');
+  if (
+    value !== 'inaccurate' &&
+    value !== 'spam' &&
+    value !== 'abuse' &&
+    value !== 'privacy' &&
+    value !== 'other'
+  ) {
+    throw new Error('Validated report reason is invalid.');
+  }
+  return value;
+}
+
 function proposalField(payload: Record<string, unknown>): CanonicalProposal {
   return canonicalizeProposal(payload.proposal as ProposalInput);
 }
@@ -149,8 +207,8 @@ function commentPayload(row: CommentRow) {
     author_id: row.author_id,
     body: row.body,
     revision: row.current_revision,
-    state: row.state,
-    deleted_at: row.deleted_at?.toISOString() ?? null,
+    state: 'visible' as const,
+    deleted_at: null,
     created_at: row.created_at.toISOString(),
     updated_at: row.updated_at.toISOString(),
   };
@@ -167,7 +225,7 @@ function proposalPayload(row: ProposalRow) {
     evidence_note: row.evidence_note,
     evidence_url: row.evidence_url,
     content_fingerprint: row.content_fingerprint,
-    state: row.state,
+    state: 'visible' as const,
     revision: requireRow(row).revision,
     created_at: row.created_at.toISOString(),
   };
@@ -223,7 +281,7 @@ function todoPayload(row: PersonalTodoRow) {
     note: row.note,
     state: row.state,
     revision: requireRow(row).revision,
-    deleted_at: row.deleted_at?.toISOString() ?? null,
+    deleted_at: null,
     created_at: row.created_at.toISOString(),
     updated_at: row.updated_at.toISOString(),
   };
@@ -240,6 +298,7 @@ function isUniqueViolation(error: unknown): boolean {
 
 export class PostgresStudentOperationExecutor {
   readonly #client: Client;
+  readonly #events: PostgresSyncEventStore;
   readonly #now: () => Date;
   readonly #createId: () => string;
 
@@ -248,6 +307,9 @@ export class PostgresStudentOperationExecutor {
     options: { now?: () => Date; createId: () => string },
   ) {
     this.#client = client;
+    this.#events = new PostgresSyncEventStore(client, {
+      createId: options.createId,
+    });
     this.#now = options.now ?? (() => new Date());
     this.#createId = options.createId;
   }
@@ -301,53 +363,44 @@ export class PostgresStudentOperationExecutor {
     }
   }
 
-  async #appendPublicEvent(
+  async #appendPublicEvent<Type extends PublicEventDraft['type']>(
     classSectionId: string,
-    type: string,
-    payload: Record<string, unknown>,
+    type: Type,
+    payload: Extract<PublicEventDraft, { type: Type }>['payload'],
     occurredAt: Date,
   ): Promise<void> {
-    await this.#client.query(
-      `insert into sync_events (
-         event_id, scope, class_section_id, type, schema_version, payload,
-         occurred_at
-       ) values ($1, 'class_section_public', $2, $3, 1, $4::jsonb, $5)`,
-      [
-        this.#createId(),
-        classSectionId,
-        type,
-        JSON.stringify(payload),
-        occurredAt,
-      ],
-    );
+    await this.#events.append({
+      scope: 'class_section_public',
+      classSectionId,
+      occurredAt,
+      event: { type, payload } as PublicEventDraft,
+    });
   }
 
-  async #appendMaintainerEvent(
-    type: string,
-    payload: Record<string, unknown>,
+  async #appendMaintainerEvent<Type extends MaintainerEventDraft['type']>(
+    type: Type,
+    payload: Extract<MaintainerEventDraft, { type: Type }>['payload'],
     occurredAt: Date,
   ): Promise<void> {
-    await this.#client.query(
-      `insert into sync_events (
-         event_id, scope, type, schema_version, payload, occurred_at
-       ) values ($1, 'maintainer_private', $2, 1, $3::jsonb, $4)`,
-      [this.#createId(), type, JSON.stringify(payload), occurredAt],
-    );
+    await this.#events.append({
+      scope: 'maintainer_private',
+      occurredAt,
+      event: { type, payload } as MaintainerEventDraft,
+    });
   }
 
-  async #appendPrivateEvent(
+  async #appendPrivateEvent<Type extends PrivateEventDraft['type']>(
     userId: string,
-    type: string,
-    payload: Record<string, unknown>,
+    type: Type,
+    payload: Extract<PrivateEventDraft, { type: Type }>['payload'],
     occurredAt: Date,
   ): Promise<void> {
-    await this.#client.query(
-      `insert into sync_events (
-         event_id, scope, scope_user_id, type, schema_version, payload,
-         occurred_at
-       ) values ($1, 'private_user', $2, $3, 1, $4::jsonb, $5)`,
-      [this.#createId(), userId, type, JSON.stringify(payload), occurredAt],
-    );
+    await this.#events.append({
+      scope: 'private_user',
+      userId,
+      occurredAt,
+      event: { type, payload } as PrivateEventDraft,
+    });
   }
 
   async #followClassSection(
@@ -369,7 +422,7 @@ export class PostgresStudentOperationExecutor {
       await this.#appendPrivateEvent(
         userId,
         'class_section_followed',
-        { class_section_id: classSectionId, created_at: now.toISOString() },
+        { class_section_id: classSectionId, followed_at: now.toISOString() },
         now,
       );
     }
@@ -906,7 +959,7 @@ export class PostgresStudentOperationExecutor {
     payload: Record<string, unknown>,
   ): Promise<SyncOperationExecution> {
     const proposalId = stringField(payload, 'proposal_id');
-    const value = stringField(payload, 'value');
+    const value = accuracyVoteValue(payload);
     const proposal = await this.#client.query<{
       id: string;
       state: 'visible' | 'hidden' | 'redirected';
@@ -1173,8 +1226,9 @@ export class PostgresStudentOperationExecutor {
       current.classSectionId,
       'task_comment_deleted',
       {
-        id: commentId,
-        course_task_id: current.row.task_id,
+        entity_type: 'task_comment',
+        entity_id: commentId,
+        state: 'deleted',
         revision: nextRevision,
         deleted_at: now.toISOString(),
       },
@@ -1214,9 +1268,9 @@ export class PostgresStudentOperationExecutor {
     payload: Record<string, unknown>,
   ): Promise<SyncOperationExecution> {
     const reportId = stringField(payload, 'report_id');
-    const targetType = stringField(payload, 'target_type');
+    const targetType = reportTargetType(payload);
     const targetId = stringField(payload, 'target_id');
-    const reason = stringField(payload, 'reason');
+    const reason = reportReason(payload);
     const details = nullableStringField(payload, 'details');
     await this.#assertReportTarget(targetType, targetId);
     const now = this.#now();
@@ -1242,18 +1296,24 @@ export class PostgresStudentOperationExecutor {
       target_type: targetType,
       target_id: targetId,
       reason,
-      status: 'open',
+      status: 'open' as const,
       created_at: now.toISOString(),
     };
     await this.#appendPrivateEvent(
       userId,
-      'content_report_status_updated',
+      'reporter_content_report_updated',
       reporterPayload,
       now,
     );
     await this.#appendMaintainerEvent(
-      'content_report_status_updated',
-      { ...reporterPayload, reporter_id: userId, details },
+      'maintainer_content_report_updated',
+      {
+        ...reporterPayload,
+        reporter_id: userId,
+        details,
+        resolution: null,
+        resolved_at: null,
+      },
       now,
     );
     return { report_id: reportId, status: 'open' };

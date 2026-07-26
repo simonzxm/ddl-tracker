@@ -190,7 +190,7 @@ describePostgres('PostgresStudentOperationExecutor discussion operations', () =>
     });
   });
 
-  it('creates a private report and a maintainer-only notification without public reporter data', async () => {
+  it('creates complete private report state and a maintainer-only notification', async () => {
     await expect(
       executor.execute(
         USER_ID,
@@ -242,7 +242,16 @@ describePostgres('PostgresStudentOperationExecutor discussion operations', () =>
     ]);
     expect(events.rows[0]?.scope_user_id).toBe(USER_ID);
     expect(events.rows[0]?.payload).not.toHaveProperty('reporter_id');
-    expect(events.rows[0]?.payload).not.toHaveProperty('details');
+    expect(events.rows[0]?.payload).toMatchObject({
+      report_id: REPORT_ID,
+      target_type: 'course_task',
+      target_id: TASK_ID,
+      reason: 'inaccurate',
+      details: 'Deadline is wrong',
+      status: 'open',
+      resolution: null,
+      resolved_at: null,
+    });
     expect(events.rows[1]?.payload).toMatchObject({
       reporter_id: USER_ID,
       details: 'Deadline is wrong',

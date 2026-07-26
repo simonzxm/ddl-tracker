@@ -63,7 +63,7 @@ describePostgres('PostgresSyncBatchRepository', () => {
       );
       if (value.operation_id === OP_1) {
         throw new SyncOperationRejection({
-          code: 'revision_conflict',
+          code: 'conflict',
           message: 'Rejected after mutation.',
         });
       }

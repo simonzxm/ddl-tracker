@@ -152,6 +152,13 @@ const emptyImportDiffExample = {
 };
 
 const bearer = [{ bearerAuth: [] }];
+const protectedErrorResponses = {
+  '400': response('Invalid request.', 'ApiError'),
+  '401': response('Authentication required.', 'ApiError'),
+  '403': response('Authenticated account is not allowed.', 'ApiError'),
+  '500': response('Unexpected server failure.', 'ApiError'),
+  '503': response('Service temporarily unavailable.', 'ApiError'),
+};
 const rateLimitedResponse = {
   description: 'Persistent request limit exceeded.',
   headers: {
@@ -718,6 +725,11 @@ function addRateLimitResponses<
   for (const pathItem of Object.values(document.paths)) {
     for (const operation of Object.values(pathItem)) {
       if (isProtectedOperation(operation)) {
+        for (const [status, errorResponse] of Object.entries(
+          protectedErrorResponses,
+        )) {
+          operation.responses[status] ??= errorResponse;
+        }
         operation.responses['429'] ??= rateLimitedResponse;
       }
     }

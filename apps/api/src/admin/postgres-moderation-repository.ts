@@ -191,13 +191,15 @@ export class PostgresModerationRepository {
     return this.#transaction(async () => {
       const result = await this.#client.query<{
         reporter_id: string;
-        target_type: string;
+        target_type: 'course_task' | 'proposal' | 'comment' | 'user';
         target_id: string;
-        reason: string;
+        reason: 'inaccurate' | 'spam' | 'abuse' | 'privacy' | 'other';
         details: string | null;
         status: ReportStatus;
+        created_at: Date;
       }>(
-        `select reporter_id, target_type, target_id, reason, details, status
+        `select reporter_id, target_type, target_id, reason, details, status,
+                created_at
          from content_reports
          where id = $1
          for update`,
@@ -226,28 +228,31 @@ export class PostgresModerationRepository {
         resolution: input.resolution,
         resolved_at: now.toISOString(),
       };
-      await this.#client.query(
-        `insert into sync_events (
-           event_id, scope, scope_user_id, type, schema_version,
-           payload, occurred_at
-         ) values
-           ($1, 'private_user', $2, 'content_report_status_updated', 1,
-            $3::jsonb, $4),
-           ($5, 'maintainer_private', null,
-            'content_report_status_updated', 1, $6::jsonb, $4)`,
-        [
-          this.#createId(), report.reporter_id,
-          JSON.stringify(reporterPayload), now, this.#createId(),
-          JSON.stringify({
+      await this.#events.append({
+        scope: 'private_user',
+        userId: report.reporter_id,
+        occurredAt: now,
+        event: {
+          type: 'reporter_content_report_updated',
+          payload: reporterPayload,
+        },
+      });
+      await this.#events.append({
+        scope: 'maintainer_private',
+        occurredAt: now,
+        event: {
+          type: 'maintainer_content_report_updated',
+          payload: {
             ...reporterPayload,
             reporter_id: report.reporter_id,
             target_type: report.target_type,
             target_id: report.target_id,
             reason: report.reason,
             details: report.details,
-          }),
-        ],
-      );
+            created_at: report.created_at.toISOString(),
+          },
+        },
+      });
       await this.#audit({
         actorId: input.actorId,
         action: input.status === 'resolved' ? 'report_resolved' : 'report_dismissed',

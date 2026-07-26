@@ -235,21 +235,48 @@ describePostgres('PostgresModerationRepository', () => {
       requestId: REQUEST_ID,
     });
 
-    const events = await client.query<{ scope: string }>(
-      `select scope from sync_events
-       where type = 'content_report_status_updated'
+    const events = await client.query<{
+      scope: string;
+      type: string;
+      payload: Record<string, unknown>;
+    }>(
+      `select scope, type, payload from sync_events
+       where type in (
+         'reporter_content_report_updated',
+         'maintainer_content_report_updated'
+       )
        order by sequence`,
     );
-    expect(events.rows.map(({ scope }) => scope)).toEqual([
-      'private_user',
-      'maintainer_private',
+    expect(events.rows.map(({ scope, type }) => ({ scope, type }))).toEqual([
+      {
+        scope: 'private_user',
+        type: 'reporter_content_report_updated',
+      },
+      {
+        scope: 'maintainer_private',
+        type: 'maintainer_content_report_updated',
+      },
     ]);
-    const publicCount = await client.query<{ count: string }>(
-      `select count(*)::text as count from sync_events
-       where type = 'content_report_status_updated'
-         and scope = 'class_section_public'`,
+    expect(events.rows[0]?.payload).toEqual({
+      report_id: REPORT_ID,
+      status: 'resolved',
+      resolution: 'Proposal hidden.',
+      resolved_at: NOW.toISOString(),
+    });
+    expect(events.rows[1]?.payload).toMatchObject({
+      report_id: REPORT_ID,
+      reporter_id: REPORTER_ID,
+      target_type: 'proposal',
+      target_id: PROPOSAL_ID,
+      reason: 'inaccurate',
+      details: 'Wrong date',
+      status: 'resolved',
+      resolution: 'Proposal hidden.',
+      resolved_at: NOW.toISOString(),
+    });
+    expect(events.rows.some(({ scope }) => scope === 'class_section_public')).toBe(
+      false,
     );
-    expect(publicCount.rows[0]?.count).toBe('0');
   });
 
   it('returns append-only audit pages', async () => {

@@ -122,7 +122,7 @@ export const taskCommentRecordSchema = z
   })
   .strict();
 
-const hiddenCourseTaskTombstoneSchema = z
+export const hiddenCourseTaskTombstoneSchema = z
   .object({
     entity_type: z.literal('course_task'),
     entity_id: uuidV7Schema,
@@ -131,7 +131,7 @@ const hiddenCourseTaskTombstoneSchema = z
   })
   .strict();
 
-const hiddenTaskProposalTombstoneSchema = z
+export const hiddenTaskProposalTombstoneSchema = z
   .object({
     entity_type: z.literal('task_proposal'),
     entity_id: uuidV7Schema,
@@ -140,7 +140,7 @@ const hiddenTaskProposalTombstoneSchema = z
   })
   .strict();
 
-const hiddenTaskCommentTombstoneSchema = z
+export const hiddenTaskCommentTombstoneSchema = z
   .object({
     entity_type: z.literal('task_comment'),
     entity_id: uuidV7Schema,
@@ -149,7 +149,7 @@ const hiddenTaskCommentTombstoneSchema = z
   })
   .strict();
 
-const deletedTaskCommentTombstoneSchema = z
+export const deletedTaskCommentTombstoneSchema = z
   .object({
     entity_type: z.literal('task_comment'),
     entity_id: uuidV7Schema,

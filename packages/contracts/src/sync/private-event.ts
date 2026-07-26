@@ -1,0 +1,155 @@
+import { z } from 'zod';
+
+import { rfc3339TimestampSchema, uuidV7Schema } from '../schema.js';
+import {
+  reportReasonSchema,
+  reportTargetTypeSchema,
+} from './discussion-operation.js';
+import {
+  followedClassSectionRecordSchema,
+  personalTaskDetailsRecordSchema,
+  personalTaskDetailsTombstoneSchema,
+  personalTaskStateRecordSchema,
+  personalTaskStateTombstoneSchema,
+  personalTodoRecordSchema,
+  personalTodoTombstoneSchema,
+} from './private-record.js';
+
+function syncEvent<const Type extends string, Payload extends z.ZodType>(
+  type: Type,
+  payload: Payload,
+) {
+  return z
+    .object({
+      event_id: uuidV7Schema,
+      schema_version: z.literal(1),
+      type: z.literal(type),
+      occurred_at: rfc3339TimestampSchema,
+      payload,
+    })
+    .strict();
+}
+
+const privateDeletionReasonSchema = z.enum([
+  'task_merge_conflict',
+  'task_merge_duplicate',
+  'task_merge_moved',
+  'task_merge_merged',
+]);
+
+const classSectionUnfollowedPayloadSchema = z
+  .object({
+    class_section_id: uuidV7Schema,
+    unfollowed_at: rfc3339TimestampSchema,
+  })
+  .strict();
+
+const accuracyVoteUpdatedPayloadSchema = z
+  .object({
+    proposal_id: uuidV7Schema,
+    value: z.enum(['up', 'down', 'none']),
+    updated_at: rfc3339TimestampSchema,
+    reason: z.literal('task_merge_conflict').optional(),
+  })
+  .strict();
+
+const personalTaskDetailsDeletedPayloadSchema =
+  personalTaskDetailsTombstoneSchema.extend({
+    reason: privateDeletionReasonSchema.optional(),
+  });
+const personalTaskStateDeletedPayloadSchema =
+  personalTaskStateTombstoneSchema.extend({
+    reason: privateDeletionReasonSchema.optional(),
+  });
+
+const reporterOpenReportPayloadSchema = z
+  .object({
+    report_id: uuidV7Schema,
+    target_type: reportTargetTypeSchema,
+    target_id: uuidV7Schema,
+    reason: reportReasonSchema,
+    status: z.literal('open'),
+    created_at: rfc3339TimestampSchema,
+  })
+  .strict();
+const reporterResolvedReportPayloadSchema = z
+  .object({
+    report_id: uuidV7Schema,
+    status: z.literal('resolved'),
+    resolution: z.string().min(1).max(1000),
+    resolved_at: rfc3339TimestampSchema,
+  })
+  .strict();
+const reporterDismissedReportPayloadSchema = z
+  .object({
+    report_id: uuidV7Schema,
+    status: z.literal('dismissed'),
+    resolution: z.string().min(1).max(1000),
+    resolved_at: rfc3339TimestampSchema,
+  })
+  .strict();
+
+export const reporterContentReportPayloadSchema = z.discriminatedUnion(
+  'status',
+  [
+    reporterOpenReportPayloadSchema,
+    reporterResolvedReportPayloadSchema,
+    reporterDismissedReportPayloadSchema,
+  ],
+);
+
+export const classSectionFollowedEventV2Schema = syncEvent(
+  'class_section_followed',
+  followedClassSectionRecordSchema,
+);
+export const classSectionUnfollowedEventV2Schema = syncEvent(
+  'class_section_unfollowed',
+  classSectionUnfollowedPayloadSchema,
+);
+export const accuracyVoteUpdatedEventV2Schema = syncEvent(
+  'accuracy_vote_updated',
+  accuracyVoteUpdatedPayloadSchema,
+);
+export const personalTodoUpsertedEventV2Schema = syncEvent(
+  'personal_todo_upserted',
+  personalTodoRecordSchema,
+);
+export const personalTodoDeletedEventV2Schema = syncEvent(
+  'personal_todo_deleted',
+  personalTodoTombstoneSchema,
+);
+export const personalTaskDetailsUpsertedEventV2Schema = syncEvent(
+  'personal_task_details_upserted',
+  personalTaskDetailsRecordSchema,
+);
+export const personalTaskDetailsDeletedEventV2Schema = syncEvent(
+  'personal_task_details_deleted',
+  personalTaskDetailsDeletedPayloadSchema,
+);
+export const personalTaskStateUpsertedEventV2Schema = syncEvent(
+  'personal_task_state_upserted',
+  personalTaskStateRecordSchema,
+);
+export const personalTaskStateDeletedEventV2Schema = syncEvent(
+  'personal_task_state_deleted',
+  personalTaskStateDeletedPayloadSchema,
+);
+export const reporterContentReportUpdatedEventV2Schema = syncEvent(
+  'reporter_content_report_updated',
+  reporterContentReportPayloadSchema,
+);
+
+export const privateSyncEventV2Schema = z.discriminatedUnion('type', [
+  classSectionFollowedEventV2Schema,
+  classSectionUnfollowedEventV2Schema,
+  accuracyVoteUpdatedEventV2Schema,
+  personalTodoUpsertedEventV2Schema,
+  personalTodoDeletedEventV2Schema,
+  personalTaskDetailsUpsertedEventV2Schema,
+  personalTaskDetailsDeletedEventV2Schema,
+  personalTaskStateUpsertedEventV2Schema,
+  personalTaskStateDeletedEventV2Schema,
+  reporterContentReportUpdatedEventV2Schema,
+]);
+
+export type PrivateSyncEventV2 = z.infer<typeof privateSyncEventV2Schema>;

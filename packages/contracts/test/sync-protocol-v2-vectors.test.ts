@@ -2,7 +2,9 @@ import { readFileSync } from 'node:fs';
 
 import { describe, expect, it } from 'vitest';
 
+import { syncEventV2Schema } from '../src/sync/event-v2.js';
 import { syncEventSchema, syncEventTypeSchema } from '../src/sync/event.js';
+import { snapshotRecordV2Schema } from '../src/sync/snapshot-record.js';
 import {
   snapshotRecordSchema,
   snapshotRecordTypeSchema,
@@ -29,7 +31,14 @@ describe('sync protocol v2 language-neutral vectors', () => {
     if (!Array.isArray(rawRecords)) throw new Error('Snapshot records are missing.');
 
     const records = rawRecords.map((record) => snapshotRecordSchema.parse(record));
+    const registryTypes = snapshotRecordV2Schema.options.map(
+      (schema) => schema.shape.record_type.value,
+    );
+    expect(records).toHaveLength(registryTypes.length);
     expect(new Set(records.map(({ record_type }) => record_type))).toEqual(
+      new Set(snapshotRecordTypeSchema.options),
+    );
+    expect(new Set(registryTypes)).toEqual(
       new Set(snapshotRecordTypeSchema.options),
     );
   });
@@ -41,8 +50,13 @@ describe('sync protocol v2 language-neutral vectors', () => {
     if (!Array.isArray(rawEvents)) throw new Error('Sync events are missing.');
 
     const events = rawEvents.map((event) => syncEventSchema.parse(event));
+    const registryTypes = syncEventV2Schema.options.map(
+      (schema) => schema.shape.type.value,
+    );
+    expect(events).toHaveLength(registryTypes.length);
     expect(new Set(events.map(({ type }) => type))).toEqual(
       new Set(syncEventTypeSchema.options),
     );
+    expect(new Set(registryTypes)).toEqual(new Set(syncEventTypeSchema.options));
   });
 });

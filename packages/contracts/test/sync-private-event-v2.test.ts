@@ -11,7 +11,7 @@ describe('private sync events v2', () => {
     expect(
       privateSyncEventV2Schema.parse({
         event_id: EVENT_ID,
-        schema_version: 1,
+        schema_version: 2,
         type: 'personal_task_state_upserted',
         occurred_at: NOW,
         payload: {
@@ -27,7 +27,7 @@ describe('private sync events v2', () => {
     expect(() =>
       privateSyncEventV2Schema.parse({
         event_id: EVENT_ID,
-        schema_version: 1,
+        schema_version: 2,
         type: 'personal_task_state_upserted',
         occurred_at: NOW,
         payload: { course_task_id: ENTITY_ID, revision: 2 },
@@ -39,7 +39,7 @@ describe('private sync events v2', () => {
     expect(() =>
       privateSyncEventV2Schema.parse({
         event_id: EVENT_ID,
-        schema_version: 1,
+        schema_version: 2,
         type: 'accuracy_vote_updated',
         occurred_at: NOW,
         payload: {
@@ -55,7 +55,7 @@ describe('private sync events v2', () => {
     expect(
       privateSyncEventV2Schema.parse({
         event_id: EVENT_ID,
-        schema_version: 1,
+        schema_version: 2,
         type: 'reporter_content_report_updated',
         occurred_at: NOW,
         payload: {
@@ -72,7 +72,7 @@ describe('private sync events v2', () => {
     expect(() =>
       privateSyncEventV2Schema.parse({
         event_id: EVENT_ID,
-        schema_version: 1,
+        schema_version: 2,
         type: 'content_report_status_updated',
         occurred_at: NOW,
         payload: {},

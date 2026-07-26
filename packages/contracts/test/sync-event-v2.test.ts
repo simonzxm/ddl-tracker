@@ -11,7 +11,7 @@ describe('sync event v2 registry', () => {
   it('narrows payloads from one event registry', () => {
     const event = syncEventV2Schema.parse({
       event_id: EVENT_ID,
-      schema_version: 1,
+      schema_version: 2,
       type: 'course_task_created',
       occurred_at: NOW,
       payload: {
@@ -35,7 +35,7 @@ describe('sync event v2 registry', () => {
     expect(() =>
       syncEventV2Schema.parse({
         event_id: EVENT_ID,
-        schema_version: 1,
+        schema_version: 2,
         type: 'personal_task_state_upserted',
         occurred_at: NOW,
         payload: { revision: 1 },
@@ -45,7 +45,7 @@ describe('sync event v2 registry', () => {
     expect(() =>
       syncEventV2Schema.parse({
         event_id: EVENT_ID,
-        schema_version: 1,
+        schema_version: 2,
         type: 'content_report_status_updated',
         occurred_at: NOW,
         payload: {},

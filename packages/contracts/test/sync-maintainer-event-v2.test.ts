@@ -13,7 +13,7 @@ describe('maintainer sync events v2', () => {
     expect(
       maintainerSyncEventV2Schema.parse({
         event_id: EVENT_ID,
-        schema_version: 1,
+        schema_version: 2,
         type: 'maintainer_content_report_updated',
         occurred_at: NOW,
         payload: {
@@ -36,7 +36,7 @@ describe('maintainer sync events v2', () => {
     expect(() =>
       maintainerSyncEventV2Schema.parse({
         event_id: EVENT_ID,
-        schema_version: 1,
+        schema_version: 2,
         type: 'maintainer_content_report_updated',
         occurred_at: NOW,
         payload: {

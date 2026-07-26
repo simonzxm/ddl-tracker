@@ -67,7 +67,7 @@ export class PostgresSyncEventStore {
   async append(draft: SyncEventDraft): Promise<SyncEventV2> {
     const event = syncEventV2Schema.parse({
       event_id: draft.eventId ?? this.#createId(),
-      schema_version: 1,
+      schema_version: 2,
       ...draft.event,
       occurred_at: draft.occurredAt.toISOString(),
     });

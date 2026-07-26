@@ -66,6 +66,24 @@ describe('public sync events v2', () => {
     ).toThrow();
   });
 
+  it('publishes catalog revision invalidation', () => {
+    expect(
+      publicSyncEventV2Schema.parse({
+        event_id: EVENT_ID,
+        schema_version: 2,
+        type: 'catalog_revision_changed',
+        occurred_at: NOW,
+        payload: {
+          revision: 7,
+          updated_at: NOW,
+        },
+      }),
+    ).toMatchObject({
+      type: 'catalog_revision_changed',
+      payload: { revision: 7 },
+    });
+  });
+
   it('requires timestamps on aggregate and deactivation events', () => {
     expect(() =>
       publicSyncEventV2Schema.parse({

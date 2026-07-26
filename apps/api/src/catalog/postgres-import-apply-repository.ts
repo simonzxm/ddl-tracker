@@ -195,6 +195,7 @@ export class PostgresCatalogImportApplyRepository
         input.now,
         input.createId,
       );
+      await this.#advanceCatalogRevision(input.now, input.createId);
 
       await this.#client.query(
         `update catalog_import_batches
@@ -456,6 +457,35 @@ export class PostgresCatalogImportApplyRepository
       [JSON.stringify(desired), now],
     );
     return true;
+  }
+
+  async #advanceCatalogRevision(
+    now: Date,
+    createId: () => string,
+  ): Promise<void> {
+    const result = await this.#client.query<{ revision: number }>(
+      `update catalog_revision
+       set revision = revision + 1, updated_at = $1
+       where singleton_id = 1
+       returning revision`,
+      [now],
+    );
+    const revision = result.rows[0]?.revision;
+    if (revision === undefined) {
+      throw new Error('Catalog revision singleton is missing.');
+    }
+    const events = new PostgresSyncEventStore(this.#client, { createId });
+    await events.append({
+      scope: 'authenticated_global',
+      occurredAt: now,
+      event: {
+        type: 'catalog_revision_changed',
+        payload: {
+          revision,
+          updated_at: now.toISOString(),
+        },
+      },
+    });
   }
 
   async #deactivateMissing(

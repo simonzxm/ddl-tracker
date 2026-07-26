@@ -226,6 +226,7 @@ export class PostgresSnapshotReader {
     limit: number;
   }): Promise<SnapshotPage> {
     const records: SnapshotRecord[] = [];
+    await this.#appendCatalogRevision(records);
     await this.#appendUserProfile(records, input.userId);
 
     const follows = await this.#client.query<{
@@ -323,6 +324,27 @@ export class PostgresSnapshotReader {
     );
     await this.#appendSharedSectionRecords(records, input.userId, [input.classSectionId]);
     return paginate(records, input.after, input.limit);
+  }
+
+  async #appendCatalogRevision(records: SnapshotRecord[]): Promise<void> {
+    const result = await this.#client.query<{
+      revision: number;
+      updated_at: Date;
+    }>(
+      `select revision, updated_at
+       from catalog_revision
+       where singleton_id = 1`,
+    );
+    const row = result.rows[0];
+    if (row === undefined) {
+      throw new Error('Catalog revision singleton is missing.');
+    }
+    records.push(
+      snapshotRecord('catalog_revision', '1', {
+        revision: row.revision,
+        updated_at: row.updated_at.toISOString(),
+      }),
+    );
   }
 
   async #appendUserProfile(

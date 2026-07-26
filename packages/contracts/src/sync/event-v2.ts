@@ -14,6 +14,7 @@ import {
   reporterContentReportUpdatedEventV2Schema,
 } from './private-event.js';
 import {
+  catalogRevisionChangedEventV2Schema,
   classSectionDeactivatedEventV2Schema,
   courseTaskCreatedEventV2Schema,
   courseTaskHiddenEventV2Schema,
@@ -33,6 +34,7 @@ import {
 } from './public-event.js';
 
 export const syncEventV2Schema = z.discriminatedUnion('type', [
+  catalogRevisionChangedEventV2Schema,
   classSectionFollowedEventV2Schema,
   classSectionUnfollowedEventV2Schema,
   courseTaskCreatedEventV2Schema,

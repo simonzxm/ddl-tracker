@@ -213,6 +213,11 @@ describePostgres('PostgresCatalogImportApplyRepository', () => {
       truncate table audit_log, sync_events, catalog_import_batches,
         catalog_imports, class_sections, courses, academic_terms, users cascade
     `);
+    await client.query(
+      `update catalog_revision
+       set revision = 1, updated_at = '2026-07-19T00:00:00Z'
+       where singleton_id = 1`,
+    );
   });
 
   afterAll(async () => {
@@ -376,6 +381,13 @@ describePostgres('PostgresCatalogImportApplyRepository', () => {
           updated_at: NOW.toISOString(),
         },
       },
+      {
+        type: 'catalog_revision_changed',
+        payload: {
+          revision: 2,
+          updated_at: NOW.toISOString(),
+        },
+      },
     ]);
     const audit = await client.query<{
       request_id: string;
@@ -405,7 +417,7 @@ describePostgres('PostgresCatalogImportApplyRepository', () => {
          (select count(*) from sync_events)::text as events,
          (select count(*) from audit_log)::text as audits`,
     );
-    expect(counts.rows[0]).toEqual({ events: '1', audits: '1' });
+    expect(counts.rows[0]).toEqual({ events: '2', audits: '1' });
   });
 
   it('atomically applies every uploaded batch', async () => {

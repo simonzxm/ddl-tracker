@@ -10,6 +10,13 @@ import {
 
 const revisionSchema = z.number().int().positive();
 
+export const catalogRevisionRecordSchema = z
+  .object({
+    revision: revisionSchema,
+    updated_at: rfc3339TimestampSchema,
+  })
+  .strict();
+
 export const classSectionRecordSchema = z
   .object({
     id: uuidV7Schema,

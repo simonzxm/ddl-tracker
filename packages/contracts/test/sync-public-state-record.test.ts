@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   accuracyVoteRecordSchema,
+  catalogRevisionRecordSchema,
   contentTombstoneSchema,
   proposalRedirectRecordSchema,
   proposalVoteTotalsRecordSchema,
@@ -57,6 +58,18 @@ describe('public sync state records', () => {
         updated_at: NOW,
       }),
     ).toMatchObject({ value: 'none', revision: 4 });
+  });
+
+  it('parses the global catalog revision', () => {
+    expect(
+      catalogRevisionRecordSchema.parse({
+        revision: 7,
+        updated_at: NOW,
+      }),
+    ).toEqual({
+      revision: 7,
+      updated_at: '2026-09-01T00:30:00.000Z',
+    });
   });
 
   it('parses comments, redirects, and task merges', () => {

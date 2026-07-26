@@ -8,6 +8,7 @@ import {
 } from './snapshot-record.js';
 
 export const snapshotRecordTypeSchema = z.enum([
+  'catalog_revision',
   'public_user_profile',
   'followed_class_section',
   'class_section',

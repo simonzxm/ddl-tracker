@@ -128,6 +128,11 @@ describePostgres('PostgresSnapshotReader', () => {
         followed_class_sections, class_sections, courses, academic_terms,
         users restart identity cascade
     `);
+    await client.query(
+      `update catalog_revision
+       set revision = 1, updated_at = '2026-07-19T00:00:00Z'
+       where singleton_id = 1`,
+    );
     await seed(client);
   });
 
@@ -147,6 +152,7 @@ describePostgres('PostgresSnapshotReader', () => {
     });
 
     const types = page.records.map(({ record_type }) => record_type);
+    expect(types).toContain('catalog_revision');
     expect(types).toContain('public_user_profile');
     expect(types).toContain('followed_class_section');
     expect(types).toContain('personal_todo');
@@ -157,6 +163,10 @@ describePostgres('PostgresSnapshotReader', () => {
     expect(types).toContain('proposal_vote_totals');
     expect(types).toContain('accuracy_vote');
     expect(types).toContain('task_comment');
+    expect(
+      page.records.find(({ record_type }) => record_type === 'catalog_revision')
+        ?.payload,
+    ).toMatchObject({ revision: 1 });
     expect(JSON.stringify(page.records)).not.toContain('Other private');
     expect(JSON.stringify(page.records)).not.toContain('raw_source');
     expect(

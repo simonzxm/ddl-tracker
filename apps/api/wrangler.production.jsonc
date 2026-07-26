@@ -1,0 +1,48 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "ddl-tracker-api-production",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-07-20",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": false,
+  "preview_urls": false,
+  "routes": [
+    {
+      "pattern": "ddl.nju.at/api/*",
+      "zone_name": "210023.xyz"
+    },
+    {
+      "pattern": "api.210023.xyz",
+      "custom_domain": true
+    }
+  ],
+  "triggers": {
+    "crons": ["17 3 * * *"]
+  },
+  "observability": {
+    "enabled": true,
+    "logs": {
+      "enabled": true,
+      "invocation_logs": true,
+      "persist": true
+    },
+    "traces": {
+      "enabled": true,
+      "head_sampling_rate": 0.1
+    }
+  },
+  "hyperdrive": [
+    {
+      "binding": "HYPERDRIVE",
+      "id": "7ebb59bbcb5842b78a7d63ded3896f36"
+    }
+  ],
+  "vars": {
+    "APP_ENVIRONMENT": "production",
+    "ALLOWED_EMAIL_DOMAINS": "nju.edu.cn,smail.nju.edu.cn",
+    "SMTP_HOST": "smtp.feishu.cn",
+    "SMTP_PORT": "465",
+    "SMTP_FROM_ADDRESS": "noreply@nju.at",
+    "SMTP_FROM_NAME": "DDL Tracker"
+  }
+}

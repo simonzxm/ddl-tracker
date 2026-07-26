@@ -14,6 +14,10 @@ const TERM_ID = '018f0000-0000-7000-8000-000000002203';
 const COURSE_ID = '018f0000-0000-7000-8000-000000002204';
 const SECTION_ID = '018f0000-0000-7000-8000-000000002205';
 const OTHER_SECTION_ID = '018f0000-0000-7000-8000-000000002206';
+const TASK_ID = '018f0000-0000-7000-8000-000000002207';
+const PROPOSAL_ID = '018f0000-0000-7000-8000-000000002208';
+const REPORT_ID = '018f0000-0000-7000-8000-000000002209';
+const NOW = new Date('2026-07-19T12:00:00.000Z');
 
 function eventId(index: number): string {
   return `018f0000-0000-7000-8000-${String(2300 + index).padStart(12, '0')}`;
@@ -74,20 +78,123 @@ describePostgres('PostgresSyncEventReader', () => {
 
   it('filters scopes, paginates visible events, and advances across invisible sequences', async () => {
     const definitions = [
-      ['private_user', OTHER_USER_ID, null, 'personal_todo_upserted'],
-      ['class_section_public', null, SECTION_ID, 'course_task_created'],
-      ['authenticated_global', null, null, 'public_user_profile_updated'],
-      ['maintainer_private', null, null, 'content_report_status_updated'],
-      ['private_user', USER_ID, null, 'personal_task_state_upserted'],
-      ['class_section_public', null, OTHER_SECTION_ID, 'task_proposal_created'],
+      {
+        scope: 'private_user',
+        scopeUserId: OTHER_USER_ID,
+        classSectionId: null,
+        type: 'personal_todo_upserted',
+        payload: {
+          id: eventId(20),
+          class_section_id: null,
+          title: 'Invisible todo',
+          deadline: null,
+          note: null,
+          state: 'pending',
+          revision: 1,
+          deleted_at: null,
+          created_at: NOW.toISOString(),
+          updated_at: NOW.toISOString(),
+        },
+      },
+      {
+        scope: 'class_section_public',
+        scopeUserId: null,
+        classSectionId: SECTION_ID,
+        type: 'course_task_created',
+        payload: {
+          id: TASK_ID,
+          class_section_id: SECTION_ID,
+          created_by: USER_ID,
+          state: 'visible',
+          revision: 1,
+          created_at: NOW.toISOString(),
+          updated_at: NOW.toISOString(),
+        },
+      },
+      {
+        scope: 'authenticated_global',
+        scopeUserId: null,
+        classSectionId: null,
+        type: 'public_user_profile_updated',
+        payload: {
+          id: USER_ID,
+          username: 'student',
+          display_name: 'Student',
+          avatar_url: null,
+          bio: null,
+          status: 'active',
+          revision: 1,
+          created_at: NOW.toISOString(),
+          updated_at: NOW.toISOString(),
+        },
+      },
+      {
+        scope: 'maintainer_private',
+        scopeUserId: null,
+        classSectionId: null,
+        type: 'maintainer_content_report_updated',
+        payload: {
+          report_id: REPORT_ID,
+          reporter_id: OTHER_USER_ID,
+          target_type: 'course_task',
+          target_id: TASK_ID,
+          reason: 'inaccurate',
+          details: null,
+          status: 'open',
+          resolution: null,
+          created_at: NOW.toISOString(),
+          resolved_at: null,
+        },
+      },
+      {
+        scope: 'private_user',
+        scopeUserId: USER_ID,
+        classSectionId: null,
+        type: 'personal_task_state_upserted',
+        payload: {
+          course_task_id: TASK_ID,
+          state: 'completed',
+          revision: 2,
+          created_at: NOW.toISOString(),
+          updated_at: NOW.toISOString(),
+        },
+      },
+      {
+        scope: 'class_section_public',
+        scopeUserId: null,
+        classSectionId: OTHER_SECTION_ID,
+        type: 'task_proposal_created',
+        payload: {
+          id: PROPOSAL_ID,
+          course_task_id: TASK_ID,
+          author_id: USER_ID,
+          title: 'Invisible proposal',
+          deadline: NOW.toISOString(),
+          description: null,
+          evidence_note: null,
+          evidence_url: null,
+          content_fingerprint: 'a'.repeat(64),
+          state: 'visible',
+          revision: 1,
+          created_at: NOW.toISOString(),
+        },
+      },
     ] as const;
     for (const [index, definition] of definitions.entries()) {
       await client.query(
         `insert into sync_events (
            event_id, scope, scope_user_id, class_section_id, type,
-           schema_version, payload
-         ) values ($1, $2, $3, $4, $5, 1, $6::jsonb)`,
-        [eventId(index), ...definition.slice(0, 3), definition[3], JSON.stringify({ index })],
+           schema_version, payload, occurred_at
+         ) values ($1, $2, $3, $4, $5, 2, $6::jsonb, $7)`,
+        [
+          eventId(index),
+          definition.scope,
+          definition.scopeUserId,
+          definition.classSectionId,
+          definition.type,
+          JSON.stringify(definition.payload),
+          NOW,
+        ],
       );
     }
 
@@ -128,10 +235,25 @@ describePostgres('PostgresSyncEventReader', () => {
   it('includes maintainer-private events only for maintainers', async () => {
     await client.query(
       `insert into sync_events (
-         event_id, scope, type, schema_version, payload
-       ) values ($1, 'maintainer_private', 'content_report_status_updated',
-                 1, '{}'::jsonb)`,
-      [eventId(0)],
+         event_id, scope, type, schema_version, payload, occurred_at
+       ) values ($1, 'maintainer_private',
+                 'maintainer_content_report_updated', 2, $2::jsonb, $3)`,
+      [
+        eventId(0),
+        JSON.stringify({
+          report_id: REPORT_ID,
+          reporter_id: OTHER_USER_ID,
+          target_type: 'course_task',
+          target_id: TASK_ID,
+          reason: 'inaccurate',
+          details: null,
+          status: 'open',
+          resolution: null,
+          created_at: NOW.toISOString(),
+          resolved_at: null,
+        }),
+        NOW,
+      ],
     );
 
     await expect(
@@ -150,7 +272,36 @@ describePostgres('PostgresSyncEventReader', () => {
         limit: 10,
       }),
     ).resolves.toMatchObject({
-      events: [{ type: 'content_report_status_updated' }],
+      events: [{ type: 'maintainer_content_report_updated' }],
+    });
+  });
+
+  it('requires a fresh snapshot before returning visible legacy events', async () => {
+    await client.query(
+      `insert into sync_events (
+         event_id, scope, scope_user_id, type, schema_version, payload,
+         occurred_at
+       ) values ($1, 'private_user', $2, 'personal_todo_upserted',
+                 1, '{}'::jsonb, $3)`,
+      [eventId(0), USER_ID, NOW],
+    );
+    const sequence = await client.query<{ sequence: string }>(
+      'select sequence::text from sync_events where event_id = $1',
+      [eventId(0)],
+    );
+
+    const error = await reader
+      .pull({
+        userId: USER_ID,
+        maintainer: false,
+        afterSequence: 0,
+        limit: 10,
+      })
+      .catch((value: unknown) => value);
+
+    expect(error).toBeInstanceOf(SyncCursorExpiredError);
+    expect(error).toMatchObject({
+      minimumSequence: Number(sequence.rows[0]?.sequence),
     });
   });
 

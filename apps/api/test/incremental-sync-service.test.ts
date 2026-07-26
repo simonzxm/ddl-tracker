@@ -10,7 +10,10 @@ import {
   type SyncEventReader,
 } from '../src/sync/incremental-service.js';
 import { SyncCursorCodec } from '../src/sync/cursor.js';
-import { SyncCursorExpiredError } from '../src/sync/postgres-event-reader.js';
+import {
+  SyncCursorExpiredError,
+  type SyncEventPage,
+} from '../src/sync/postgres-event-reader.js';
 
 const USER_ID = '018f0000-0000-7000-8000-000000002301';
 const REQUEST_ID = '018f0000-0000-7000-8000-000000002302';
@@ -56,14 +59,17 @@ function eventReader(): SyncEventReader & {
   pull: ReturnType<typeof vi.fn>;
 } {
   return {
-    pull: vi.fn(async () => ({
+    pull: vi.fn(async (): Promise<SyncEventPage> => ({
       events: [
         {
           event_id: EVENT_ID,
-          schema_version: 1,
+          schema_version: 2,
           type: 'class_section_followed',
           occurred_at: '2026-07-19T12:00:00.000Z',
-          payload: { followed: true },
+          payload: {
+            class_section_id: '018f0000-0000-7000-8000-000000002305',
+            followed_at: '2026-07-19T12:00:00.000Z',
+          },
         },
       ],
       nextSequence: 12,

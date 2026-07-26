@@ -1,15 +1,12 @@
 import type { Client } from 'pg';
 
-export interface SyncEventValue {
-  event_id: string;
-  schema_version: number;
-  type: string;
-  occurred_at: string;
-  payload: Record<string, unknown>;
-}
+import {
+  syncEventV2Schema,
+  type SyncEventV2,
+} from '@ddl-tracker/contracts';
 
 export interface SyncEventPage {
-  events: SyncEventValue[];
+  events: SyncEventV2[];
   nextSequence: number;
   hasMore: boolean;
 }
@@ -47,13 +44,6 @@ function safeSequence(value: string): number {
     throw new Error('Sync event sequence exceeds the safe integer range.');
   }
   return parsed;
-}
-
-function eventPayload(value: unknown): Record<string, unknown> {
-  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
-    throw new Error('Stored sync event payload is invalid.');
-  }
-  return value as Record<string, unknown>;
 }
 
 function visible(row: EventRow, userId: string, maintainer: boolean): boolean {
@@ -106,7 +96,7 @@ export class PostgresSyncEventReader {
       throw new SyncCursorExpiredError(minimumSequence);
     }
 
-    const collected: { sequence: number; event: SyncEventValue }[] = [];
+    const collected: { sequence: number; event: SyncEventV2 }[] = [];
     let scanAfter = input.afterSequence;
     let exhausted = false;
     const scanLimit = Math.max(100, Math.min(1000, input.limit * 4));
@@ -135,15 +125,18 @@ export class PostgresSyncEventReader {
         const sequence = safeSequence(row.sequence);
         scanAfter = sequence;
         if (visible(row, input.userId, input.maintainer)) {
+          if (row.schema_version !== 2) {
+            throw new SyncCursorExpiredError(sequence);
+          }
           collected.push({
             sequence,
-            event: {
+            event: syncEventV2Schema.parse({
               event_id: row.event_id,
               schema_version: row.schema_version,
               type: row.type,
               occurred_at: row.occurred_at.toISOString(),
-              payload: eventPayload(row.payload),
-            },
+              payload: row.payload,
+            }),
           });
           if (collected.length > input.limit) {
             break;

@@ -47,11 +47,11 @@
 
 第一页开始前，服务端记录全局事件 anchor，并创建短期 opaque snapshot token。快照包含：
 
-- 当前用户资料、关注教学班关系、全部私人待办、个人任务详情和个人任务状态。
+- 当前用户资料、关注教学班关系、全部私人待办、个人任务详情、个人任务状态和本人提交的内容举报。
 - 当前关注教学班的公开课程任务、可见提案、投票聚合、当前用户自己的投票、当前评论和所引用公开用户资料。
 - 合并、隐藏、删除和停用所需的当前 tombstone 状态。
 
-快照不包含课程目录全文、所有投票明细、完整评论修订历史、举报人信息或同步事件历史。
+快照不包含课程目录全文、所有投票明细、完整评论修订历史、其他举报人的信息或同步事件历史。
 
 每条快照记录使用以下 envelope：
 
@@ -275,7 +275,7 @@ task_comment_hidden
 task_comment_restored
 public_user_profile_updated
 public_user_deleted
-reporter_content_report_updated      # 仅举报人；不含 reporter_id 或私有 details
+reporter_content_report_updated      # 仅举报人；包含本人提交的完整举报记录，不含 reporter_id
 maintainer_content_report_updated    # 仅维护者；包含完整举报记录
 class_section_deactivated
 ```

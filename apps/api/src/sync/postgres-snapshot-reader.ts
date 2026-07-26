@@ -281,6 +281,7 @@ export class PostgresSnapshotReader {
       );
     }
 
+    await this.#appendReporterReports(records, input.userId);
     await this.#appendPrivateTaskRecords(records, input.userId, null);
     await this.#appendSharedSectionRecords(
       records,
@@ -359,6 +360,61 @@ export class PostgresSnapshotReader {
         updated_at: row.updated_at.toISOString(),
       }),
     );
+  }
+
+  async #appendReporterReports(
+    records: SnapshotRecord[],
+    userId: string,
+  ): Promise<void> {
+    const reports = await this.#client.query<{
+      id: string;
+      target_type: 'course_task' | 'proposal' | 'comment' | 'user';
+      target_id: string;
+      reason: 'inaccurate' | 'spam' | 'abuse' | 'privacy' | 'other';
+      details: string | null;
+      status: 'open' | 'resolved' | 'dismissed';
+      resolution: string | null;
+      created_at: Date;
+      resolved_at: Date | null;
+    }>(
+      `select id, target_type, target_id, reason, details, status,
+              resolution, created_at, resolved_at
+       from content_reports
+       where reporter_id = $1`,
+      [userId],
+    );
+    for (const report of reports.rows) {
+      const common = {
+        report_id: report.id,
+        target_type: report.target_type,
+        target_id: report.target_id,
+        reason: report.reason,
+        details: report.details,
+        created_at: report.created_at.toISOString(),
+      };
+      if (report.status === 'open') {
+        records.push(
+          snapshotRecord('reporter_content_report', report.id, {
+            ...common,
+            status: 'open',
+            resolution: null,
+            resolved_at: null,
+          }),
+        );
+        continue;
+      }
+      if (report.resolution === null || report.resolved_at === null) {
+        throw new Error('Resolved content report is missing its resolution.');
+      }
+      records.push(
+        snapshotRecord('reporter_content_report', report.id, {
+          ...common,
+          status: report.status,
+          resolution: report.resolution,
+          resolved_at: report.resolved_at.toISOString(),
+        }),
+      );
+    }
   }
 
   async #appendPrivateTaskRecords(

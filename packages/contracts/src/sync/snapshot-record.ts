@@ -17,6 +17,7 @@ import {
   personalTaskDetailsRecordSchema,
   personalTaskStateRecordSchema,
   personalTodoRecordSchema,
+  reporterContentReportRecordSchema,
 } from './private-record.js';
 
 function snapshotRecord<const Type extends string, Payload extends z.ZodType>(
@@ -84,6 +85,10 @@ export const taskCommentSnapshotRecordSchema = snapshotRecord(
   'task_comment',
   taskCommentRecordSchema,
 );
+export const reporterContentReportSnapshotRecordSchema = snapshotRecord(
+  'reporter_content_report',
+  reporterContentReportRecordSchema,
+);
 export const contentTombstoneSnapshotRecordSchema = snapshotRecord(
   'content_tombstone',
   contentTombstoneSchema,
@@ -103,6 +108,7 @@ export const snapshotRecordV2Schema = z.discriminatedUnion('record_type', [
   personalTaskDetailsSnapshotRecordSchema,
   personalTaskStateSnapshotRecordSchema,
   taskCommentSnapshotRecordSchema,
+  reporterContentReportSnapshotRecordSchema,
   contentTombstoneSnapshotRecordSchema,
 ]);
 

@@ -2,10 +2,6 @@ import { z } from 'zod';
 
 import { rfc3339TimestampSchema, uuidV7Schema } from '../schema.js';
 import {
-  reportReasonSchema,
-  reportTargetTypeSchema,
-} from './discussion-operation.js';
-import {
   followedClassSectionRecordSchema,
   personalTaskDetailsRecordSchema,
   personalTaskDetailsTombstoneSchema,
@@ -13,6 +9,7 @@ import {
   personalTaskStateTombstoneSchema,
   personalTodoRecordSchema,
   personalTodoTombstoneSchema,
+  reporterContentReportRecordSchema,
 } from './private-record.js';
 
 function syncEvent<const Type extends string, Payload extends z.ZodType>(
@@ -62,41 +59,8 @@ const personalTaskStateDeletedPayloadSchema =
     reason: privateDeletionReasonSchema.optional(),
   });
 
-const reporterOpenReportPayloadSchema = z
-  .object({
-    report_id: uuidV7Schema,
-    target_type: reportTargetTypeSchema,
-    target_id: uuidV7Schema,
-    reason: reportReasonSchema,
-    status: z.literal('open'),
-    created_at: rfc3339TimestampSchema,
-  })
-  .strict();
-const reporterResolvedReportPayloadSchema = z
-  .object({
-    report_id: uuidV7Schema,
-    status: z.literal('resolved'),
-    resolution: z.string().min(1).max(1000),
-    resolved_at: rfc3339TimestampSchema,
-  })
-  .strict();
-const reporterDismissedReportPayloadSchema = z
-  .object({
-    report_id: uuidV7Schema,
-    status: z.literal('dismissed'),
-    resolution: z.string().min(1).max(1000),
-    resolved_at: rfc3339TimestampSchema,
-  })
-  .strict();
-
-export const reporterContentReportPayloadSchema = z.discriminatedUnion(
-  'status',
-  [
-    reporterOpenReportPayloadSchema,
-    reporterResolvedReportPayloadSchema,
-    reporterDismissedReportPayloadSchema,
-  ],
-);
+export const reporterContentReportPayloadSchema =
+  reporterContentReportRecordSchema;
 
 export const classSectionFollowedEventV2Schema = syncEvent(
   'class_section_followed',

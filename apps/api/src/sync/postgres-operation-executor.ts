@@ -1294,8 +1294,11 @@ export class PostgresStudentOperationExecutor {
       target_type: targetType,
       target_id: targetId,
       reason,
+      details,
       status: 'open' as const,
+      resolution: null,
       created_at: now.toISOString(),
+      resolved_at: null,
     };
     await this.#appendPrivateEvent(
       userId,
@@ -1308,9 +1311,6 @@ export class PostgresStudentOperationExecutor {
       {
         ...reporterPayload,
         reporter_id: userId,
-        details,
-        resolution: null,
-        resolved_at: null,
       },
       now,
     );

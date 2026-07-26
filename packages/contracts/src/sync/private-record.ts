@@ -6,6 +6,10 @@ import {
   rfc3339TimestampSchema,
   uuidV7Schema,
 } from '../schema.js';
+import {
+  reportReasonSchema,
+  reportTargetTypeSchema,
+} from './discussion-operation.js';
 import { personalTaskStateSchema } from './private-operation.js';
 
 const revisionSchema = z.number().int().positive();
@@ -78,6 +82,42 @@ export const personalTaskStateTombstoneSchema = z
   })
   .strict();
 
+const reporterContentReportIdentity = {
+  report_id: uuidV7Schema,
+  target_type: reportTargetTypeSchema,
+  target_id: uuidV7Schema,
+  reason: reportReasonSchema,
+  details: nullableNormalizedTextSchema(1000),
+  created_at: rfc3339TimestampSchema,
+};
+
+export const reporterContentReportRecordSchema = z.discriminatedUnion('status', [
+  z
+    .object({
+      ...reporterContentReportIdentity,
+      status: z.literal('open'),
+      resolution: z.null(),
+      resolved_at: z.null(),
+    })
+    .strict(),
+  z
+    .object({
+      ...reporterContentReportIdentity,
+      status: z.literal('resolved'),
+      resolution: normalizedTextSchema(1, 1000),
+      resolved_at: rfc3339TimestampSchema,
+    })
+    .strict(),
+  z
+    .object({
+      ...reporterContentReportIdentity,
+      status: z.literal('dismissed'),
+      resolution: normalizedTextSchema(1, 1000),
+      resolved_at: rfc3339TimestampSchema,
+    })
+    .strict(),
+]);
+
 export type FollowedClassSectionRecord = z.infer<
   typeof followedClassSectionRecordSchema
 >;
@@ -96,4 +136,7 @@ export type PersonalTaskStateRecord = z.infer<
 >;
 export type PersonalTaskStateTombstone = z.infer<
   typeof personalTaskStateTombstoneSchema
+>;
+export type ReporterContentReportRecord = z.infer<
+  typeof reporterContentReportRecordSchema
 >;

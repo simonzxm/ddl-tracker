@@ -176,6 +176,7 @@ export class AccountService {
     deviceName: string | null;
     deviceMetadata: Record<string, unknown>;
   }): Promise<{
+    kind: 'session';
     access_token: string;
     token_type: 'Bearer';
     expires_at: string;
@@ -239,6 +240,7 @@ export class AccountService {
     }
 
     return {
+      kind: 'session',
       access_token: sessionToken,
       token_type: 'Bearer',
       expires_at: session.absoluteExpiresAt.toISOString(),

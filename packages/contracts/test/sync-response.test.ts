@@ -77,6 +77,7 @@ describe('incremental sync response', () => {
     expect(
       incrementalSyncResponseSchema.parse({
         protocol_version: 2,
+        mode: 'incremental',
         request_id: REQUEST_ID,
         operation_results: [
           {
@@ -110,6 +111,7 @@ describe('incremental sync response', () => {
     expect(() =>
       incrementalSyncResponseSchema.parse({
         protocol_version: 2,
+        mode: 'incremental',
         request_id: REQUEST_ID,
         operation_results: [],
         events: [

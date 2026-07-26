@@ -63,7 +63,7 @@ describe('OpenAPI document', () => {
     );
   });
 
-  it('documents retry metadata on every bearer-protected operation', () => {
+  it('documents common errors on every bearer-protected operation', () => {
     for (const pathItem of Object.values(openApiDocument.paths)) {
       for (const operation of Object.values(pathItem)) {
         if (
@@ -73,6 +73,9 @@ describe('OpenAPI document', () => {
           'responses' in operation
         ) {
           expect(operation.responses).toMatchObject({
+            '400': { content: { 'application/json': expect.any(Object) } },
+            '401': { content: { 'application/json': expect.any(Object) } },
+            '403': { content: { 'application/json': expect.any(Object) } },
             '429': {
               headers: {
                 'Retry-After': {
@@ -80,6 +83,8 @@ describe('OpenAPI document', () => {
                 },
               },
             },
+            '500': { content: { 'application/json': expect.any(Object) } },
+            '503': { content: { 'application/json': expect.any(Object) } },
           });
         }
       }

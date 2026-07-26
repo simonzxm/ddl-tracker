@@ -287,6 +287,17 @@ function todoPayload(row: PersonalTodoRow) {
   };
 }
 
+function todoConflictCurrent(row: PersonalTodoRow) {
+  if (row.deleted_at !== null) {
+    return {
+      id: row.id,
+      revision: row.revision,
+      deleted_at: row.deleted_at.toISOString(),
+    };
+  }
+  return todoPayload(row);
+}
+
 function isUniqueViolation(error: unknown): boolean {
   return (
     typeof error === 'object' &&
@@ -768,9 +779,10 @@ export class PostgresStudentOperationExecutor {
         code: 'revision_conflict',
         message: 'Personal todo revision does not match.',
         details: {
+          entity_type: 'personal_todo',
           expected_revision: expectedRevision,
           current_revision: todo.revision,
-          current: todoPayload(todo),
+          current: todoConflictCurrent(todo),
         },
       });
     }
@@ -828,6 +840,7 @@ export class PostgresStudentOperationExecutor {
         code: 'revision_conflict',
         message: 'Personal task details revision does not match.',
         details: {
+          entity_type: 'personal_task_details',
           expected_revision: expectedRevision,
           current_revision: requireRow(row).revision,
           current: detailsPayload(row),
@@ -1145,6 +1158,7 @@ export class PostgresStudentOperationExecutor {
         code: 'revision_conflict',
         message: 'Comment revision does not match.',
         details: {
+          entity_type: 'task_comment',
           expected_revision: expectedRevision,
           current_revision: current.row.current_revision,
           current: commentPayload(current.row),
@@ -1198,6 +1212,7 @@ export class PostgresStudentOperationExecutor {
         code: 'revision_conflict',
         message: 'Comment revision does not match.',
         details: {
+          entity_type: 'task_comment',
           expected_revision: expectedRevision,
           current_revision: current.row.current_revision,
           current: commentPayload(current.row),
@@ -1215,10 +1230,7 @@ export class PostgresStudentOperationExecutor {
       [commentId, userId, nextRevision, now, expectedRevision],
     );
     if (updated.rowCount !== 1) {
-      throw new SyncOperationRejection({
-        code: 'revision_conflict',
-        message: 'Comment changed while being deleted.',
-      });
+      throw new Error('Locked comment delete returned no row.');
     }
     await this.#appendPublicEvent(
       current.classSectionId,
@@ -1516,9 +1528,10 @@ export class PostgresStudentOperationExecutor {
         code: 'revision_conflict',
         message: 'Personal todo revision does not match.',
         details: {
+          entity_type: 'personal_todo',
           expected_revision: expectedRevision,
           current_revision: todo.revision,
-          current: todoPayload(todo),
+          current: todoConflictCurrent(todo),
         },
       });
     }
@@ -1666,7 +1679,12 @@ export class PostgresStudentOperationExecutor {
         throw new SyncOperationRejection({
           code: 'revision_conflict',
           message: 'Personal task details no longer match expected absence.',
-          details: { expected_revision: 0, current_revision: 0 },
+          details: {
+            entity_type: 'personal_task_details',
+            expected_revision: 0,
+            current_revision: 0,
+            current: null,
+          },
         });
       }
       throw new SyncOperationRejection({
@@ -1678,6 +1696,7 @@ export class PostgresStudentOperationExecutor {
       code: 'revision_conflict',
       message: 'Personal task details revision does not match.',
       details: {
+        entity_type: 'personal_task_details',
         expected_revision: expectedRevision,
         current_revision: requireRow(row).revision,
         current: detailsPayload(row),
@@ -1703,7 +1722,12 @@ export class PostgresStudentOperationExecutor {
         throw new SyncOperationRejection({
           code: 'revision_conflict',
           message: 'Personal task state no longer matches expected absence.',
-          details: { expected_revision: 0, current_revision: 0 },
+          details: {
+            entity_type: 'personal_task_state',
+            expected_revision: 0,
+            current_revision: 0,
+            current: null,
+          },
         });
       }
       throw new SyncOperationRejection({
@@ -1715,6 +1739,7 @@ export class PostgresStudentOperationExecutor {
       code: 'revision_conflict',
       message: 'Personal task state revision does not match.',
       details: {
+        entity_type: 'personal_task_state',
         expected_revision: expectedRevision,
         current_revision: requireRow(row).revision,
         current: statePayload(row),
@@ -1746,9 +1771,10 @@ export class PostgresStudentOperationExecutor {
       code: 'revision_conflict',
       message: 'Personal todo revision does not match.',
       details: {
+        entity_type: 'personal_todo',
         expected_revision: expectedRevision,
         current_revision: requireRow(row).revision,
-        current: todoPayload(row),
+        current: todoConflictCurrent(row),
       },
     });
   }

@@ -34,7 +34,23 @@ describe('operation results', () => {
         status: 'rejected',
         error: {
           code: 'revision_conflict',
-          details: { current_revision: 5 },
+          details: {
+            entity_type: 'personal_todo',
+            expected_revision: 4,
+            current_revision: 5,
+            current: {
+              id: TASK_ID,
+              class_section_id: null,
+              title: 'Read chapter 3',
+              deadline: null,
+              note: null,
+              state: 'pending',
+              revision: 5,
+              deleted_at: null,
+              created_at: '2026-09-01T00:00:00Z',
+              updated_at: '2026-09-01T00:30:00Z',
+            },
+          },
           message: 'The record changed.',
           retryable: false,
         },
@@ -54,6 +70,22 @@ describe('operation results', () => {
         },
       }).status,
     ).toBe('dependency_failed');
+  });
+
+  it('rejects untyped conflict details', () => {
+    expect(() =>
+      operationResultSchema.parse({
+        operation_id: OPERATION_ID,
+        operation_type: 'update_personal_todo',
+        status: 'rejected',
+        error: {
+          code: 'revision_conflict',
+          details: { current_revision: 5 },
+          message: 'The record changed.',
+          retryable: false,
+        },
+      }),
+    ).toThrow();
   });
 
   it('rejects success without a typed follow-up field and dependency failure with another code', () => {

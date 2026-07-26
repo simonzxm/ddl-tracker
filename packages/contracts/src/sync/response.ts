@@ -1,20 +1,24 @@
 import { z } from 'zod';
 
-import { apiErrorCodeSchema } from '../error.js';
 import { opaqueTokenSchema, uuidV7Schema } from '../schema.js';
 import { syncEventSchema } from './event.js';
 import { studentOperationTypeSchema } from './operation.js';
+import {
+  personalTaskDetailsRecordSchema,
+  personalTaskStateRecordSchema,
+  personalTodoRecordSchema,
+  personalTodoTombstoneSchema,
+} from './private-record.js';
+import { taskCommentRecordSchema } from './public-record.js';
 import {
   MAX_SYNC_OPERATIONS,
   MAX_SYNC_PAGE_SIZE,
   SYNC_PROTOCOL_VERSION,
 } from './limits.js';
 
-const operationErrorFields = {
-  details: z.record(z.string(), z.unknown()),
-  message: z.string().min(1).max(500),
-  retryable: z.literal(false),
-};
+const messageSchema = z.string().min(1).max(500);
+const nonnegativeRevisionSchema = z.number().int().nonnegative();
+const emptyDetailsSchema = z.object({}).strict();
 
 export const operationFollowUpSchema = z
   .object({
@@ -32,17 +36,107 @@ const successResultSchema = z
   })
   .strict();
 
+export const revisionConflictDetailsSchema = z.discriminatedUnion(
+  'entity_type',
+  [
+    z
+      .object({
+        entity_type: z.literal('personal_todo'),
+        expected_revision: nonnegativeRevisionSchema,
+        current_revision: nonnegativeRevisionSchema,
+        current: z
+          .union([personalTodoRecordSchema, personalTodoTombstoneSchema])
+          .nullable(),
+      })
+      .strict(),
+    z
+      .object({
+        entity_type: z.literal('personal_task_details'),
+        expected_revision: nonnegativeRevisionSchema,
+        current_revision: nonnegativeRevisionSchema,
+        current: personalTaskDetailsRecordSchema.nullable(),
+      })
+      .strict(),
+    z
+      .object({
+        entity_type: z.literal('personal_task_state'),
+        expected_revision: nonnegativeRevisionSchema,
+        current_revision: nonnegativeRevisionSchema,
+        current: personalTaskStateRecordSchema.nullable(),
+      })
+      .strict(),
+    z
+      .object({
+        entity_type: z.literal('task_comment'),
+        expected_revision: nonnegativeRevisionSchema,
+        current_revision: nonnegativeRevisionSchema,
+        current: taskCommentRecordSchema.nullable(),
+      })
+      .strict(),
+  ],
+);
+
+const revisionConflictErrorSchema = z
+  .object({
+    code: z.literal('revision_conflict'),
+    details: revisionConflictDetailsSchema,
+    message: messageSchema,
+    retryable: z.literal(false),
+  })
+  .strict();
+
+const duplicateProposalErrorSchema = z
+  .object({
+    code: z.literal('duplicate_proposal'),
+    details: z
+      .object({ existing_proposal_id: uuidV7Schema })
+      .strict(),
+    message: messageSchema,
+    retryable: z.literal(false),
+  })
+  .strict();
+
+const ordinaryOperationErrorSchema = z
+  .object({
+    code: z.enum([
+      'conflict',
+      'content_hidden',
+      'inactive_term',
+      'invalid_request',
+      'not_found',
+      'operation_id_reused',
+    ]),
+    details: emptyDetailsSchema,
+    message: messageSchema,
+    retryable: z.literal(false),
+  })
+  .strict();
+
+export const rejectedOperationErrorSchema = z.union([
+  revisionConflictErrorSchema,
+  duplicateProposalErrorSchema,
+  ordinaryOperationErrorSchema,
+]);
+
 const rejectedResultSchema = z
   .object({
     operation_id: uuidV7Schema,
     operation_type: studentOperationTypeSchema,
     status: z.literal('rejected'),
-    error: z
+    error: rejectedOperationErrorSchema,
+  })
+  .strict();
+
+export const dependencyFailedErrorSchema = z
+  .object({
+    code: z.literal('dependency_failed'),
+    details: z
       .object({
-        code: apiErrorCodeSchema,
-        ...operationErrorFields,
+        failed_operation_ids: z.array(uuidV7Schema).min(1).max(MAX_SYNC_OPERATIONS),
       })
       .strict(),
+    message: messageSchema,
+    retryable: z.literal(false),
   })
   .strict();
 
@@ -51,12 +145,7 @@ const dependencyFailedResultSchema = z
     operation_id: uuidV7Schema,
     operation_type: studentOperationTypeSchema,
     status: z.literal('dependency_failed'),
-    error: z
-      .object({
-        code: z.literal('dependency_failed'),
-        ...operationErrorFields,
-      })
-      .strict(),
+    error: dependencyFailedErrorSchema,
   })
   .strict();
 
@@ -81,6 +170,15 @@ export const incrementalSyncResponseSchema = z
   .strict();
 
 export type OperationResult = z.infer<typeof operationResultSchema>;
+export type RejectedOperationError = z.infer<
+  typeof rejectedOperationErrorSchema
+>;
+export type DependencyFailedError = z.infer<
+  typeof dependencyFailedErrorSchema
+>;
+export type RevisionConflictDetails = z.infer<
+  typeof revisionConflictDetailsSchema
+>;
 export type IncrementalSyncResponse = z.infer<
   typeof incrementalSyncResponseSchema
 >;

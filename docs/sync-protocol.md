@@ -328,7 +328,7 @@ Event payload 必须通过其 `type` 对应的严格 schema，并携带客户端
 | `rate_limited` | 是，按 `retry_after` | 限流 |
 | `temporarily_unavailable` | 是 | 数据库或外部依赖临时不可用 |
 
-错误对象统一包含 `code`、稳定结构化 `details`、诊断 `message`、`retryable`、可选 `retry_after` 和 `request_id`。客户端逻辑不能解析 message 文本。
+错误对象统一包含 `code`、稳定结构化 `details`、诊断 `message`、`retryable`、可选 `retry_after` 和 `request_id`。客户端逻辑不能解析 message 文本。operation-level `revision_conflict` 的 details 使用 `entity_type` 判别联合，并包含 `expected_revision`、`current_revision` 与对应完整当前记录或 tombstone；`duplicate_proposal` 固定提供 `existing_proposal_id`；`dependency_failed` 固定提供 `failed_operation_ids`。其他稳定业务拒绝的 details 必须为空对象。
 
 ## 官方限制默认值
 

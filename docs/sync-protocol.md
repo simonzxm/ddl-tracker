@@ -1,6 +1,6 @@
 # 同步协议
 
-本文定义未来原生客户端实现离线同步所需的语言无关语义。JSON schema 与测试向量最终由 `packages/contracts` 发布；本文是行为规范，不是某个 TypeScript 客户端的说明。
+本文定义未来原生客户端实现离线同步所需的语言无关语义。JSON schema 与单条 record/event、完整 response/error 测试向量由 `packages/contracts` 发布；本文是行为规范，不是某个 TypeScript 客户端的说明。
 
 ## 目标
 

@@ -1,6 +1,24 @@
 import type { Client } from 'pg';
 
 import { HttpError } from '../http/errors.js';
+import {
+  PostgresSyncEventStore,
+  type SyncEventDraft,
+} from '../sync/postgres-event-store.js';
+
+type PrivateEventDraft = Extract<
+  SyncEventDraft,
+  { scope: 'private_user' }
+>['event'];
+type PublicEventDraft = Extract<
+  SyncEventDraft,
+  { scope: 'class_section_public' }
+>['event'];
+type PrivateDeletionReason =
+  | 'task_merge_conflict'
+  | 'task_merge_duplicate'
+  | 'task_merge_moved'
+  | 'task_merge_merged';
 
 interface TaskRow {
   id: string;
@@ -42,6 +60,7 @@ interface PrivateStateRow {
 
 export class PostgresTaskMergeRepository {
   readonly #client: Client;
+  readonly #events: PostgresSyncEventStore;
   readonly #createId: () => string;
   readonly #now: () => Date;
 
@@ -50,6 +69,9 @@ export class PostgresTaskMergeRepository {
     options: { createId: () => string; now?: () => Date },
   ) {
     this.#client = client;
+    this.#events = new PostgresSyncEventStore(client, {
+      createId: options.createId,
+    });
     this.#createId = options.createId;
     this.#now = options.now ?? (() => new Date());
   }
@@ -140,20 +162,24 @@ export class PostgresTaskMergeRepository {
            ) values ($1, $2, $3)`,
           [proposal.id, canonical.id, now],
         );
-        await this.#client.query(
+        const redirectedProposal = await this.#client.query<{
+          revision: number;
+        }>(
           `update task_proposals
            set state = 'redirected', revision = revision + 1
-           where id = $1`,
+           where id = $1
+           returning revision`,
           [proposal.id],
         );
+        const redirectRevision = requiredRow(redirectedProposal.rows[0]).revision;
         await this.#publicEvent(
           source.class_section_id,
           'task_proposal_redirected',
           {
             source_proposal_id: proposal.id,
             canonical_proposal_id: canonical.id,
-            source_task_id: input.sourceTaskId,
-            target_task_id: input.targetTaskId,
+            revision: redirectRevision,
+            created_at: now.toISOString(),
           },
           now,
         );
@@ -177,12 +203,14 @@ export class PostgresTaskMergeRepository {
          where target_type = 'course_task' and target_id = $1`,
         [input.sourceTaskId, input.targetTaskId],
       );
-      await this.#client.query(
+      const mergedTask = await this.#client.query<{ revision: number }>(
         `update course_tasks
          set state = 'merged', revision = revision + 1, updated_at = $2
-         where id = $1`,
+         where id = $1
+         returning revision`,
         [input.sourceTaskId, now],
       );
+      const mergedRevision = requiredRow(mergedTask.rows[0]).revision;
       await this.#client.query(
         `insert into task_merges (
            source_task_id, target_task_id, maintainer_id, reason, created_at
@@ -201,6 +229,9 @@ export class PostgresTaskMergeRepository {
         {
           source_task_id: input.sourceTaskId,
           target_task_id: input.targetTaskId,
+          reason: input.reason,
+          revision: mergedRevision,
+          created_at: now.toISOString(),
           redirected_proposals: redirected,
           moved_proposals: moved,
           recovered_personal_todos: recoveredPersonalTodos,
@@ -505,7 +536,7 @@ export class PostgresTaskMergeRepository {
     userId: string,
     taskId: string,
     revision: number,
-    reason: string,
+    reason: PrivateDeletionReason,
     now: Date,
   ): Promise<void> {
     await this.#privateEvent(
@@ -521,19 +552,18 @@ export class PostgresTaskMergeRepository {
     );
   }
 
-  async #privateEvent(
+  async #privateEvent<Type extends PrivateEventDraft['type']>(
     userId: string,
-    type: string,
-    payload: Record<string, unknown>,
+    type: Type,
+    payload: Extract<PrivateEventDraft, { type: Type }>['payload'],
     now: Date,
   ): Promise<void> {
-    await this.#client.query(
-      `insert into sync_events (
-         event_id, scope, scope_user_id, type, schema_version,
-         payload, occurred_at
-       ) values ($1, 'private_user', $2, $3, 1, $4::jsonb, $5)`,
-      [this.#createId(), userId, type, JSON.stringify(payload), now],
-    );
+    await this.#events.append({
+      scope: 'private_user',
+      userId,
+      occurredAt: now,
+      event: { type, payload } as PrivateEventDraft,
+    });
   }
 
   async #mergeProposalVotes(input: {
@@ -591,22 +621,16 @@ export class PostgresTaskMergeRepository {
         ],
       );
       canonicalVotes.delete(sourceVote.user_id);
-      await this.#client.query(
-        `insert into sync_events (
-           event_id, scope, scope_user_id, type, schema_version,
-           payload, occurred_at
-         ) values ($1, 'private_user', $2, 'accuracy_vote_updated',
-                   1, $3::jsonb, $4)`,
-        [
-          this.#createId(),
-          sourceVote.user_id,
-          JSON.stringify({
-            proposal_id: input.canonicalProposalId,
-            value: 'none',
-            reason: 'task_merge_conflict',
-          }),
-          input.now,
-        ],
+      await this.#privateEvent(
+        sourceVote.user_id,
+        'accuracy_vote_updated',
+        {
+          proposal_id: input.canonicalProposalId,
+          value: 'none',
+          updated_at: input.now.toISOString(),
+          reason: 'task_merge_conflict',
+        },
+        input.now,
       );
     }
     await this.#recomputeTotals(input.canonicalProposalId, input.classSectionId, input.now);
@@ -644,24 +668,28 @@ export class PostgresTaskMergeRepository {
     await this.#publicEvent(
       classSectionId,
       'proposal_vote_totals_updated',
-      { proposal_id: proposalId, up: row.up, down: row.down },
+      {
+        proposal_id: proposalId,
+        up: row.up,
+        down: row.down,
+        updated_at: now.toISOString(),
+      },
       now,
     );
   }
 
-  async #publicEvent(
+  async #publicEvent<Type extends PublicEventDraft['type']>(
     classSectionId: string,
-    type: string,
-    payload: Record<string, unknown>,
+    type: Type,
+    payload: Extract<PublicEventDraft, { type: Type }>['payload'],
     now: Date,
   ): Promise<void> {
-    await this.#client.query(
-      `insert into sync_events (
-         event_id, scope, class_section_id, type, schema_version,
-         payload, occurred_at
-       ) values ($1, 'class_section_public', $2, $3, 1, $4::jsonb, $5)`,
-      [this.#createId(), classSectionId, type, JSON.stringify(payload), now],
-    );
+    await this.#events.append({
+      scope: 'class_section_public',
+      classSectionId,
+      occurredAt: now,
+      event: { type, payload } as PublicEventDraft,
+    });
   }
 
   async #audit(input: {
@@ -711,6 +739,13 @@ export class PostgresTaskMergeRepository {
   }
 }
 
+
+function requiredRow<T>(row: T | undefined): T {
+  if (row === undefined) {
+    throw new Error('Task merge update returned no row.');
+  }
+  return row;
+}
 
 function sameDetails(
   left: PrivateDetailsRow,

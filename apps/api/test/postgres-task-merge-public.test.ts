@@ -237,7 +237,58 @@ describePostgres('PostgresTaskMergeRepository public graph', () => {
     expect(reconsider.rows[0]?.payload).toEqual({
       proposal_id: TARGET_PROPOSAL,
       value: 'none',
+      updated_at: NOW.toISOString(),
       reason: 'task_merge_conflict',
+    });
+
+    const structuralEvents = await client.query<{
+      type: string;
+      payload: Record<string, unknown>;
+    }>(
+      `select type, payload from sync_events
+       where type in ('task_proposal_redirected', 'course_task_merged')
+       order by sequence`,
+    );
+    expect(structuralEvents.rows).toEqual([
+      {
+        type: 'task_proposal_redirected',
+        payload: {
+          source_proposal_id: DUPLICATE_PROPOSAL,
+          canonical_proposal_id: TARGET_PROPOSAL,
+          revision: 2,
+          created_at: NOW.toISOString(),
+        },
+      },
+      {
+        type: 'course_task_merged',
+        payload: {
+          source_task_id: SOURCE_TASK,
+          target_task_id: TARGET_TASK,
+          reason: 'Confirmed duplicate.',
+          revision: 2,
+          created_at: NOW.toISOString(),
+          redirected_proposals: 1,
+          moved_proposals: 1,
+          recovered_personal_todos: 0,
+        },
+      },
+    ]);
+
+    const totalsEvent = await client.query<{
+      payload: Record<string, unknown>;
+    }>(
+      `select payload from sync_events
+       where type = 'proposal_vote_totals_updated'
+         and payload->>'proposal_id' = $1
+       order by sequence desc
+       limit 1`,
+      [TARGET_PROPOSAL],
+    );
+    expect(totalsEvent.rows[0]?.payload).toMatchObject({
+      proposal_id: TARGET_PROPOSAL,
+      up: 1,
+      down: 1,
+      updated_at: NOW.toISOString(),
     });
   });
 

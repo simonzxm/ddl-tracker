@@ -96,16 +96,12 @@ function invalidSnapshot(message: string, cause?: unknown): HttpError {
 
 function wireRecords(page: SnapshotPage) {
   return page.records.map((record) => {
-    const revision = record.payload.revision;
+    const revision =
+      'revision' in record.payload ? record.payload.revision : 0;
     return snapshotRecordSchema.parse({
       record_type: record.record_type,
       id: record.id,
-      revision:
-        typeof revision === 'number' &&
-        Number.isInteger(revision) &&
-        revision >= 0
-          ? revision
-          : 0,
+      revision,
       payload: record.payload,
     });
   });

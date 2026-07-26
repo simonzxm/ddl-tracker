@@ -5,6 +5,7 @@ import { createUuidV7 } from '@ddl-tracker/contracts';
 import type { MailDelivery } from './auth/email-challenge-service.js';
 import type { SmtpSession } from './auth/smtp-mail-delivery.js';
 import { createApp, type RequestLogEntry } from './http/app.js';
+import { HttpError, toApiError } from './http/errors.js';
 import { PostgresRetentionService } from './maintenance/postgres-retention-service.js';
 import { createRuntimeApp } from './runtime-app.js';
 
@@ -50,7 +51,11 @@ export function createWorkerHandler(
       const client = options.createClient(env.HYPERDRIVE.connectionString);
       let connected = false;
       try {
-        await client.connect();
+        try {
+          await client.connect();
+        } catch {
+          return databaseUnavailableResponse(request, options.logRequest);
+        }
         connected = true;
         return await createRuntimeApp(client, env, {
           ...(options.mailDelivery === undefined
@@ -86,4 +91,37 @@ export function createWorkerHandler(
       }
     },
   };
+}
+
+function databaseUnavailableResponse(
+  request: Request,
+  logRequest: ((entry: RequestLogEntry) => void) | undefined,
+): Response {
+  const requestId = createUuidV7();
+  const error = new HttpError({
+    code: 'temporarily_unavailable',
+    message: 'Service is temporarily unavailable.',
+    retryable: true,
+    status: 503,
+  });
+  const response = Response.json(toApiError(error, requestId), {
+    status: 503,
+    headers: {
+      'access-control-allow-origin': '*',
+      'access-control-expose-headers': 'X-Request-ID,Retry-After',
+      'x-request-id': requestId,
+    },
+  });
+  try {
+    logRequest?.({
+      request_id: requestId,
+      method: request.method,
+      route: new URL(request.url).pathname,
+      status: 503,
+      duration_ms: 0,
+    });
+  } catch {
+    // Logging failures must never change an API response.
+  }
+  return response;
 }

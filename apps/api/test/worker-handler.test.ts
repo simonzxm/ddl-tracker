@@ -73,6 +73,46 @@ describe('createWorkerHandler', () => {
     expect(createClient).not.toHaveBeenCalled();
   });
 
+  it('returns a structured 503 when the Hyperdrive connection cannot be opened', async () => {
+    const client = {
+      connect: vi.fn(async () => {
+        throw new Error('connection failed');
+      }),
+      end: vi.fn(async () => undefined),
+    };
+    const entries: unknown[] = [];
+    const handler = createWorkerHandler({
+      createClient: () => client as unknown as Client,
+      mailDelivery,
+      logRequest: (entry) => {
+        entries.push(entry);
+      },
+    });
+
+    const response = await handler.fetch(
+      new Request('https://api.example/api/v1/terms'),
+      environment(),
+      context,
+    );
+
+    expect(response.status).toBe(503);
+    expect(response.headers.get('access-control-allow-origin')).toBe('*');
+    expect(response.headers.get('x-request-id')).toMatch(/^[0-9a-f-]{36}$/u);
+    await expect(response.json()).resolves.toMatchObject({
+      code: 'temporarily_unavailable',
+      message: 'Service is temporarily unavailable.',
+      retryable: true,
+    });
+    expect(client.end).not.toHaveBeenCalled();
+    expect(entries).toEqual([
+      expect.objectContaining({
+        method: 'GET',
+        route: '/api/v1/terms',
+        status: 503,
+      }),
+    ]);
+  });
+
   it('connects one Hyperdrive client and closes it after a request', async () => {
     const client = fakeClient();
     const createClient = vi.fn(() => client as unknown as Client);

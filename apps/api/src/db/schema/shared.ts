@@ -25,7 +25,7 @@ export const proposalState = pgEnum('proposal_state', [
   'hidden',
   'redirected',
 ]);
-export const voteDirection = pgEnum('vote_direction', ['up', 'down']);
+export const voteDirection = pgEnum('vote_direction', ['up', 'down', 'none']);
 
 export const courseTasks = pgTable(
   'course_tasks',
@@ -94,6 +94,7 @@ export const accuracyVotes = pgTable(
       .notNull()
       .references(() => taskProposals.id, { onDelete: 'cascade' }),
     direction: voteDirection('direction').notNull(),
+    revision: integer('revision').default(1).notNull(),
     createdAt: timestamp('created_at', { withTimezone: true })
       .defaultNow()
       .notNull(),
@@ -101,7 +102,10 @@ export const accuracyVotes = pgTable(
       .defaultNow()
       .notNull(),
   },
-  (table) => [primaryKey({ columns: [table.userId, table.proposalId] })],
+  (table) => [
+    primaryKey({ columns: [table.userId, table.proposalId] }),
+    check('accuracy_votes_revision_positive', sql`${table.revision} > 0`),
+  ],
 );
 
 export const proposalVoteTotals = pgTable(
@@ -112,6 +116,7 @@ export const proposalVoteTotals = pgTable(
       .references(() => taskProposals.id, { onDelete: 'cascade' }),
     up: integer('up').default(0).notNull(),
     down: integer('down').default(0).notNull(),
+    revision: integer('revision').default(1).notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true })
       .defaultNow()
       .notNull(),
@@ -119,6 +124,10 @@ export const proposalVoteTotals = pgTable(
   (table) => [
     check('proposal_vote_totals_up_nonnegative', sql`${table.up} >= 0`),
     check('proposal_vote_totals_down_nonnegative', sql`${table.down} >= 0`),
+    check(
+      'proposal_vote_totals_revision_positive',
+      sql`${table.revision} > 0`,
+    ),
   ],
 );
 

@@ -5,13 +5,18 @@ import type {
   AccountLifecycleRepository,
   ProfileUpdateOutcome,
 } from './account-lifecycle-service.js';
+import { PostgresSyncEventStore } from '../sync/postgres-event-store.js';
 
 interface UserRow {
   id: string;
   username: string;
   display_name: string;
+  avatar_url: string | null;
+  bio: string | null;
   status: PublicUser['status'];
   profile_revision: number;
+  created_at: Date;
+  updated_at: Date;
 }
 
 function toPublicUser(row: UserRow): PublicUser {
@@ -39,9 +44,15 @@ export class PostgresAccountLifecycleRepository
   implements AccountLifecycleRepository
 {
   readonly #client: Client;
+  readonly #events: PostgresSyncEventStore;
 
   constructor(client: Client) {
     this.#client = client;
+    this.#events = new PostgresSyncEventStore(client, {
+      createId: () => {
+        throw new Error('Account lifecycle events require an explicit event ID.');
+      },
+    });
   }
 
   async updateProfile(input: {
@@ -66,7 +77,8 @@ export class PostgresAccountLifecycleRepository
            where id = $1
              and status = 'active'
              and profile_revision = $4
-           returning id, username, display_name, status, profile_revision`,
+           returning id, username, display_name, avatar_url, bio, status,
+                     profile_revision, created_at, updated_at`,
           [
             input.userId,
             input.username,
@@ -86,7 +98,8 @@ export class PostgresAccountLifecycleRepository
       const row = updated.rows[0];
       if (row === undefined) {
         const current = await this.#client.query<UserRow>(
-          `select id, username, display_name, status, profile_revision
+          `select id, username, display_name, avatar_url, bio, status,
+                  profile_revision, created_at, updated_at
            from users where id = $1 limit 1`,
           [input.userId],
         );
@@ -99,22 +112,28 @@ export class PostgresAccountLifecycleRepository
       }
 
       const user = toPublicUser(row);
-      await this.#client.query(
-        `insert into sync_events (
-           event_id, scope, type, schema_version, payload, occurred_at
-         ) values ($1, 'authenticated_global', 'public_user_profile_updated', 1, $2::jsonb, $3)`,
-        [
-          input.eventId,
-          JSON.stringify({
-            id: user.id,
-            username: user.username,
-            display_name: user.displayName,
-            status: user.status,
-            profile_revision: user.profileRevision,
-          }),
-          input.now,
-        ],
-      );
+      if (row.status === 'deleted') {
+        throw new Error('A deleted user cannot emit a public profile update.');
+      }
+      await this.#events.append({
+        scope: 'authenticated_global',
+        eventId: input.eventId,
+        occurredAt: input.now,
+        event: {
+          type: 'public_user_profile_updated',
+          payload: {
+            id: row.id,
+            username: row.username,
+            display_name: row.display_name,
+            avatar_url: row.avatar_url,
+            bio: row.bio,
+            status: row.status,
+            revision: row.profile_revision,
+            created_at: row.created_at.toISOString(),
+            updated_at: row.updated_at.toISOString(),
+          },
+        },
+      });
       await this.#client.query('commit');
       return { kind: 'success', user };
     } catch (error) {
@@ -210,21 +229,21 @@ export class PostgresAccountLifecycleRepository
          where id = $1`,
         [userId, nextRevision, now],
       );
-      await this.#client.query(
-        `insert into sync_events (
-           event_id, scope, type, schema_version, payload, occurred_at
-         ) values ($1, 'authenticated_global', 'public_user_deleted', 1, $2::jsonb, $3)`,
-        [
-          eventId,
-          JSON.stringify({
+      await this.#events.append({
+        scope: 'authenticated_global',
+        eventId,
+        occurredAt: now,
+        event: {
+          type: 'public_user_deleted',
+          payload: {
             id: userId,
             display_name: '已注销用户',
             status: 'deleted',
-            profile_revision: nextRevision,
-          }),
-          now,
-        ],
-      );
+            revision: nextRevision,
+            deleted_at: now.toISOString(),
+          },
+        },
+      });
       await this.#client.query('commit');
       return 'deleted';
     } catch (error) {

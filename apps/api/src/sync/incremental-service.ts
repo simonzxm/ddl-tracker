@@ -52,6 +52,7 @@ export class IncrementalSyncService {
     request: IncrementalSyncRequest;
   }): Promise<{
     protocol_version: typeof SYNC_PROTOCOL_VERSION;
+    mode: 'incremental';
     request_id: string;
     operation_results: SyncOperationResult[];
     events: SyncEventPage['events'];
@@ -99,6 +100,7 @@ export class IncrementalSyncService {
 
     return {
       protocol_version: SYNC_PROTOCOL_VERSION,
+      mode: 'incremental',
       request_id: input.requestId,
       operation_results: operationResults,
       events: page.events,

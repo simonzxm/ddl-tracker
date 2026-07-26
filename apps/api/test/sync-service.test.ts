@@ -101,6 +101,7 @@ function service(options?: { reader?: ReturnType<typeof reader> }) {
   const incremental = {
     execute: vi.fn(async () => ({
       protocol_version: 2 as const,
+      mode: 'incremental' as const,
       request_id: REQUEST_ID,
       operation_results: [],
       events: [],

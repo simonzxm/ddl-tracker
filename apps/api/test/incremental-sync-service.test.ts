@@ -112,6 +112,7 @@ describe('IncrementalSyncService', () => {
     );
     expect(response).toMatchObject({
       protocol_version: 2,
+      mode: 'incremental',
       request_id: REQUEST_ID,
       operation_results: [{ status: 'applied' }],
       events: [{ event_id: EVENT_ID }],

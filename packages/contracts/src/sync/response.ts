@@ -58,6 +58,7 @@ export const operationResultSchema = z.discriminatedUnion('status', [
 export const incrementalSyncResponseSchema = z
   .object({
     protocol_version: z.literal(SYNC_PROTOCOL_VERSION),
+    mode: z.literal('incremental'),
     request_id: uuidV7Schema,
     operation_results: z
       .array(operationResultSchema)

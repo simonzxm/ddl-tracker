@@ -127,6 +127,7 @@
 ```json
 {
   "protocol_version": 2,
+  "mode": "incremental",
   "request_id": "018f...",
   "operation_results": [
     {

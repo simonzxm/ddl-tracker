@@ -34,6 +34,7 @@ describe('PostgresSyncEventStore', () => {
 
     expect(event).toMatchObject({
       event_id: EVENT_ID,
+      schema_version: 2,
       type: 'personal_task_state_upserted',
     });
     expect(query).toHaveBeenCalledWith(
@@ -44,7 +45,7 @@ describe('PostgresSyncEventStore', () => {
         USER_ID,
         null,
         'personal_task_state_upserted',
-        1,
+        2,
         expect.any(String),
         NOW,
       ],

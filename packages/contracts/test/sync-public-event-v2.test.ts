@@ -13,7 +13,7 @@ describe('public sync events v2', () => {
     expect(
       publicSyncEventV2Schema.parse({
         event_id: EVENT_ID,
-        schema_version: 1,
+        schema_version: 2,
         type: 'course_task_restored',
         occurred_at: NOW,
         payload: {
@@ -31,7 +31,7 @@ describe('public sync events v2', () => {
     expect(() =>
       publicSyncEventV2Schema.parse({
         event_id: EVENT_ID,
-        schema_version: 1,
+        schema_version: 2,
         type: 'course_task_restored',
         occurred_at: NOW,
         payload: {
@@ -48,7 +48,7 @@ describe('public sync events v2', () => {
     expect(() =>
       publicSyncEventV2Schema.parse({
         event_id: EVENT_ID,
-        schema_version: 1,
+        schema_version: 2,
         type: 'public_user_profile_updated',
         occurred_at: NOW,
         payload: {
@@ -70,7 +70,7 @@ describe('public sync events v2', () => {
     expect(() =>
       publicSyncEventV2Schema.parse({
         event_id: EVENT_ID,
-        schema_version: 1,
+        schema_version: 2,
         type: 'proposal_vote_totals_updated',
         occurred_at: NOW,
         payload: {
@@ -84,7 +84,7 @@ describe('public sync events v2', () => {
     expect(
       publicSyncEventV2Schema.parse({
         event_id: EVENT_ID,
-        schema_version: 1,
+        schema_version: 2,
         type: 'class_section_deactivated',
         occurred_at: NOW,
         payload: {

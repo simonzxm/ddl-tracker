@@ -58,7 +58,7 @@ export const maintainerContentReportRecordSchema = z.discriminatedUnion(
 export const maintainerContentReportUpdatedEventV2Schema = z
   .object({
     event_id: uuidV7Schema,
-    schema_version: z.literal(1),
+    schema_version: z.literal(2),
     type: z.literal('maintainer_content_report_updated'),
     occurred_at: rfc3339TimestampSchema,
     payload: maintainerContentReportRecordSchema,

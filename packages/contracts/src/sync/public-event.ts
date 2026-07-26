@@ -23,7 +23,7 @@ function syncEvent<const Type extends string, Payload extends z.ZodType>(
   return z
     .object({
       event_id: uuidV7Schema,
-      schema_version: z.literal(1),
+      schema_version: z.literal(2),
       type: z.literal(type),
       occurred_at: rfc3339TimestampSchema,
       payload,

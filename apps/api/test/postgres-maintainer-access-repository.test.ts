@@ -51,8 +51,8 @@ describePostgres('PostgresMaintainerAccessRepository', () => {
 
   beforeEach(async () => {
     await client.query(`
-      truncate table audit_log, moderation_actions, user_roles, sessions,
-        users restart identity cascade
+      truncate table sync_events, audit_log, moderation_actions, user_roles,
+        sessions, users restart identity cascade
     `);
     await seed(client);
   });
@@ -182,5 +182,42 @@ describePostgres('PostgresMaintainerAccessRepository', () => {
       [FIRST_ID],
     );
     expect(restored.rows[0]?.status).toBe('active');
+
+    const events = await client.query<{
+      type: string;
+      payload: Record<string, unknown>;
+    }>(
+      `select type, payload from sync_events
+       where type = 'public_user_profile_updated'
+       order by sequence`,
+    );
+    expect(events.rows).toEqual([
+      {
+        type: 'public_user_profile_updated',
+        payload: expect.objectContaining({
+          id: FIRST_ID,
+          username: 'first',
+          display_name: 'First',
+          avatar_url: null,
+          bio: null,
+          status: 'suspended',
+          revision: 2,
+          updated_at: NOW.toISOString(),
+        }),
+      },
+      {
+        type: 'public_user_profile_updated',
+        payload: expect.objectContaining({
+          id: FIRST_ID,
+          username: 'first',
+          display_name: 'First',
+          avatar_url: null,
+          bio: null,
+          status: 'active',
+          revision: 3,
+          updated_at: NOW.toISOString(),
+        }),
+      },
+    ]);
   });
 });

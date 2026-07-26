@@ -63,11 +63,29 @@ describe('private sync events v2', () => {
           target_type: 'course_task',
           target_id: ENTITY_ID,
           reason: 'inaccurate',
+          details: 'The shared task contains private information.',
           status: 'open',
+          resolution: null,
           created_at: NOW,
+          resolved_at: null,
         },
       }),
     ).toMatchObject({ type: 'reporter_content_report_updated' });
+
+    expect(() =>
+      privateSyncEventV2Schema.parse({
+        event_id: EVENT_ID,
+        schema_version: 2,
+        type: 'reporter_content_report_updated',
+        occurred_at: NOW,
+        payload: {
+          report_id: ENTITY_ID,
+          status: 'resolved',
+          resolution: 'Reviewed.',
+          resolved_at: NOW,
+        },
+      }),
+    ).toThrow();
 
     expect(() =>
       privateSyncEventV2Schema.parse({

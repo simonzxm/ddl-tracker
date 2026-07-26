@@ -224,8 +224,13 @@ export class PostgresModerationRepository {
       );
       const reporterPayload = {
         report_id: input.reportId,
+        target_type: report.target_type,
+        target_id: report.target_id,
+        reason: report.reason,
+        details: report.details,
         status: input.status,
         resolution: input.resolution,
+        created_at: report.created_at.toISOString(),
         resolved_at: now.toISOString(),
       };
       await this.#events.append({
@@ -245,11 +250,6 @@ export class PostgresModerationRepository {
           payload: {
             ...reporterPayload,
             reporter_id: report.reporter_id,
-            target_type: report.target_type,
-            target_id: report.target_id,
-            reason: report.reason,
-            details: report.details,
-            created_at: report.created_at.toISOString(),
           },
         },
       });

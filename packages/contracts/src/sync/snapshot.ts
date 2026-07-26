@@ -21,6 +21,7 @@ export const snapshotRecordTypeSchema = z.enum([
   'personal_task_details',
   'personal_task_state',
   'task_comment',
+  'reporter_content_report',
   'content_tombstone',
 ]);
 

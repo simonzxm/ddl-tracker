@@ -34,7 +34,9 @@
         "section_number": "01",
         "department_code": "CS",
         "department_name": "Computer Science",
-        "instructors": ["Ada Lovelace"],
+        "instructors": [
+          "Ada Lovelace"
+        ],
         "campus": "Xianlin",
         "capacity": 120,
         "schedule_text": "Monday 08:00",
@@ -168,6 +170,21 @@
         "deleted_at": null,
         "created_at": "2026-09-01T00:00:00Z",
         "updated_at": "2026-09-01T00:30:00Z"
+      }
+    },
+    {
+      "record_type": "reporter_content_report",
+      "schema_version": 1,
+      "payload": {
+        "report_id": "018f0000-0000-7000-8000-00000000000a",
+        "target_type": "course_task",
+        "target_id": "018f0000-0000-7000-8000-000000000004",
+        "reason": "privacy",
+        "details": "Contains personal information.",
+        "status": "resolved",
+        "resolution": "Removed private details.",
+        "created_at": "2026-09-01T00:00:00Z",
+        "resolved_at": "2026-09-01T00:30:00Z"
       }
     },
     {

@@ -31,6 +31,26 @@ describe('snapshot record v2', () => {
     }
   });
 
+  it('restores complete reporter report state', () => {
+    const record = snapshotRecordV2Schema.parse({
+      record_type: 'reporter_content_report',
+      schema_version: 1,
+      payload: {
+        report_id: ID,
+        target_type: 'course_task',
+        target_id: SECTION_ID,
+        reason: 'privacy',
+        details: 'Contains personal information.',
+        status: 'resolved',
+        resolution: 'Removed private details.',
+        created_at: NOW,
+        resolved_at: NOW,
+      },
+    });
+
+    expect(record.record_type).toBe('reporter_content_report');
+  });
+
   it('rejects duplicated envelope fields', () => {
     expect(() =>
       snapshotRecordV2Schema.parse({

@@ -108,6 +108,23 @@ describe('OpenAPI document', () => {
     });
   });
 
+  it('preserves UUIDv7 and RFC 3339 formats for generated clients', () => {
+    expect(openApiDocument.components.schemas.PublicUser).toMatchObject({
+      properties: {
+        id: {
+          type: 'string',
+          format: 'uuid',
+          pattern: expect.stringContaining('-7'),
+        },
+      },
+    });
+    expect(openApiDocument.components.schemas.Session).toMatchObject({
+      properties: {
+        created_at: { type: 'string', format: 'date-time' },
+      },
+    });
+  });
+
   it('publishes typed sync unions with stable discriminators', () => {
     const syncEvent = openApiDocument.components.schemas.SyncEvent;
     const snapshotRecord = openApiDocument.components.schemas.SnapshotRecord;

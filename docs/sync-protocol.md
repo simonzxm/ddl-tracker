@@ -22,7 +22,9 @@
 - 时间戳使用 RFC 3339 UTC；业务输入时区固定 `Asia/Shanghai`。
 - 文本使用 Unicode NFC 和 `\n` 换行。
 - `cursor`、`page_token` 和 `snapshot_token` 均 opaque，客户端不得解析或自行生成。
-- 每个 envelope 都有独立 `schema_version`；未知版本必须拒绝，不能忽略未知字段后猜测执行。
+- operation、snapshot record 与 sync event 都有独立 `schema_version`；未知版本必须拒绝，不能忽略未知字段后猜测执行。
+- 当前同步协议为 `protocol_version = 2`。snapshot record 使用 `schema_version = 1`，sync event 使用 `schema_version = 2`，二者不能与 protocol version 混用。
+- snapshot record 和 sync event 都是严格判别联合；`record_type` 或 `type` 唯一决定 payload schema，不存在任意键值 payload。
 
 ## 同步模式
 
@@ -34,7 +36,7 @@
 
 ```json
 {
-  "protocol_version": 1,
+  "protocol_version": 2,
   "mode": "account_snapshot",
   "snapshot_token": null,
   "page_token": null,
@@ -51,6 +53,24 @@
 
 快照不包含课程目录全文、所有投票明细、完整评论修订历史、举报人信息或同步事件历史。
 
+每条快照记录使用以下 envelope：
+
+```json
+{
+  "record_type": "personal_task_state",
+  "schema_version": 1,
+  "payload": {
+    "course_task_id": "018f...",
+    "state": "completed",
+    "revision": 4,
+    "created_at": "2026-07-12T19:00:00Z",
+    "updated_at": "2026-07-12T20:00:00Z"
+  }
+}
+```
+
+顶层不重复保存实体 `id` 或 `revision`；实体标识和并发 revision 只存在于对应严格 payload 中。分页使用的 `(record_type, id)` 是服务端 token 内部实现，客户端不得依赖。
+
 客户端重复携带 snapshot token 和 page token，直到响应 `snapshot_complete = true`。完成响应提供 `next_cursor`，它等于快照开始前的 anchor。客户端随后进入 incremental 模式；快照期间发生的所有变化会从该 cursor 后重放。
 
 快照分页使用 `(record_type, id)` keyset，不使用 offset。快照不承诺跨 HTTP 页的数据库 repeatable-read；正确性来自“开始前 anchor + 完成后增量重放”。快照中偶然包含 anchor 之后的新版记录是允许的，客户端 reducer 必须按 ID/revision 幂等 upsert。
@@ -61,7 +81,7 @@
 
 ```json
 {
-  "protocol_version": 1,
+  "protocol_version": 2,
   "mode": "class_section_snapshot",
   "cursor": "opaque-current-cursor",
   "class_section_id": "018f...",
@@ -82,7 +102,7 @@
 
 ```json
 {
-  "protocol_version": 1,
+  "protocol_version": 2,
   "mode": "incremental",
   "cursor": "opaque-cursor",
   "event_limit": 500,
@@ -106,7 +126,7 @@
 
 ```json
 {
-  "protocol_version": 1,
+  "protocol_version": 2,
   "request_id": "018f...",
   "operation_results": [
     {
@@ -121,10 +141,16 @@
   "events": [
     {
       "event_id": "018f...",
-      "schema_version": 1,
+      "schema_version": 2,
       "type": "personal_task_state_upserted",
       "occurred_at": "2026-07-12T20:00:00Z",
-      "payload": {}
+      "payload": {
+        "course_task_id": "018f...",
+        "state": "completed",
+        "revision": 4,
+        "created_at": "2026-07-12T19:00:00Z",
+        "updated_at": "2026-07-12T20:00:00Z"
+      }
     }
   ],
   "next_cursor": "opaque-next-cursor",
@@ -248,11 +274,18 @@ task_comment_hidden
 task_comment_restored
 public_user_profile_updated
 public_user_deleted
-content_report_status_updated         # 举报人和维护者各自私有 scope
+reporter_content_report_updated      # 仅举报人；不含 reporter_id 或私有 details
+maintainer_content_report_updated    # 仅维护者；包含完整举报记录
 class_section_deactivated
 ```
 
-Event payload 应携带客户端更新本地当前状态所需的完整小记录，而不是数据库 diff。删除、隐藏、合并和停用必须有显式 tombstone/redirect payload。
+Event payload 必须通过其 `type` 对应的严格 schema，并携带客户端更新本地当前状态所需的完整小记录，而不是数据库 diff：
+
+- create、upsert、restore：携带完整当前记录；restore 不能只发送 `{id, state}`。
+- delete、hide：携带对应实体的完整 tombstone，包括实体类型、ID、状态和 revision；删除还携带 `deleted_at`。
+- merge、redirect：携带可持久化的 source、target/canonical、revision 与 `created_at`。
+- aggregate update：携带完整当前 aggregate 与 `updated_at`。
+- 举报事件按 audience 拆分为两个 event type，不能由同一个 type 承载两种 payload。
 
 投票事件对其他用户只包含新 aggregate；当前用户另收自己的 vote state。禁止在 public event 中放 voter ID。
 
@@ -260,6 +293,7 @@ Event payload 应携带客户端更新本地当前状态所需的完整小记录
 
 - 同步事件至少保留 180 天。
 - cursor 早于可用窗口时返回 `cursor_expired`，不返回不完整增量。
+- protocol v2 reader 遇到当前用户可见的历史 `schema_version = 1` 宽 payload event 时同样返回 `cursor_expired`，要求客户端重新 account snapshot；不可见历史 event 可以安全跨过。
 - 客户端收到 `cursor_expired` 后保留未提交 outbox，清空远端投影，重新做 account snapshot，再由用户确认超过 receipt 保留期的操作。
 - cursor 与用户身份绑定；不能跨账户或环境复用。
 - `has_more = true` 时客户端应立即继续 pull，但仍必须串行，不能并发使用同一 cursor。

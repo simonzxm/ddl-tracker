@@ -146,6 +146,39 @@ describePostgres('PostgresModerationRepository', () => {
       audits: '2',
       events: '2',
     });
+
+    const events = await client.query<{
+      type: string;
+      payload: Record<string, unknown>;
+    }>(
+      `select type, payload from sync_events
+       where type in ('task_proposal_hidden', 'task_proposal_restored')
+       order by sequence`,
+    );
+    expect(events.rows).toEqual([
+      {
+        type: 'task_proposal_hidden',
+        payload: {
+          entity_type: 'task_proposal',
+          entity_id: PROPOSAL_ID,
+          state: 'hidden',
+          revision: 2,
+        },
+      },
+      {
+        type: 'task_proposal_restored',
+        payload: expect.objectContaining({
+          id: PROPOSAL_ID,
+          course_task_id: TASK_ID,
+          author_id: REPORTER_ID,
+          title: 'Task',
+          deadline: '2026-07-20T12:00:00.000Z',
+          content_fingerprint: 'b'.repeat(64),
+          state: 'visible',
+          revision: 3,
+        }),
+      },
+    ]);
   });
 
   it('audits an idempotent moderation request without duplicate events', async () => {

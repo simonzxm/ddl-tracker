@@ -7,23 +7,35 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		28570D32614CB83770396994 /* StudentRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DA65C2B7B2319624CC8CA3D /* StudentRootView.swift */; };
+		38D452881D47F713F22A49BC /* SyncStatusView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15695ABAAC333C460B3B75E9 /* SyncStatusView.swift */; };
+		3BA02A0385E74FA38829F9FB /* ActivityView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56797A4201536370E1D7683C /* ActivityView.swift */; };
+		3E8A92D878216D5DB06E6B5E /* CoursesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A978FBECE04AA2EDC19CD24 /* CoursesView.swift */; };
 		8065D14C40B24199EB52CB3A /* AppRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5AB22696EB857E43170D9A4E /* AppRootView.swift */; };
 		8786EC2F9D8F87B1C68131E6 /* DDLTrackerCore in Frameworks */ = {isa = PBXBuildFile; productRef = 1AAF408319EBDA335F3FFE86 /* DDLTrackerCore */; };
 		96C749D30466F9D21BD4E8DC /* DDLTrackerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 739EC5A8E046255E024B2D03 /* DDLTrackerApp.swift */; };
+		A5B8D4F083ED652A1DA299C5 /* TodayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2150D56BA5E53186BA68EFA /* TodayView.swift */; };
 		C079DE7DAC0FABAAFD3A2AA2 /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40992D7E2DC2C952C7E6582E /* AppModel.swift */; };
 		CFF66C85402134AE23DAA173 /* AuthenticationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26C0C898858E5E1481091BA7 /* AuthenticationView.swift */; };
+		DC488377EAFE30D0CF5FA400 /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4C03F716B24C41542CACCB5 /* ProfileView.swift */; };
 		E193AA02CDD71EB2DBB68C49 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = BD42E4D33E6FB57DA1374F22 /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		15695ABAAC333C460B3B75E9 /* SyncStatusView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncStatusView.swift; sourceTree = "<group>"; };
+		1DA65C2B7B2319624CC8CA3D /* StudentRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StudentRootView.swift; sourceTree = "<group>"; };
 		26C0C898858E5E1481091BA7 /* AuthenticationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthenticationView.swift; sourceTree = "<group>"; };
 		40992D7E2DC2C952C7E6582E /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
 		49EACF5AAE8726198A965B9C /* ios */ = {isa = PBXFileReference; lastKnownFileType = folder; name = ios; path = .; sourceTree = SOURCE_ROOT; };
+		56797A4201536370E1D7683C /* ActivityView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityView.swift; sourceTree = "<group>"; };
 		5AB22696EB857E43170D9A4E /* AppRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppRootView.swift; sourceTree = "<group>"; };
 		739EC5A8E046255E024B2D03 /* DDLTrackerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DDLTrackerApp.swift; sourceTree = "<group>"; };
+		8A978FBECE04AA2EDC19CD24 /* CoursesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoursesView.swift; sourceTree = "<group>"; };
 		BD42E4D33E6FB57DA1374F22 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		C4C03F716B24C41542CACCB5 /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileView.swift; sourceTree = "<group>"; };
 		DE4EE45F7C5A83147917B4D0 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		E9C5546004579177C1586A09 /* DDLTracker.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = DDLTracker.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		F2150D56BA5E53186BA68EFA /* TodayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodayView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -47,6 +59,14 @@
 			);
 			sourceTree = "<group>";
 		};
+		140E39592D70AA684A6FB38C /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				15695ABAAC333C460B3B75E9 /* SyncStatusView.swift */,
+			);
+			path = Shared;
+			sourceTree = "<group>";
+		};
 		1D11B0BCC6E4434425CFAC6C /* Model */ = {
 			isa = PBXGroup;
 			children = (
@@ -63,15 +83,29 @@
 			path = Auth;
 			sourceTree = "<group>";
 		};
+		350481026CCDA0C76264DBB6 /* Shell */ = {
+			isa = PBXGroup;
+			children = (
+				1DA65C2B7B2319624CC8CA3D /* StudentRootView.swift */,
+			);
+			path = Shell;
+			sourceTree = "<group>";
+		};
 		403C8495D515C0CB167F390A /* App */ = {
 			isa = PBXGroup;
 			children = (
 				BD42E4D33E6FB57DA1374F22 /* Assets.xcassets */,
 				739EC5A8E046255E024B2D03 /* DDLTrackerApp.swift */,
 				DE4EE45F7C5A83147917B4D0 /* Info.plist */,
+				CB8320913318C0B030D8BB5D /* Activity */,
 				24C32F6ED4406F32CCC0BD41 /* Auth */,
+				EAFE39E85FE8A96C4F5D809C /* Catalog */,
 				1D11B0BCC6E4434425CFAC6C /* Model */,
+				F951F7EDD3CC80F2151F29D6 /* Profile */,
 				C85FC33B35AA60FF5E2564A0 /* Root */,
+				140E39592D70AA684A6FB38C /* Shared */,
+				350481026CCDA0C76264DBB6 /* Shell */,
+				761DC6495844080D4DD8E235 /* Tasks */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -92,12 +126,44 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
+		761DC6495844080D4DD8E235 /* Tasks */ = {
+			isa = PBXGroup;
+			children = (
+				F2150D56BA5E53186BA68EFA /* TodayView.swift */,
+			);
+			path = Tasks;
+			sourceTree = "<group>";
+		};
 		C85FC33B35AA60FF5E2564A0 /* Root */ = {
 			isa = PBXGroup;
 			children = (
 				5AB22696EB857E43170D9A4E /* AppRootView.swift */,
 			);
 			path = Root;
+			sourceTree = "<group>";
+		};
+		CB8320913318C0B030D8BB5D /* Activity */ = {
+			isa = PBXGroup;
+			children = (
+				56797A4201536370E1D7683C /* ActivityView.swift */,
+			);
+			path = Activity;
+			sourceTree = "<group>";
+		};
+		EAFE39E85FE8A96C4F5D809C /* Catalog */ = {
+			isa = PBXGroup;
+			children = (
+				8A978FBECE04AA2EDC19CD24 /* CoursesView.swift */,
+			);
+			path = Catalog;
+			sourceTree = "<group>";
+		};
+		F951F7EDD3CC80F2151F29D6 /* Profile */ = {
+			isa = PBXGroup;
+			children = (
+				C4C03F716B24C41542CACCB5 /* ProfileView.swift */,
+			);
+			path = Profile;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -176,10 +242,16 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				3BA02A0385E74FA38829F9FB /* ActivityView.swift in Sources */,
 				C079DE7DAC0FABAAFD3A2AA2 /* AppModel.swift in Sources */,
 				8065D14C40B24199EB52CB3A /* AppRootView.swift in Sources */,
 				CFF66C85402134AE23DAA173 /* AuthenticationView.swift in Sources */,
+				3E8A92D878216D5DB06E6B5E /* CoursesView.swift in Sources */,
 				96C749D30466F9D21BD4E8DC /* DDLTrackerApp.swift in Sources */,
+				DC488377EAFE30D0CF5FA400 /* ProfileView.swift in Sources */,
+				28570D32614CB83770396994 /* StudentRootView.swift in Sources */,
+				38D452881D47F713F22A49BC /* SyncStatusView.swift in Sources */,
+				A5B8D4F083ED652A1DA299C5 /* TodayView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

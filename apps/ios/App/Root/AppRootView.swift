@@ -12,11 +12,7 @@ struct AppRootView: View {
             case .signedOut:
                 AuthenticationView()
             case .signedIn:
-                ContentUnavailableView {
-                    Label("已连接", systemImage: "checklist")
-                } description: {
-                    Text("正在准备你的课程与待办。")
-                }
+                StudentRootView()
             case let .unavailable(message):
                 ContentUnavailableView("无法启动", systemImage: "externaldrive.badge.exclamationmark", description: Text(message))
             }

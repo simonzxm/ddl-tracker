@@ -20,7 +20,11 @@
     "typecheck": "tsc -b --pretty false && tsc -p tsconfig.tests.json --pretty false",
     "verify": "pnpm verify:generated && pnpm lint && pnpm typecheck && pnpm test:postgres:docker && pnpm test:worker && pnpm build",
     "verify:ci": "pnpm verify:generated && pnpm lint && pnpm typecheck && pnpm test:postgres && pnpm test:worker && pnpm build",
-    "verify:generated": "node scripts/verify-generated.mjs"
+    "verify:generated": "node scripts/verify-generated.mjs",
+    "ios:contracts": "node scripts/update-ios-contracts.mjs",
+    "ios:contracts:check": "node scripts/update-ios-contracts.mjs --check",
+    "ios:test": "swift test --package-path apps/ios",
+    "ios:project": "cd apps/ios && xcodegen generate"
   },
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "0.18.6",

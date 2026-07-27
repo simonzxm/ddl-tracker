@@ -1,0 +1,398 @@
+{
+  "protocol_version": 2,
+  "events": [
+    {
+      "event_id": "018f0000-0000-7000-8000-000000000101",
+      "schema_version": 2,
+      "type": "class_section_followed",
+      "occurred_at": "2026-09-01T00:30:00Z",
+      "payload": {
+        "class_section_id": "018f0000-0000-7000-8000-000000000002",
+        "followed_at": "2026-09-01T00:30:00Z"
+      }
+    },
+    {
+      "event_id": "018f0000-0000-7000-8000-000000000102",
+      "schema_version": 2,
+      "type": "class_section_unfollowed",
+      "occurred_at": "2026-09-01T00:30:00Z",
+      "payload": {
+        "class_section_id": "018f0000-0000-7000-8000-000000000002",
+        "unfollowed_at": "2026-09-01T00:30:00Z"
+      }
+    },
+    {
+      "event_id": "018f0000-0000-7000-8000-000000000103",
+      "schema_version": 2,
+      "type": "course_task_created",
+      "occurred_at": "2026-09-01T00:30:00Z",
+      "payload": {
+        "id": "018f0000-0000-7000-8000-000000000004",
+        "class_section_id": "018f0000-0000-7000-8000-000000000002",
+        "created_by": "018f0000-0000-7000-8000-000000000001",
+        "state": "visible",
+        "revision": 1,
+        "created_at": "2026-09-01T00:00:00Z",
+        "updated_at": "2026-09-01T00:30:00Z"
+      }
+    },
+    {
+      "event_id": "018f0000-0000-7000-8000-000000000104",
+      "schema_version": 2,
+      "type": "course_task_merged",
+      "occurred_at": "2026-09-01T00:30:00Z",
+      "payload": {
+        "source_task_id": "018f0000-0000-7000-8000-000000000008",
+        "target_task_id": "018f0000-0000-7000-8000-000000000004",
+        "reason": "Duplicate course task.",
+        "revision": 2,
+        "created_at": "2026-09-01T00:30:00Z",
+        "redirected_proposals": 1,
+        "moved_proposals": 1,
+        "recovered_personal_todos": 0
+      }
+    },
+    {
+      "event_id": "018f0000-0000-7000-8000-000000000105",
+      "schema_version": 2,
+      "type": "course_task_hidden",
+      "occurred_at": "2026-09-01T00:30:00Z",
+      "payload": {
+        "entity_type": "course_task",
+        "entity_id": "018f0000-0000-7000-8000-000000000004",
+        "state": "hidden",
+        "revision": 2
+      }
+    },
+    {
+      "event_id": "018f0000-0000-7000-8000-000000000106",
+      "schema_version": 2,
+      "type": "course_task_restored",
+      "occurred_at": "2026-09-01T00:30:00Z",
+      "payload": {
+        "id": "018f0000-0000-7000-8000-000000000004",
+        "class_section_id": "018f0000-0000-7000-8000-000000000002",
+        "created_by": "018f0000-0000-7000-8000-000000000001",
+        "state": "visible",
+        "revision": 3,
+        "created_at": "2026-09-01T00:00:00Z",
+        "updated_at": "2026-09-01T00:30:00Z"
+      }
+    },
+    {
+      "event_id": "018f0000-0000-7000-8000-000000000107",
+      "schema_version": 2,
+      "type": "task_proposal_created",
+      "occurred_at": "2026-09-01T00:30:00Z",
+      "payload": {
+        "id": "018f0000-0000-7000-8000-000000000005",
+        "course_task_id": "018f0000-0000-7000-8000-000000000004",
+        "author_id": "018f0000-0000-7000-8000-000000000001",
+        "title": "Project report",
+        "deadline": "2026-09-02T00:00:00Z",
+        "description": null,
+        "evidence_note": null,
+        "evidence_url": null,
+        "content_fingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "state": "visible",
+        "revision": 1,
+        "created_at": "2026-09-01T00:00:00Z"
+      }
+    },
+    {
+      "event_id": "018f0000-0000-7000-8000-000000000108",
+      "schema_version": 2,
+      "type": "task_proposal_hidden",
+      "occurred_at": "2026-09-01T00:30:00Z",
+      "payload": {
+        "entity_type": "task_proposal",
+        "entity_id": "018f0000-0000-7000-8000-000000000005",
+        "state": "hidden",
+        "revision": 2
+      }
+    },
+    {
+      "event_id": "018f0000-0000-7000-8000-000000000109",
+      "schema_version": 2,
+      "type": "task_proposal_restored",
+      "occurred_at": "2026-09-01T00:30:00Z",
+      "payload": {
+        "id": "018f0000-0000-7000-8000-000000000005",
+        "course_task_id": "018f0000-0000-7000-8000-000000000004",
+        "author_id": "018f0000-0000-7000-8000-000000000001",
+        "title": "Project report",
+        "deadline": "2026-09-02T00:00:00Z",
+        "description": null,
+        "evidence_note": null,
+        "evidence_url": null,
+        "content_fingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "state": "visible",
+        "revision": 3,
+        "created_at": "2026-09-01T00:00:00Z"
+      }
+    },
+    {
+      "event_id": "018f0000-0000-7000-8000-00000000010a",
+      "schema_version": 2,
+      "type": "task_proposal_redirected",
+      "occurred_at": "2026-09-01T00:30:00Z",
+      "payload": {
+        "source_proposal_id": "018f0000-0000-7000-8000-000000000009",
+        "canonical_proposal_id": "018f0000-0000-7000-8000-000000000005",
+        "revision": 2,
+        "created_at": "2026-09-01T00:30:00Z"
+      }
+    },
+    {
+      "event_id": "018f0000-0000-7000-8000-00000000010b",
+      "schema_version": 2,
+      "type": "proposal_vote_totals_updated",
+      "occurred_at": "2026-09-01T00:30:00Z",
+      "payload": {
+        "proposal_id": "018f0000-0000-7000-8000-000000000005",
+        "up": 4,
+        "down": 1,
+        "updated_at": "2026-09-01T00:30:00Z",
+        "revision": 3
+      }
+    },
+    {
+      "event_id": "018f0000-0000-7000-8000-00000000010c",
+      "schema_version": 2,
+      "type": "accuracy_vote_updated",
+      "occurred_at": "2026-09-01T00:30:00Z",
+      "payload": {
+        "proposal_id": "018f0000-0000-7000-8000-000000000005",
+        "value": "up",
+        "updated_at": "2026-09-01T00:30:00Z",
+        "revision": 2
+      }
+    },
+    {
+      "event_id": "018f0000-0000-7000-8000-00000000010d",
+      "schema_version": 2,
+      "type": "personal_todo_upserted",
+      "occurred_at": "2026-09-01T00:30:00Z",
+      "payload": {
+        "id": "018f0000-0000-7000-8000-000000000007",
+        "class_section_id": "018f0000-0000-7000-8000-000000000002",
+        "title": "Read chapter 3",
+        "deadline": null,
+        "note": "Review examples.",
+        "state": "pending",
+        "revision": 1,
+        "deleted_at": null,
+        "created_at": "2026-09-01T00:00:00Z",
+        "updated_at": "2026-09-01T00:30:00Z"
+      }
+    },
+    {
+      "event_id": "018f0000-0000-7000-8000-00000000010e",
+      "schema_version": 2,
+      "type": "personal_todo_deleted",
+      "occurred_at": "2026-09-01T00:30:00Z",
+      "payload": {
+        "id": "018f0000-0000-7000-8000-000000000007",
+        "revision": 2,
+        "deleted_at": "2026-09-01T00:30:00Z"
+      }
+    },
+    {
+      "event_id": "018f0000-0000-7000-8000-00000000010f",
+      "schema_version": 2,
+      "type": "personal_task_details_upserted",
+      "occurred_at": "2026-09-01T00:30:00Z",
+      "payload": {
+        "course_task_id": "018f0000-0000-7000-8000-000000000004",
+        "private_title": "My project title",
+        "private_deadline": null,
+        "private_note": "Only visible to me.",
+        "revision": 2,
+        "created_at": "2026-09-01T00:00:00Z",
+        "updated_at": "2026-09-01T00:30:00Z"
+      }
+    },
+    {
+      "event_id": "018f0000-0000-7000-8000-000000000110",
+      "schema_version": 2,
+      "type": "personal_task_details_deleted",
+      "occurred_at": "2026-09-01T00:30:00Z",
+      "payload": {
+        "course_task_id": "018f0000-0000-7000-8000-000000000004",
+        "revision": 3,
+        "deleted_at": "2026-09-01T00:30:00Z"
+      }
+    },
+    {
+      "event_id": "018f0000-0000-7000-8000-000000000111",
+      "schema_version": 2,
+      "type": "personal_task_state_upserted",
+      "occurred_at": "2026-09-01T00:30:00Z",
+      "payload": {
+        "course_task_id": "018f0000-0000-7000-8000-000000000004",
+        "state": "completed",
+        "revision": 3,
+        "created_at": "2026-09-01T00:00:00Z",
+        "updated_at": "2026-09-01T00:30:00Z"
+      }
+    },
+    {
+      "event_id": "018f0000-0000-7000-8000-000000000112",
+      "schema_version": 2,
+      "type": "personal_task_state_deleted",
+      "occurred_at": "2026-09-01T00:30:00Z",
+      "payload": {
+        "course_task_id": "018f0000-0000-7000-8000-000000000004",
+        "revision": 4,
+        "deleted_at": "2026-09-01T00:30:00Z"
+      }
+    },
+    {
+      "event_id": "018f0000-0000-7000-8000-000000000113",
+      "schema_version": 2,
+      "type": "task_comment_upserted",
+      "occurred_at": "2026-09-01T00:30:00Z",
+      "payload": {
+        "id": "018f0000-0000-7000-8000-000000000006",
+        "course_task_id": "018f0000-0000-7000-8000-000000000004",
+        "author_id": "018f0000-0000-7000-8000-000000000001",
+        "body": "The deadline was announced in class.",
+        "revision": 2,
+        "state": "visible",
+        "deleted_at": null,
+        "created_at": "2026-09-01T00:00:00Z",
+        "updated_at": "2026-09-01T00:30:00Z"
+      }
+    },
+    {
+      "event_id": "018f0000-0000-7000-8000-000000000114",
+      "schema_version": 2,
+      "type": "task_comment_deleted",
+      "occurred_at": "2026-09-01T00:30:00Z",
+      "payload": {
+        "entity_type": "task_comment",
+        "entity_id": "018f0000-0000-7000-8000-000000000006",
+        "state": "deleted",
+        "revision": 3,
+        "deleted_at": "2026-09-01T00:30:00Z"
+      }
+    },
+    {
+      "event_id": "018f0000-0000-7000-8000-000000000115",
+      "schema_version": 2,
+      "type": "task_comment_hidden",
+      "occurred_at": "2026-09-01T00:30:00Z",
+      "payload": {
+        "entity_type": "task_comment",
+        "entity_id": "018f0000-0000-7000-8000-000000000006",
+        "state": "hidden",
+        "revision": 3
+      }
+    },
+    {
+      "event_id": "018f0000-0000-7000-8000-000000000116",
+      "schema_version": 2,
+      "type": "task_comment_restored",
+      "occurred_at": "2026-09-01T00:30:00Z",
+      "payload": {
+        "id": "018f0000-0000-7000-8000-000000000006",
+        "course_task_id": "018f0000-0000-7000-8000-000000000004",
+        "author_id": "018f0000-0000-7000-8000-000000000001",
+        "body": "The deadline was announced in class.",
+        "revision": 4,
+        "state": "visible",
+        "deleted_at": null,
+        "created_at": "2026-09-01T00:00:00Z",
+        "updated_at": "2026-09-01T00:30:00Z"
+      }
+    },
+    {
+      "event_id": "018f0000-0000-7000-8000-000000000117",
+      "schema_version": 2,
+      "type": "public_user_profile_updated",
+      "occurred_at": "2026-09-01T00:30:00Z",
+      "payload": {
+        "id": "018f0000-0000-7000-8000-000000000001",
+        "username": "student_1",
+        "display_name": "Student One",
+        "avatar_url": null,
+        "bio": null,
+        "status": "active",
+        "revision": 2,
+        "created_at": "2026-09-01T00:00:00Z",
+        "updated_at": "2026-09-01T00:30:00Z"
+      }
+    },
+    {
+      "event_id": "018f0000-0000-7000-8000-000000000118",
+      "schema_version": 2,
+      "type": "public_user_deleted",
+      "occurred_at": "2026-09-01T00:30:00Z",
+      "payload": {
+        "id": "018f0000-0000-7000-8000-000000000001",
+        "display_name": "已注销用户",
+        "status": "deleted",
+        "revision": 3,
+        "deleted_at": "2026-09-01T00:30:00Z"
+      }
+    },
+    {
+      "event_id": "018f0000-0000-7000-8000-000000000119",
+      "schema_version": 2,
+      "type": "reporter_content_report_updated",
+      "occurred_at": "2026-09-01T00:30:00Z",
+      "payload": {
+        "report_id": "018f0000-0000-7000-8000-00000000000a",
+        "target_type": "course_task",
+        "target_id": "018f0000-0000-7000-8000-000000000004",
+        "reason": "inaccurate",
+        "details": null,
+        "status": "resolved",
+        "resolution": "Reviewed and corrected.",
+        "created_at": "2026-09-01T00:00:00Z",
+        "resolved_at": "2026-09-01T00:30:00Z"
+      }
+    },
+    {
+      "event_id": "018f0000-0000-7000-8000-00000000011a",
+      "schema_version": 2,
+      "type": "maintainer_content_report_updated",
+      "occurred_at": "2026-09-01T00:30:00Z",
+      "payload": {
+        "report_id": "018f0000-0000-7000-8000-00000000000a",
+        "reporter_id": "018f0000-0000-7000-8000-000000000001",
+        "target_type": "course_task",
+        "target_id": "018f0000-0000-7000-8000-000000000004",
+        "reason": "inaccurate",
+        "details": null,
+        "status": "resolved",
+        "resolution": "Reviewed and corrected.",
+        "created_at": "2026-09-01T00:00:00Z",
+        "resolved_at": "2026-09-01T00:30:00Z"
+      }
+    },
+    {
+      "event_id": "018f0000-0000-7000-8000-00000000011b",
+      "schema_version": 2,
+      "type": "class_section_deactivated",
+      "occurred_at": "2026-09-01T00:30:00Z",
+      "payload": {
+        "id": "018f0000-0000-7000-8000-000000000002",
+        "external_section_id": "2026-001",
+        "active": false,
+        "revision": 3,
+        "updated_at": "2026-09-01T00:30:00Z"
+      }
+    },
+    {
+      "event_id": "018f0000-0000-7000-8000-00000000011c",
+      "schema_version": 2,
+      "type": "catalog_revision_changed",
+      "occurred_at": "2026-09-01T00:30:00Z",
+      "payload": {
+        "revision": 7,
+        "updated_at": "2026-09-01T00:30:00Z"
+      }
+    }
+  ]
+}

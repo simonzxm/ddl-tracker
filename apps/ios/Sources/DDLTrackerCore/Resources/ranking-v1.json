@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "algorithm": "wilson_lower_bound",
+  "z": 1.96,
+  "cases": [
+    { "up": 0, "down": 0, "score": 0 },
+    { "up": 1, "down": 0, "score": 0.206543291474 },
+    { "up": 2, "down": 0, "score": 0.34237195289 },
+    { "up": 3, "down": 0, "score": 0.438493919551 },
+    { "up": 4, "down": 0, "score": 0.510099979596 },
+    { "up": 2, "down": 1, "score": 0.207654955126 },
+    { "up": 3, "down": 1, "score": 0.300636052443 },
+    { "up": 10, "down": 1, "score": 0.622635374514 },
+    { "up": 10, "down": 9, "score": 0.317074825118 },
+    { "up": 1, "down": 1, "score": 0.094528654801 },
+    { "up": 0, "down": 1, "score": 0 }
+  ]
+}

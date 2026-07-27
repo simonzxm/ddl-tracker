@@ -230,14 +230,7 @@ final class AppModel {
             expectedRevision: user.profileRevision
         ))
         currentUser = updated
-        if let credential = try await vault.load() {
-            try await vault.save(SessionCredential(
-                accessToken: credential.accessToken,
-                tokenType: credential.tokenType,
-                expiresAt: credential.expiresAt,
-                user: updated
-            ))
-        }
+        try await persistCurrentUser(updated)
     }
 
     func deleteAccount() async throws {
@@ -248,7 +241,9 @@ final class AppModel {
     func refreshCurrentUser() async {
         guard phase == .signedIn else { return }
         do {
-            currentUser = try await api.currentUser()
+            let updated = try await api.currentUser()
+            currentUser = updated
+            try? await persistCurrentUser(updated)
             connectivity = .online
         } catch let error as APIError where error.code == .unauthenticated {
             await signOut()
@@ -312,6 +307,16 @@ final class AppModel {
             try await store.discard(operationID: operationID)
             try await reloadLocal(from: store)
         } catch { alertMessage = userMessage(for: error) }
+    }
+
+    private func persistCurrentUser(_ user: CurrentUser) async throws {
+        guard let credential = try await vault.load() else { return }
+        try await vault.save(SessionCredential(
+            accessToken: credential.accessToken,
+            tokenType: credential.tokenType,
+            expiresAt: credential.expiresAt,
+            user: user
+        ))
     }
 
     private func refreshCatalogIfNeeded(from store: ClientStore) async {

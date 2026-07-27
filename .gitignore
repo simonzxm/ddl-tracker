@@ -25,3 +25,10 @@ coverage/
 # OS and editor files
 .DS_Store
 *.swp
+
+# Apple client build output
+apps/ios/.build/
+apps/ios/DerivedData/
+apps/ios/*.xcworkspace/xcuserdata/
+apps/ios/*.xcodeproj/xcuserdata/
+*.xcuserstate

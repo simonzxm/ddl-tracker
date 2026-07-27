@@ -25,7 +25,7 @@ struct AdminAuditView: View {
                                 HStack {
                                     Text(entry.targetType)
                                     Spacer()
-                                    Text(entry.createdAt.formatted(date: .abbreviated, time: .shortened))
+                                    Text(AcademicTime.dateTime(entry.createdAt))
                                 }
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
@@ -101,7 +101,7 @@ private struct AdminAuditDetailView: View {
             Section("操作") {
                 LabeledContent("动作", value: entry.action)
                 LabeledContent("目标类型", value: entry.targetType)
-                LabeledContent("时间", value: entry.createdAt.formatted(date: .abbreviated, time: .shortened))
+                LabeledContent("时间", value: AcademicTime.dateTime(entry.createdAt))
                 if let reason = entry.reason {
                     Text(reason)
                 }

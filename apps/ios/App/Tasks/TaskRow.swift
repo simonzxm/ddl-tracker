@@ -19,7 +19,7 @@ struct TaskRow: View {
 
                 if let deadline = item.deadline {
                     Label {
-                        Text(deadline.formatted(date: .abbreviated, time: .shortened))
+                        Text(AcademicTime.dateTime(deadline))
                     } icon: {
                         Image(systemName: "calendar")
                     }

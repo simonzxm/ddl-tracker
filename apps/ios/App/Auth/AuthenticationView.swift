@@ -1,3 +1,4 @@
+import DDLTrackerCore
 import SwiftUI
 
 struct AuthenticationView: View {
@@ -118,7 +119,7 @@ private struct VerificationCodeView: View {
             } header: {
                 Text("六位验证码")
             } footer: {
-                Text("有效期至 \(expiresAt.formatted(date: .omitted, time: .shortened))")
+                Text("有效期至 \(AcademicTime.time(expiresAt))")
             }
             Section {
                 Button(action: verify) {
@@ -152,7 +153,7 @@ private struct RegistrationView: View {
         Form {
             Section {
                 LabeledContent("已验证邮箱", value: email)
-                LabeledContent("注册有效期", value: expiresAt.formatted(date: .omitted, time: .shortened))
+                LabeledContent("注册有效期", value: AcademicTime.time(expiresAt))
             }
             Section {
                 TextField("用户名", text: $username)

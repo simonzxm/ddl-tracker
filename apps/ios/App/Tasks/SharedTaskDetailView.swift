@@ -105,7 +105,7 @@ struct SharedTaskDetailView: View {
             if let details = model.projection.personalTaskDetails[courseTaskID] {
                 if let title = details.privateTitle { LabeledContent("标题", value: title) }
                 if let deadline = details.privateDeadline {
-                    LabeledContent("截止", value: deadline.formatted(date: .abbreviated, time: .shortened))
+                    LabeledContent("截止", value: AcademicTime.dateTime(deadline))
                 }
                 if let note = details.privateNote { Text(note).foregroundStyle(.secondary) }
             } else {
@@ -218,7 +218,7 @@ private struct ProposalRow: View {
                         .foregroundStyle(.tint)
                 }
             }
-            Label(proposal.deadline.formatted(date: .abbreviated, time: .shortened), systemImage: "calendar")
+            Label(AcademicTime.dateTime(proposal.deadline), systemImage: "calendar")
                 .font(.subheadline)
             if let description = proposal.description, !description.isEmpty {
                 Text(description)

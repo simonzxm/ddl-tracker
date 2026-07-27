@@ -31,7 +31,7 @@ struct SessionsView: View {
                             Text("最近使用：\(session.lastSeenAt.formatted(.relative(presentation: .named)))")
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
-                            Text("有效期至 \(session.absoluteExpiresAt.formatted(date: .abbreviated, time: .shortened))")
+                            Text("有效期至 \(AcademicTime.dateTime(session.absoluteExpiresAt))")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }

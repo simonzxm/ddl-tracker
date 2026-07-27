@@ -32,3 +32,10 @@ func jsonValueRoundTrips() throws {
     let again = try JSONCoding.decoder.decode([String: JSONValue].self, from: encoded)
     #expect(again == decoded)
 }
+
+@Test("academic time uses Asia Shanghai regardless of device timezone")
+func academicTimeUsesShanghai() {
+    let reference = Date(timeIntervalSince1970: 0)
+    #expect(AcademicTime.timeZone.identifier == "Asia/Shanghai")
+    #expect(AcademicTime.timeZone.secondsFromGMT(for: reference) == 8 * 60 * 60)
+}

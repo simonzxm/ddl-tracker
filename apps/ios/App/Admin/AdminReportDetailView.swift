@@ -18,7 +18,7 @@ struct AdminReportDetailView: View {
                 if let details = report.details, !details.isEmpty {
                     Text(details)
                 }
-                LabeledContent("提交时间", value: report.createdAt.formatted(date: .abbreviated, time: .shortened))
+                LabeledContent("提交时间", value: AcademicTime.dateTime(report.createdAt))
             }
 
             Section("标识符") {
@@ -31,7 +31,7 @@ struct AdminReportDetailView: View {
                 Section("处理结果") {
                     Text(resolution)
                     if let resolvedAt = report.resolvedAt {
-                        LabeledContent("处理时间", value: resolvedAt.formatted(date: .abbreviated, time: .shortened))
+                        LabeledContent("处理时间", value: AcademicTime.dateTime(resolvedAt))
                     }
                     if let resolvedBy = report.resolvedBy {
                         CopyableIdentifierRow(title: "处理人", value: resolvedBy.uuidString)

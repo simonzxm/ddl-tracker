@@ -117,7 +117,7 @@ private struct AdminReportRow: View {
                     .foregroundStyle(.secondary)
                     .lineLimit(2)
             }
-            Text(report.createdAt.formatted(date: .abbreviated, time: .shortened))
+            Text(AcademicTime.dateTime(report.createdAt))
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }

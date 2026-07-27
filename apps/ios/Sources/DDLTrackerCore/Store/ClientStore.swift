@@ -2,11 +2,11 @@ public import Foundation
 public import SwiftData
 
 public struct SnapshotPageCheckpoint: Codable, Equatable, Sendable {
-    public var snapshotToken: String
+    public var snapshotToken: String?
     public var pageToken: String?
     public var resumeCursor: String?
 
-    public init(snapshotToken: String, pageToken: String?, resumeCursor: String? = nil) {
+    public init(snapshotToken: String?, pageToken: String?, resumeCursor: String? = nil) {
         self.snapshotToken = snapshotToken
         self.pageToken = pageToken
         self.resumeCursor = resumeCursor
@@ -93,6 +93,65 @@ public actor ClientStore {
         state.metadataData = try JSONCoding.encoder.encode(metadata)
         state.updatedAt = Date()
         try context.save()
+    }
+
+
+    public func beginAccountSnapshot() throws {
+        try replaceRemoteState(
+            projection: ClientProjection(),
+            metadata: PersistedSyncMetadata(
+                cursor: nil,
+                accountSnapshot: SnapshotPageCheckpoint(snapshotToken: nil, pageToken: nil)
+            )
+        )
+    }
+
+    @discardableResult
+    public func commit(_ response: AccountSnapshotResponse) throws -> ClientStoreSnapshot {
+        var current = try snapshot()
+        for record in response.records { current.projection.apply(record) }
+        if response.snapshotComplete {
+            current.metadata.accountSnapshot = nil
+            current.metadata.cursor = response.nextCursor
+        } else {
+            current.metadata.accountSnapshot = SnapshotPageCheckpoint(
+                snapshotToken: response.snapshotToken,
+                pageToken: response.nextPageToken
+            )
+        }
+        try replaceRemoteState(projection: current.projection, metadata: current.metadata)
+        return current
+    }
+
+    public func beginClassSectionSnapshot(_ classSectionID: UUIDv7) throws {
+        var current = try snapshot()
+        current.metadata.classSectionSnapshots[classSectionID] = SnapshotPageCheckpoint(
+            snapshotToken: nil,
+            pageToken: nil
+        )
+        if !current.metadata.pendingClassSectionSnapshotIDs.contains(classSectionID) {
+            current.metadata.pendingClassSectionSnapshotIDs.append(classSectionID)
+        }
+        try replaceRemoteState(projection: current.projection, metadata: current.metadata)
+    }
+
+    @discardableResult
+    public func commit(_ response: ClassSectionSnapshotResponse) throws -> ClientStoreSnapshot {
+        var current = try snapshot()
+        for record in response.records { current.projection.apply(record) }
+        if response.snapshotComplete {
+            current.metadata.classSectionSnapshots.removeValue(forKey: response.classSectionID)
+            current.metadata.pendingClassSectionSnapshotIDs.removeAll { $0 == response.classSectionID }
+            if let resumeCursor = response.resumeCursor { current.metadata.cursor = resumeCursor }
+        } else {
+            current.metadata.classSectionSnapshots[response.classSectionID] = SnapshotPageCheckpoint(
+                snapshotToken: response.snapshotToken,
+                pageToken: response.nextPageToken,
+                resumeCursor: response.resumeCursor
+            )
+        }
+        try replaceRemoteState(projection: current.projection, metadata: current.metadata)
+        return current
     }
 
     public func enqueue(_ operation: StudentOperation) throws {

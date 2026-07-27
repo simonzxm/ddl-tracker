@@ -192,6 +192,36 @@ final class AppModel {
         lastSyncedAt = nil
     }
 
+    func updateProfile(
+        username: String,
+        displayName: String,
+        avatarURL: String?,
+        bio: String?
+    ) async throws {
+        guard let user = currentUser else { throw AppModelError.storeUnavailable }
+        let updated = try await api.updateProfile(.init(
+            username: username,
+            displayName: displayName,
+            avatarURL: avatarURL,
+            bio: bio,
+            expectedRevision: user.profileRevision
+        ))
+        currentUser = updated
+        if let credential = try await vault.load() {
+            try await vault.save(SessionCredential(
+                accessToken: credential.accessToken,
+                tokenType: credential.tokenType,
+                expiresAt: credential.expiresAt,
+                user: updated
+            ))
+        }
+    }
+
+    func deleteAccount() async throws {
+        try await api.deleteAccount()
+        await signOut()
+    }
+
     func refreshCurrentUser() async {
         guard phase == .signedIn else { return }
         do {

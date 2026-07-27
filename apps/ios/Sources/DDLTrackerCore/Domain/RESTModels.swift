@@ -40,6 +40,13 @@ public struct SessionCredential: Codable, Equatable, Sendable {
     public let tokenType: String
     public let expiresAt: Date
     public let user: CurrentUser
+
+    public init(accessToken: String, tokenType: String, expiresAt: Date, user: CurrentUser) {
+        self.accessToken = accessToken
+        self.tokenType = tokenType
+        self.expiresAt = expiresAt
+        self.user = user
+    }
 }
 
 public enum VerificationResponse: Codable, Equatable, Sendable {

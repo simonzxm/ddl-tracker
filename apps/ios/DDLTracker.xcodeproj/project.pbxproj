@@ -14,6 +14,7 @@
 		3E8A92D878216D5DB06E6B5E /* CoursesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A978FBECE04AA2EDC19CD24 /* CoursesView.swift */; };
 		47A9E1D20019E68158455A5A /* ProposalEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C816E78BE4268FC0EA6740A /* ProposalEditor.swift */; };
 		595531BBF9DB1C8A809CA480 /* TaskRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB1DB6FF6EDAF2A43237D5FF /* TaskRow.swift */; };
+		698C1FD403EA5964D5E87603 /* ProfileEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5ADA5DE07F2FBA0E420713DE /* ProfileEditor.swift */; };
 		8065D14C40B24199EB52CB3A /* AppRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5AB22696EB857E43170D9A4E /* AppRootView.swift */; };
 		8786EC2F9D8F87B1C68131E6 /* DDLTrackerCore in Frameworks */ = {isa = PBXBuildFile; productRef = 1AAF408319EBDA335F3FFE86 /* DDLTrackerCore */; };
 		96C749D30466F9D21BD4E8DC /* DDLTrackerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 739EC5A8E046255E024B2D03 /* DDLTrackerApp.swift */; };
@@ -21,6 +22,7 @@
 		A5B8D4F083ED652A1DA299C5 /* TodayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2150D56BA5E53186BA68EFA /* TodayView.swift */; };
 		AE09B243D9FE948D450FCB03 /* ReportEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C3E9F4884C0B7FF3022FC43 /* ReportEditor.swift */; };
 		C079DE7DAC0FABAAFD3A2AA2 /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40992D7E2DC2C952C7E6582E /* AppModel.swift */; };
+		C48DC4192F5ED2A29538DAC8 /* SessionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80017A40AD546F57C04CDB66 /* SessionsView.swift */; };
 		CFF66C85402134AE23DAA173 /* AuthenticationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26C0C898858E5E1481091BA7 /* AuthenticationView.swift */; };
 		D294536854A99D3B0579B4FA /* SharedTaskDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 935D151604C3287ABAF3FC69 /* SharedTaskDetailView.swift */; };
 		DC488377EAFE30D0CF5FA400 /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4C03F716B24C41542CACCB5 /* ProfileView.swift */; };
@@ -42,8 +44,10 @@
 		54E7C71040FA7BD4C3E268B1 /* PersonalTodoEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersonalTodoEditor.swift; sourceTree = "<group>"; };
 		56797A4201536370E1D7683C /* ActivityView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityView.swift; sourceTree = "<group>"; };
 		5AB22696EB857E43170D9A4E /* AppRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppRootView.swift; sourceTree = "<group>"; };
+		5ADA5DE07F2FBA0E420713DE /* ProfileEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileEditor.swift; sourceTree = "<group>"; };
 		7335DEE0DE03156FFF510863 /* PrivateTaskDetailsEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrivateTaskDetailsEditor.swift; sourceTree = "<group>"; };
 		739EC5A8E046255E024B2D03 /* DDLTrackerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DDLTrackerApp.swift; sourceTree = "<group>"; };
+		80017A40AD546F57C04CDB66 /* SessionsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionsView.swift; sourceTree = "<group>"; };
 		8A978FBECE04AA2EDC19CD24 /* CoursesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoursesView.swift; sourceTree = "<group>"; };
 		935D151604C3287ABAF3FC69 /* SharedTaskDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedTaskDetailView.swift; sourceTree = "<group>"; };
 		A10B67BD8D6036CA8B0F5034 /* CatalogBrowserView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatalogBrowserView.swift; sourceTree = "<group>"; };
@@ -188,7 +192,9 @@
 		F951F7EDD3CC80F2151F29D6 /* Profile */ = {
 			isa = PBXGroup;
 			children = (
+				5ADA5DE07F2FBA0E420713DE /* ProfileEditor.swift */,
 				C4C03F716B24C41542CACCB5 /* ProfileView.swift */,
+				80017A40AD546F57C04CDB66 /* SessionsView.swift */,
 			);
 			path = Profile;
 			sourceTree = "<group>";
@@ -280,9 +286,11 @@
 				96C749D30466F9D21BD4E8DC /* DDLTrackerApp.swift in Sources */,
 				F5D52E70F8010C3148CCB37B /* PersonalTodoEditor.swift in Sources */,
 				9BEFBCBFC956CB4268A840A0 /* PrivateTaskDetailsEditor.swift in Sources */,
+				698C1FD403EA5964D5E87603 /* ProfileEditor.swift in Sources */,
 				DC488377EAFE30D0CF5FA400 /* ProfileView.swift in Sources */,
 				47A9E1D20019E68158455A5A /* ProposalEditor.swift in Sources */,
 				AE09B243D9FE948D450FCB03 /* ReportEditor.swift in Sources */,
+				C48DC4192F5ED2A29538DAC8 /* SessionsView.swift in Sources */,
 				D294536854A99D3B0579B4FA /* SharedTaskDetailView.swift in Sources */,
 				28570D32614CB83770396994 /* StudentRootView.swift in Sources */,
 				38D452881D47F713F22A49BC /* SyncStatusView.swift in Sources */,

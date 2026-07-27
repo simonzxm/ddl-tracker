@@ -65,26 +65,21 @@ public extension ClientProjection {
                 updatedAt: now
             )))
         case let .mergePersonalTodoIntoCourseTask(value):
-            if let todo = personalTodos.removeValue(forKey: value.payload.personalTodoID) {
-                apply(.personalTaskDetails(PersonalTaskDetails(
-                    courseTaskID: value.payload.courseTaskID,
-                    privateTitle: todo.title,
-                    privateDeadline: todo.deadline,
-                    privateNote: todo.note,
-                    revision: value.payload.expectedDetailsRevision + 1,
-                    createdAt: now,
-                    updatedAt: now
-                )))
-                apply(.personalTaskState(PersonalTaskState(
-                    courseTaskID: value.payload.courseTaskID,
-                    state: todo.state,
-                    revision: value.payload.expectedStateRevision + 1,
-                    createdAt: now,
-                    updatedAt: now
-                )))
-            }
+            mergePersonalTodoOptimistically(
+                personalTodoID: value.payload.personalTodoID,
+                courseTaskID: value.payload.courseTaskID,
+                expectedDetailsRevision: value.payload.expectedDetailsRevision,
+                expectedStateRevision: value.payload.expectedStateRevision,
+                now: now
+            )
         case let .publishPersonalTodoAsCourseTask(value):
-            personalTodos.removeValue(forKey: value.payload.personalTodoID)
+            mergePersonalTodoOptimistically(
+                personalTodoID: value.payload.personalTodoID,
+                courseTaskID: value.payload.courseTaskID,
+                expectedDetailsRevision: 0,
+                expectedStateRevision: 0,
+                now: now
+            )
             createSharedTask(
                 taskID: value.payload.courseTaskID,
                 sectionID: value.payload.classSectionID,
@@ -148,6 +143,32 @@ public extension ClientProjection {
                 resolvedAt: nil
             )
         }
+    }
+
+    private mutating func mergePersonalTodoOptimistically(
+        personalTodoID: UUIDv7,
+        courseTaskID: UUIDv7,
+        expectedDetailsRevision: Int,
+        expectedStateRevision: Int,
+        now: Date
+    ) {
+        guard let todo = personalTodos.removeValue(forKey: personalTodoID) else { return }
+        apply(.personalTaskDetails(PersonalTaskDetails(
+            courseTaskID: courseTaskID,
+            privateTitle: todo.title,
+            privateDeadline: todo.deadline,
+            privateNote: todo.note,
+            revision: expectedDetailsRevision + 1,
+            createdAt: now,
+            updatedAt: now
+        )))
+        apply(.personalTaskState(PersonalTaskState(
+            courseTaskID: courseTaskID,
+            state: todo.state,
+            revision: expectedStateRevision + 1,
+            createdAt: now,
+            updatedAt: now
+        )))
     }
 
     private mutating func createSharedTask(taskID: UUIDv7, sectionID: UUIDv7, proposalID: UUIDv7, proposal: CanonicalProposalPayload, authorID: UUIDv7?, now: Date) {

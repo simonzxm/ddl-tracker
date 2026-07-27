@@ -72,3 +72,54 @@ private func makeStore() throws -> ClientStore {
 }
 private func date(_ value: TimeInterval) -> Date { Date(timeIntervalSince1970: value) }
 private func id(_ suffix: Int) -> UUIDv7 { UUIDv7(String(format: "018f0000-0000-7000-8000-%012x", suffix))! }
+
+@Test("publishing a personal todo preserves private content without leaking it")
+func publishingTodoPreservesPrivateOverlay() {
+    let todoID = id(301)
+    let taskID = id(302)
+    let sectionID = id(303)
+    let proposalID = id(304)
+    var projection = ClientProjection()
+    projection.apply(.personalTodo(.init(
+        id: todoID,
+        classSectionID: sectionID,
+        title: "Private title",
+        deadline: date(100),
+        note: "Private note",
+        state: .completed,
+        revision: 4,
+        deletedAt: nil,
+        createdAt: date(1),
+        updatedAt: date(2)
+    )))
+
+    projection.applyOptimistically(
+        .publishPersonalTodoAsCourseTask(.init(
+            operationID: id(305),
+            payload: .init(
+                personalTodoID: todoID,
+                expectedPersonalTodoRevision: 4,
+                courseTaskID: taskID,
+                classSectionID: sectionID,
+                proposalID: proposalID,
+                proposal: .init(
+                    title: "Public title",
+                    deadline: date(200),
+                    description: "Public description",
+                    evidenceNote: nil,
+                    evidenceURL: nil
+                )
+            )
+        )),
+        now: date(10),
+        currentUserID: id(500)
+    )
+
+    #expect(projection.personalTodos[todoID] == nil)
+    #expect(projection.personalTaskDetails[taskID]?.privateTitle == "Private title")
+    #expect(projection.personalTaskDetails[taskID]?.privateDeadline == date(100))
+    #expect(projection.personalTaskDetails[taskID]?.privateNote == "Private note")
+    #expect(projection.personalTaskStates[taskID]?.state == .completed)
+    #expect(projection.taskProposals[proposalID]?.title == "Public title")
+    #expect(projection.taskProposals[proposalID]?.description == "Public description")
+}

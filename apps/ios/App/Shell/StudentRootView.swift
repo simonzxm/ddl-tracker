@@ -28,21 +28,10 @@ struct StudentRootView: View {
 
             if model.currentUser?.isMaintainer == true {
                 NavigationStack {
-                    MaintainerPlaceholderView()
+                    MaintainerHomeView()
                 }
                 .tabItem { Label("管理", systemImage: "shield.lefthalf.filled") }
             }
         }
-    }
-}
-
-private struct MaintainerPlaceholderView: View {
-    var body: some View {
-        ContentUnavailableView {
-            Label("维护者中心", systemImage: "shield.lefthalf.filled")
-        } description: {
-            Text("审核、目录导入与审计工具将在这里显示。")
-        }
-        .navigationTitle("管理")
     }
 }

@@ -154,6 +154,28 @@ public actor ClientStore {
         return current
     }
 
+    public func effectiveSnapshot(now: Date = Date(), currentUserID: UUIDv7? = nil) throws -> ClientStoreSnapshot {
+        var current = try snapshot()
+        for operation in try pendingOperations() {
+            current.projection.applyOptimistically(operation, now: now, currentUserID: currentUserID)
+        }
+        return current
+    }
+
+    public func retry(operationID: UUIDv7) throws {
+        guard let item = try context.fetch(FetchDescriptor<StoredOutboxItem>()).first(where: { $0.operationID == operationID.uuidString }) else { return }
+        item.statusRawValue = OutboxStatus.pending.rawValue
+        item.errorData = nil
+        item.updatedAt = Date()
+        try context.save()
+    }
+
+    public func discard(operationID: UUIDv7) throws {
+        guard let item = try context.fetch(FetchDescriptor<StoredOutboxItem>()).first(where: { $0.operationID == operationID.uuidString }) else { return }
+        context.delete(item)
+        try context.save()
+    }
+
     public func enqueue(_ operation: StudentOperation) throws {
         let items = try context.fetch(FetchDescriptor<StoredOutboxItem>())
         guard !items.contains(where: { $0.operationID == operation.operationID.uuidString }) else { return }

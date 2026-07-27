@@ -10,11 +10,7 @@ struct AppRootView: View {
                 ProgressView("正在打开 DDL Tracker…")
                     .controlSize(.large)
             case .signedOut:
-                ContentUnavailableView {
-                    Label("登录 DDL Tracker", systemImage: "person.crop.circle.badge.checkmark")
-                } description: {
-                    Text("使用学校邮箱获取验证码。")
-                }
+                AuthenticationView()
             case .signedIn:
                 ContentUnavailableView {
                     Label("已连接", systemImage: "checklist")

@@ -19,8 +19,16 @@ final class AppModel {
         case offline
     }
 
+    enum AuthStage: Equatable {
+        case email
+        case code(challengeID: UUIDv7, email: String, expiresAt: Date)
+        case registration(token: String, email: String, expiresAt: Date)
+    }
+
     var phase: Phase
     var connectivity: Connectivity = .unknown
+    var authStage: AuthStage = .email
+    var isAuthenticating = false
     var currentUser: CurrentUser?
     var projection = ClientProjection()
     var taskItems: [TaskListItem] = []
@@ -93,6 +101,73 @@ final class AppModel {
         }
     }
 
+    func requestLoginCode(email rawEmail: String) async {
+        let email = rawEmail.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !email.isEmpty, !isAuthenticating else { return }
+        isAuthenticating = true
+        defer { isAuthenticating = false }
+        do {
+            let response = try await api.requestEmailChallenge(.init(email: email))
+            authStage = .code(challengeID: response.challengeID, email: email, expiresAt: response.expiresAt)
+            connectivity = .online
+        } catch {
+            alertMessage = userMessage(for: error)
+        }
+    }
+
+    func verifyLoginCode(_ rawCode: String) async {
+        guard case let .code(challengeID, email, _) = authStage, !isAuthenticating else { return }
+        let code = rawCode.filter(\.isNumber)
+        guard code.count == 6 else { return }
+        isAuthenticating = true
+        defer { isAuthenticating = false }
+        do {
+            let response = try await api.verifyEmail(.init(
+                challengeID: challengeID,
+                email: email,
+                code: code,
+                deviceName: deviceName,
+                deviceMetadata: deviceMetadata
+            ))
+            switch response {
+            case let .session(credential):
+                try await acceptSession(credential)
+            case let .registration(value):
+                authStage = .registration(token: value.registrationToken, email: email, expiresAt: value.expiresAt)
+            }
+            connectivity = .online
+        } catch {
+            alertMessage = userMessage(for: error)
+        }
+    }
+
+    func registerAccount(username rawUsername: String, displayName rawDisplayName: String) async {
+        guard case let .registration(token, _, _) = authStage, !isAuthenticating else { return }
+        let username = rawUsername.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let displayName = rawDisplayName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !username.isEmpty else { return }
+        isAuthenticating = true
+        defer { isAuthenticating = false }
+        do {
+            let credential = try await api.registerAccount(.init(
+                registrationToken: token,
+                username: username,
+                displayName: displayName.isEmpty ? nil : displayName,
+                deviceName: deviceName,
+                deviceMetadata: deviceMetadata
+            ))
+            try await acceptSession(credential)
+            connectivity = .online
+        } catch {
+            alertMessage = userMessage(for: error)
+        }
+    }
+
+    func resetAuthentication() {
+        authStage = .email
+        isAuthenticating = false
+    }
+
     func acceptSession(_ credential: SessionCredential) async throws {
         guard let store else { throw AppModelError.storeUnavailable }
         try await store.clearAll()
@@ -112,6 +187,7 @@ final class AppModel {
         taskItems = []
         outbox = []
         phase = .signedOut
+        authStage = .email
         connectivity = .unknown
         lastSyncedAt = nil
     }

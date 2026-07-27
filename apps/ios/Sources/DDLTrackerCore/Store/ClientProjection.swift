@@ -1,5 +1,3 @@
-public import Foundation
-
 public struct ProjectionEntityKey: Codable, Hashable, Sendable {
     public let type: ContentEntityType
     public let id: UUIDv7
@@ -126,7 +124,8 @@ public struct ClientProjection: Codable, Equatable, Sendable {
     }
 
     private mutating func upsertCatalogRevision(_ value: CatalogRevision) {
-        if catalogRevision == nil || value.revision >= catalogRevision!.revision { catalogRevision = value }
+        if let current = catalogRevision, value.revision < current.revision { return }
+        catalogRevision = value
     }
 
     private mutating func upsertPublicUser(_ value: PublicUserProfile) {

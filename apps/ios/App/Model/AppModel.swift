@@ -304,6 +304,31 @@ final class AppModel {
         )))
     }
 
+    func createSharedTask(
+        classSectionID: UUIDv7,
+        title: String,
+        deadline: Date,
+        description: String?,
+        evidenceNote: String?,
+        evidenceURL: String?
+    ) async {
+        await enqueue(.createCourseTaskWithInitialProposal(.init(
+            operationID: UUIDv7.generate(),
+            payload: .init(
+                courseTaskID: UUIDv7.generate(),
+                classSectionID: classSectionID,
+                proposalID: UUIDv7.generate(),
+                proposal: .init(
+                    title: title,
+                    deadline: deadline,
+                    description: description,
+                    evidenceNote: evidenceNote,
+                    evidenceURL: evidenceURL
+                )
+            )
+        )))
+    }
+
     func createTaskProposal(
         courseTaskID: UUIDv7,
         title: String,

@@ -22,19 +22,23 @@ struct CoursesView: View {
                     Section("已关注教学班") {
                         ForEach(model.projection.followedClassSections.keys.sorted(), id: \.self) { sectionID in
                             let section = model.projection.classSections[sectionID]
-                            VStack(alignment: .leading, spacing: 5) {
-                                Text(section.map { "教学班 \($0.sectionNumber)" } ?? "教学班")
-                                    .font(.headline)
-                                if let section {
-                                    if !section.instructors.isEmpty {
-                                        Text(section.instructors.joined(separator: "、"))
-                                            .font(.subheadline)
-                                            .foregroundStyle(.secondary)
-                                    }
-                                    if let schedule = section.scheduleText, !schedule.isEmpty {
-                                        Text(schedule)
-                                            .font(.caption)
-                                            .foregroundStyle(.secondary)
+                            NavigationLink {
+                                ClassSectionDetailView(classSectionID: sectionID)
+                            } label: {
+                                VStack(alignment: .leading, spacing: 5) {
+                                    Text(section.map { "教学班 \($0.sectionNumber)" } ?? "教学班")
+                                        .font(.headline)
+                                    if let section {
+                                        if !section.instructors.isEmpty {
+                                            Text(section.instructors.joined(separator: "、"))
+                                                .font(.subheadline)
+                                                .foregroundStyle(.secondary)
+                                        }
+                                        if let schedule = section.scheduleText, !schedule.isEmpty {
+                                            Text(schedule)
+                                                .font(.caption)
+                                                .foregroundStyle(.secondary)
+                                        }
                                     }
                                 }
                             }

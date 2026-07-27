@@ -39,14 +39,24 @@ struct PrivateTaskDetailsEditor: View {
                     if hasDeadline { DatePicker("日期与时间", selection: $deadline) }
                 }
 
-                if current != nil {
+                if let current {
                     Section {
+                        Button("发布为共享提案") {
+                            Task {
+                                await model.publishPersonalTaskDetails(current)
+                                dismiss()
+                            }
+                        }
+                        .disabled(current.privateTitle == nil || current.privateDeadline == nil)
+
                         Button("清除所有私人覆盖", role: .destructive) {
                             Task {
                                 await model.deletePersonalTaskDetails(courseTaskID: courseTaskID)
                                 dismiss()
                             }
                         }
+                    } footer: {
+                        Text("发布使用服务器上已存储的私人覆盖版本。请先存储本页修改，再重新打开执行发布。")
                     }
                 }
             }

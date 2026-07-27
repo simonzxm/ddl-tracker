@@ -399,6 +399,59 @@ final class AppModel {
         )))
     }
 
+    func publishPersonalTodo(_ todo: PersonalTodo) async {
+        guard let classSectionID = todo.classSectionID, let deadline = todo.deadline else { return }
+        await enqueue(.publishPersonalTodoAsCourseTask(.init(
+            operationID: UUIDv7.generate(),
+            payload: .init(
+                personalTodoID: todo.id,
+                expectedPersonalTodoRevision: todo.revision,
+                courseTaskID: UUIDv7.generate(),
+                classSectionID: classSectionID,
+                proposalID: UUIDv7.generate(),
+                proposal: .init(
+                    title: todo.title,
+                    deadline: deadline,
+                    description: todo.note,
+                    evidenceNote: nil,
+                    evidenceURL: nil
+                )
+            )
+        )))
+    }
+
+    func mergePersonalTodo(_ todo: PersonalTodo, into courseTaskID: UUIDv7) async {
+        await enqueue(.mergePersonalTodoIntoCourseTask(.init(
+            operationID: UUIDv7.generate(),
+            payload: .init(
+                personalTodoID: todo.id,
+                courseTaskID: courseTaskID,
+                expectedPersonalTodoRevision: todo.revision,
+                expectedDetailsRevision: projection.personalTaskDetails[courseTaskID]?.revision ?? 0,
+                expectedStateRevision: projection.personalTaskStates[courseTaskID]?.revision ?? 0
+            )
+        )))
+    }
+
+    func publishPersonalTaskDetails(_ details: PersonalTaskDetails) async {
+        guard let title = details.privateTitle, let deadline = details.privateDeadline else { return }
+        await enqueue(.publishPersonalTaskDetailsAsProposal(.init(
+            operationID: UUIDv7.generate(),
+            payload: .init(
+                courseTaskID: details.courseTaskID,
+                proposalID: UUIDv7.generate(),
+                expectedDetailsRevision: details.revision,
+                proposal: .init(
+                    title: title,
+                    deadline: deadline,
+                    description: details.privateNote,
+                    evidenceNote: nil,
+                    evidenceURL: nil
+                )
+            )
+        )))
+    }
+
     func createPersonalTodo(
         title: String,
         deadline: Date?,
@@ -424,13 +477,14 @@ final class AppModel {
         title: String,
         deadline: Date?,
         note: String?,
-        state: TaskProgressState
+        state: TaskProgressState,
+        classSectionID: UUIDv7?
     ) async {
         let operation = StudentOperation.updatePersonalTodo(.init(
             operationID: UUIDv7.generate(),
             payload: .init(
                 personalTodoID: todo.id,
-                classSectionID: todo.classSectionID,
+                classSectionID: classSectionID,
                 title: title,
                 deadline: deadline,
                 note: note,
@@ -455,7 +509,8 @@ final class AppModel {
                 title: todo.title,
                 deadline: todo.deadline,
                 note: todo.note,
-                state: state
+                state: state,
+                classSectionID: todo.classSectionID
             )
             return
         }

@@ -10,7 +10,7 @@ func studentAPIBuildsAuthenticatedCatalogRequests() async throws {
     let client = APIClient(
         baseURL: URL(string: "https://example.test/api")!,
         transport: transport,
-        tokenProvider: StaticAccessTokenProvider(token: "secret-token")
+        tokenProvider: StaticAccessTokenProvider(token: "test-token")
     )
 
     let terms = try await client.terms()
@@ -18,7 +18,7 @@ func studentAPIBuildsAuthenticatedCatalogRequests() async throws {
     let request = try #require(await transport.requests().first)
     #expect(request.url?.absoluteString == "https://example.test/api/v1/terms")
     #expect(request.httpMethod == "GET")
-    #expect(request.value(forHTTPHeaderField: "Authorization") == "Bearer secret-token")
+    #expect(request.value(forHTTPHeaderField: "Authorization") == "Bearer test-token")
     #expect(request.value(forHTTPHeaderField: "Accept") == "application/json")
 }
 

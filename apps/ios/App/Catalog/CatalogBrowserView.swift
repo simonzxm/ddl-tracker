@@ -37,7 +37,7 @@ struct CatalogBrowserView: View {
             }
         }
         .navigationTitle("浏览课程")
-        .task { await load() }
+        .task(id: model.projection.catalogRevision?.revision) { await load() }
         .refreshable { await load() }
         .alert("无法载入目录", isPresented: Binding(
             get: { errorMessage != nil },
@@ -103,7 +103,7 @@ private struct TermCoursesView: View {
         }
         .navigationTitle(term.name)
         .searchable(text: $search, prompt: "课程名称或代码")
-        .task { await load() }
+        .task(id: model.projection.catalogRevision?.revision) { await load() }
         .refreshable { await load() }
         .alert("无法载入课程", isPresented: Binding(
             get: { errorMessage != nil },
@@ -140,7 +140,7 @@ private struct CourseSectionsView: View {
         }
         .navigationTitle(course.name)
         .navigationBarTitleDisplayMode(.inline)
-        .task { await load() }
+        .task(id: model.projection.catalogRevision?.revision) { await load() }
         .refreshable { await load() }
         .alert("无法载入教学班", isPresented: Binding(
             get: { errorMessage != nil },

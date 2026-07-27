@@ -80,3 +80,27 @@ private func follow(operationID: UUIDv7, sectionID: UUIDv7) -> StudentOperation 
 private func id(_ suffix: Int) -> UUIDv7 {
     UUIDv7(String(format: "018f0000-0000-7000-8000-%012x", suffix))!
 }
+
+@Test("catalog refresh persists newer class section summaries")
+func catalogRefreshPersistsClassSections() async throws {
+    let store = try makeStore()
+    let section = ClassSectionRecord(
+        id: id(401),
+        courseID: id(402),
+        externalSectionID: "SEC-401",
+        sectionNumber: "01",
+        departmentCode: "CS",
+        departmentName: "Computer Science",
+        instructors: ["Teacher"],
+        campus: "Main",
+        capacity: 80,
+        scheduleText: "Tuesday",
+        active: true,
+        revision: 3,
+        createdAt: Date(timeIntervalSince1970: 1),
+        updatedAt: Date(timeIntervalSince1970: 2)
+    )
+
+    try await store.refreshClassSections([section])
+    #expect(try await store.snapshot().projection.classSections[section.id] == section)
+}

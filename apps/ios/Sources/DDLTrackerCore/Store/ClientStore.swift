@@ -188,6 +188,14 @@ public actor ClientStore {
         try context.save()
     }
 
+    public func refreshClassSections(_ records: [ClassSectionRecord]) throws {
+        var current = try snapshot()
+        for record in records {
+            current.projection.apply(.classSection(record))
+        }
+        try replaceRemoteState(projection: current.projection, metadata: current.metadata)
+    }
+
     public func enqueue(_ operation: StudentOperation) throws {
         let items = try context.fetch(FetchDescriptor<StoredOutboxItem>())
         guard !items.contains(where: { $0.operationID == operation.operationID.uuidString }) else { return }

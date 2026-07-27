@@ -42,6 +42,7 @@ final class AppModel {
     @ObservationIgnored private let store: ClientStore?
     @ObservationIgnored private let syncEngine: SyncEngine?
     @ObservationIgnored private let previewMode: Bool
+    @ObservationIgnored private var refreshedCatalogRevision: Int?
 
     static func live() -> AppModel {
 #if DEBUG
@@ -264,6 +265,7 @@ final class AppModel {
         do {
             _ = try await syncEngine.synchronize()
             try await reloadLocal(from: store)
+            await refreshCatalogIfNeeded(from: store)
             connectivity = .online
             lastSyncedAt = Date()
         } catch let error as APIError where error.code == .unauthenticated {
@@ -310,6 +312,50 @@ final class AppModel {
             try await store.discard(operationID: operationID)
             try await reloadLocal(from: store)
         } catch { alertMessage = userMessage(for: error) }
+    }
+
+    private func refreshCatalogIfNeeded(from store: ClientStore) async {
+        guard let revision = projection.catalogRevision?.revision,
+              refreshedCatalogRevision != revision else { return }
+
+        let followedIDs = Set(projection.followedClassSections.keys)
+        let existingSections = projection.classSections
+        let courseIDs = Set(followedIDs.compactMap { existingSections[$0]?.courseID })
+        guard !courseIDs.isEmpty || followedIDs.isEmpty else { return }
+
+        do {
+            var refreshed: [ClassSectionRecord] = []
+            let now = Date()
+            for courseID in courseIDs.sorted() {
+                let summaries = try await api.classSections(courseID: courseID)
+                for summary in summaries where followedIDs.contains(summary.id) {
+                    let existing = existingSections[summary.id]
+                    refreshed.append(ClassSectionRecord(
+                        id: summary.id,
+                        courseID: courseID,
+                        externalSectionID: summary.externalSectionID,
+                        sectionNumber: summary.sectionNumber,
+                        departmentCode: summary.departmentCode,
+                        departmentName: summary.departmentName,
+                        instructors: summary.instructors,
+                        campus: summary.campus,
+                        capacity: summary.capacity,
+                        scheduleText: summary.scheduleText,
+                        active: summary.active,
+                        revision: summary.revision,
+                        createdAt: existing?.createdAt ?? now,
+                        updatedAt: now
+                    ))
+                }
+            }
+            try await store.refreshClassSections(refreshed)
+            refreshedCatalogRevision = revision
+            try await reloadLocal(from: store)
+        } catch {
+            if !(error is URLError) {
+                alertMessage = userMessage(for: error)
+            }
+        }
     }
 
     private func reloadLocal(from store: ClientStore) async throws {

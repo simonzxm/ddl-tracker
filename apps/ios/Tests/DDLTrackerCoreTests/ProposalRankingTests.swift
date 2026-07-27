@@ -8,7 +8,7 @@ private struct RankingVector: Decodable {
         let down: Int
         let score: Double
     }
-    let schema_version: Int
+    let schemaVersion: Int
     let z: Double
     let cases: [Case]
 }
@@ -17,7 +17,7 @@ private struct RankingVector: Decodable {
 func wilsonRankingMatchesOfficialVectors() throws {
     let url = try #require(Bundle.module.url(forResource: "ranking-v1", withExtension: "json"))
     let vectors = try JSONCoding.decoder.decode(RankingVector.self, from: Data(contentsOf: url))
-    #expect(vectors.schema_version == ProposalRanker.version)
+    #expect(vectors.schemaVersion == ProposalRanker.version)
     for vector in vectors.cases {
         let score = try ProposalRanker.wilsonScore(up: vector.up, down: vector.down, z: vectors.z)
         #expect(abs(score - vector.score) < 0.000_000_000_001)

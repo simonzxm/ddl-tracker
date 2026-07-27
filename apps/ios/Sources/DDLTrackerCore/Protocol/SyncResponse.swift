@@ -48,6 +48,52 @@ public struct OperationResult: Codable, Equatable, Sendable {
     public let followUp: OperationFollowUp?
     public let error: OperationError?
 
+    private init(
+        operationID: UUIDv7,
+        operationType: StudentOperationType,
+        status: OperationResultStatus,
+        followUp: OperationFollowUp?,
+        error: OperationError?
+    ) {
+        self.operationID = operationID
+        self.operationType = operationType
+        self.status = status
+        self.followUp = followUp
+        self.error = error
+    }
+
+    public static func success(
+        operationID: UUIDv7,
+        operationType: StudentOperationType,
+        status: OperationResultStatus,
+        followUp: OperationFollowUp?
+    ) -> OperationResult {
+        precondition(status == .applied || status == .replayed)
+        return OperationResult(
+            operationID: operationID,
+            operationType: operationType,
+            status: status,
+            followUp: followUp,
+            error: nil
+        )
+    }
+
+    public static func failure(
+        operationID: UUIDv7,
+        operationType: StudentOperationType,
+        status: OperationResultStatus,
+        error: OperationError
+    ) -> OperationResult {
+        precondition(status == .rejected || status == .dependencyFailed)
+        return OperationResult(
+            operationID: operationID,
+            operationType: operationType,
+            status: status,
+            followUp: nil,
+            error: error
+        )
+    }
+
     private enum CodingKeys: String, CodingKey {
         case operationID, operationType, status, followUp, error
     }

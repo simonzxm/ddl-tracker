@@ -72,3 +72,98 @@ public actor APIClient: SyncAPI {
         }
     }
 }
+
+public extension APIClient {
+    func bootstrapMaintainer(token: String) async throws -> AdminResult {
+        try await post("/v1/admin/bootstrap", body: AdminBootstrapRequest(bootstrapToken: token))
+    }
+
+    func planCatalog(_ request: CatalogPlanBatchRequest) async throws -> CatalogPlanBatchResponse {
+        try await post("/v1/admin/catalog/imports/plan", body: request)
+    }
+
+    func uploadCatalog(filename: String, catalogGzip: Data, manifest: Data) async throws -> CatalogUploadResponse {
+        guard filename.lowercased().hasSuffix(".csv.gz"), !filename.contains("\"") && !filename.contains("\r") && !filename.contains("\n") else {
+            throw CatalogUploadError.invalidFilename
+        }
+        let boundary = "DDLTracker-\(UUID().uuidString)"
+        var body = Data()
+        func append(_ value: String) { body.append(Data(value.utf8)) }
+        append("--\(boundary)\r\n")
+        append("Content-Disposition: form-data; name=\"catalog\"; filename=\"\(filename)\"\r\n")
+        append("Content-Type: application/gzip\r\n\r\n")
+        body.append(catalogGzip)
+        append("\r\n--\(boundary)\r\n")
+        append("Content-Disposition: form-data; name=\"manifest\"; filename=\"manifest.json\"\r\n")
+        append("Content-Type: application/json\r\n\r\n")
+        body.append(manifest)
+        append("\r\n--\(boundary)--\r\n")
+
+        let url = baseURL.appendingPathComponent("v1/admin/catalog/imports/upload")
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.timeoutInterval = 60
+        request.httpBody = body
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+        guard let token = try await tokenProvider?.accessToken(), !token.isEmpty else { throw HTTPClientError.missingAccessToken }
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        let (data, response) = try await transport.data(for: request)
+        try validate(response: response, data: data)
+        return try JSONCoding.decoder.decode(CatalogUploadResponse.self, from: data)
+    }
+
+    func applyCatalog(importID: UUIDv7, confirmDeactivations: Bool) async throws -> CatalogApplyResponse {
+        try await post("/v1/admin/catalog/imports/\(importID.uuidString)/apply-all", body: CatalogApplyAllRequest(confirmDeactivations: confirmDeactivations))
+    }
+
+    func cancelCatalog(importID: UUIDv7, reason: String) async throws -> CatalogCancelResponse {
+        try await post("/v1/admin/catalog/imports/\(importID.uuidString)/cancel", body: CatalogCancelRequest(reason: reason))
+    }
+
+    func catalogImportStatus(importID: UUIDv7) async throws -> CatalogImportStatus {
+        try await get("/v1/admin/catalog/imports/\(importID.uuidString)")
+    }
+
+    func adminReports(status: ReportStatus? = nil, limit: Int = 50, after: AdminPageCursor? = nil) async throws -> AdminReportPage {
+        var query: [URLQueryItem] = []
+        if let status { query.append(URLQueryItem(name: "status", value: status.rawValue)) }
+        query.append(URLQueryItem(name: "limit", value: String(limit)))
+        if let after {
+            query.append(URLQueryItem(name: "after_created_at", value: RFC3339.string(from: after.createdAt)))
+            query.append(URLQueryItem(name: "after_id", value: after.id.uuidString))
+        }
+        return try await get("/v1/admin/reports", query: query)
+    }
+
+    func resolveReport(id: UUIDv7, status: AdminReportResolutionStatus, resolution: String) async throws -> AdminReportResolutionResponse {
+        try await post("/v1/admin/reports/\(id.uuidString)/resolve", body: AdminReportResolutionRequest(status: status, resolution: resolution))
+    }
+
+    func setContentHidden(id: UUIDv7, targetType: AdminContentTargetType, hidden: Bool, reason: String) async throws -> AdminContentActionResponse {
+        let action = hidden ? "hide" : "restore"
+        return try await post("/v1/admin/content/\(id.uuidString)/\(action)", body: AdminContentActionRequest(targetType: targetType, reason: reason))
+    }
+
+    func setUserSuspended(id: UUIDv7, suspended: Bool, reason: String) async throws -> AdminResult {
+        let action = suspended ? "suspend" : "restore"
+        return try await post("/v1/admin/users/\(id.uuidString)/\(action)", body: AdminUserActionRequest(reason: reason))
+    }
+
+    func setMaintainerRole(id: UUIDv7, maintainer: Bool, reason: String) async throws -> AdminResult {
+        try await post("/v1/admin/users/\(id.uuidString)/roles", body: AdminRoleRequest(maintainer: maintainer, reason: reason))
+    }
+
+    func mergeTask(sourceID: UUIDv7, targetID: UUIDv7, reason: String) async throws -> AdminResult {
+        try await post("/v1/admin/tasks/\(sourceID.uuidString)/merge", body: AdminTaskMergeRequest(targetTaskID: targetID, reason: reason))
+    }
+
+    func auditEntries(limit: Int = 50, after: AdminPageCursor? = nil) async throws -> AdminAuditPage {
+        var query = [URLQueryItem(name: "limit", value: String(limit))]
+        if let after {
+            query.append(URLQueryItem(name: "after_created_at", value: RFC3339.string(from: after.createdAt)))
+            query.append(URLQueryItem(name: "after_id", value: after.id.uuidString))
+        }
+        return try await get("/v1/admin/audit", query: query)
+    }
+}

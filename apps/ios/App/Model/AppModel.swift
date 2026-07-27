@@ -305,6 +305,45 @@ final class AppModel {
         )))
     }
 
+    func createTaskComment(courseTaskID: UUIDv7, body: String) async {
+        await enqueue(.createTaskComment(.init(
+            operationID: UUIDv7.generate(),
+            payload: .init(commentID: UUIDv7.generate(), courseTaskID: courseTaskID, body: body)
+        )))
+    }
+
+    func editTaskComment(_ comment: TaskComment, body: String) async {
+        await enqueue(.editTaskComment(.init(
+            operationID: UUIDv7.generate(),
+            payload: .init(commentID: comment.id, body: body, expectedRevision: comment.revision)
+        )))
+    }
+
+    func deleteTaskComment(_ comment: TaskComment) async {
+        await enqueue(.deleteTaskComment(.init(
+            operationID: UUIDv7.generate(),
+            payload: .init(commentID: comment.id, expectedRevision: comment.revision)
+        )))
+    }
+
+    func createContentReport(
+        targetType: ReportTargetType,
+        targetID: UUIDv7,
+        reason: ReportReason,
+        details: String?
+    ) async {
+        await enqueue(.createContentReport(.init(
+            operationID: UUIDv7.generate(),
+            payload: .init(
+                reportID: UUIDv7.generate(),
+                targetType: targetType,
+                targetID: targetID,
+                reason: reason,
+                details: details
+            )
+        )))
+    }
+
     func createPersonalTodo(
         title: String,
         deadline: Date?,

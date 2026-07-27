@@ -7,18 +7,20 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		8065D14C40B24199EB52CB3A /* AppRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5AB22696EB857E43170D9A4E /* AppRootView.swift */; };
 		8786EC2F9D8F87B1C68131E6 /* DDLTrackerCore in Frameworks */ = {isa = PBXBuildFile; productRef = 1AAF408319EBDA335F3FFE86 /* DDLTrackerCore */; };
-		9162C0B3A29C93EB3E79881E /* AppRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5234BD963933A048FC97B55 /* AppRootView.swift */; };
 		96C749D30466F9D21BD4E8DC /* DDLTrackerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 739EC5A8E046255E024B2D03 /* DDLTrackerApp.swift */; };
+		C079DE7DAC0FABAAFD3A2AA2 /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40992D7E2DC2C952C7E6582E /* AppModel.swift */; };
 		E193AA02CDD71EB2DBB68C49 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = BD42E4D33E6FB57DA1374F22 /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		40992D7E2DC2C952C7E6582E /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
 		49EACF5AAE8726198A965B9C /* ios */ = {isa = PBXFileReference; lastKnownFileType = folder; name = ios; path = .; sourceTree = SOURCE_ROOT; };
+		5AB22696EB857E43170D9A4E /* AppRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppRootView.swift; sourceTree = "<group>"; };
 		739EC5A8E046255E024B2D03 /* DDLTrackerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DDLTrackerApp.swift; sourceTree = "<group>"; };
 		BD42E4D33E6FB57DA1374F22 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		DE4EE45F7C5A83147917B4D0 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
-		E5234BD963933A048FC97B55 /* AppRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppRootView.swift; sourceTree = "<group>"; };
 		E9C5546004579177C1586A09 /* DDLTracker.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = DDLTracker.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -43,13 +45,22 @@
 			);
 			sourceTree = "<group>";
 		};
+		1D11B0BCC6E4434425CFAC6C /* Model */ = {
+			isa = PBXGroup;
+			children = (
+				40992D7E2DC2C952C7E6582E /* AppModel.swift */,
+			);
+			path = Model;
+			sourceTree = "<group>";
+		};
 		403C8495D515C0CB167F390A /* App */ = {
 			isa = PBXGroup;
 			children = (
-				E5234BD963933A048FC97B55 /* AppRootView.swift */,
 				BD42E4D33E6FB57DA1374F22 /* Assets.xcassets */,
 				739EC5A8E046255E024B2D03 /* DDLTrackerApp.swift */,
 				DE4EE45F7C5A83147917B4D0 /* Info.plist */,
+				1D11B0BCC6E4434425CFAC6C /* Model */,
+				C85FC33B35AA60FF5E2564A0 /* Root */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -68,6 +79,14 @@
 				E9C5546004579177C1586A09 /* DDLTracker.app */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		C85FC33B35AA60FF5E2564A0 /* Root */ = {
+			isa = PBXGroup;
+			children = (
+				5AB22696EB857E43170D9A4E /* AppRootView.swift */,
+			);
+			path = Root;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -146,7 +165,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				9162C0B3A29C93EB3E79881E /* AppRootView.swift in Sources */,
+				C079DE7DAC0FABAAFD3A2AA2 /* AppModel.swift in Sources */,
+				8065D14C40B24199EB52CB3A /* AppRootView.swift in Sources */,
 				96C749D30466F9D21BD4E8DC /* DDLTrackerApp.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

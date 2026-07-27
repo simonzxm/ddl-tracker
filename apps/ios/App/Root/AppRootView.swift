@@ -1,0 +1,38 @@
+import SwiftUI
+
+struct AppRootView: View {
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        Group {
+            switch model.phase {
+            case .launching:
+                ProgressView("正在打开 DDL Tracker…")
+                    .controlSize(.large)
+            case .signedOut:
+                ContentUnavailableView {
+                    Label("登录 DDL Tracker", systemImage: "person.crop.circle.badge.checkmark")
+                } description: {
+                    Text("使用学校邮箱获取验证码。")
+                }
+            case .signedIn:
+                ContentUnavailableView {
+                    Label("已连接", systemImage: "checklist")
+                } description: {
+                    Text("正在准备你的课程与待办。")
+                }
+            case let .unavailable(message):
+                ContentUnavailableView("无法启动", systemImage: "externaldrive.badge.exclamationmark", description: Text(message))
+            }
+        }
+        .task { await model.launch() }
+        .alert("DDL Tracker", isPresented: Binding(
+            get: { model.alertMessage != nil },
+            set: { if !$0 { model.alertMessage = nil } }
+        )) {
+            Button("好") { model.alertMessage = nil }
+        } message: {
+            Text(model.alertMessage ?? "")
+        }
+    }
+}

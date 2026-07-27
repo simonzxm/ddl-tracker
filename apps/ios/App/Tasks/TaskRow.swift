@@ -39,6 +39,10 @@ struct TaskRow: View {
                     if let confidence = item.confidence {
                         Text(confidence.displayName)
                     }
+                    if item.hasSharedUpdate {
+                        Label("共享信息可能已更新", systemImage: "exclamationmark.arrow.triangle.2.circlepath")
+                            .foregroundStyle(.orange)
+                    }
                 }
                 .font(.caption)
                 .foregroundStyle(.secondary)

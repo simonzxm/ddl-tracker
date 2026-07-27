@@ -17,11 +17,13 @@ public struct TaskListItem: Identifiable, Equatable, Sendable {
     public let note: String?
     public let state: TaskProgressState
     public let confidence: ProposalConfidence?
+    public let hasSharedUpdate: Bool
 
-    public init(id: UUIDv7, kind: TaskListItemKind, classSectionID: UUIDv7?, courseTaskID: UUIDv7?, personalTodoID: UUIDv7?, canonicalProposalID: UUIDv7?, title: String, deadline: Date?, note: String?, state: TaskProgressState, confidence: ProposalConfidence?) {
+    public init(id: UUIDv7, kind: TaskListItemKind, classSectionID: UUIDv7?, courseTaskID: UUIDv7?, personalTodoID: UUIDv7?, canonicalProposalID: UUIDv7?, title: String, deadline: Date?, note: String?, state: TaskProgressState, confidence: ProposalConfidence?, hasSharedUpdate: Bool = false) {
         self.id = id; self.kind = kind; self.classSectionID = classSectionID; self.courseTaskID = courseTaskID
         self.personalTodoID = personalTodoID; self.canonicalProposalID = canonicalProposalID; self.title = title
         self.deadline = deadline; self.note = note; self.state = state; self.confidence = confidence
+        self.hasSharedUpdate = hasSharedUpdate
     }
 }
 
@@ -46,8 +48,16 @@ public extension ClientProjection {
             let leader = ranked.first
             let proposal = leader.flatMap { rankedValue in proposals.first { $0.id == rankedValue.id } }
             let overlay = personalTaskDetails[task.id]
-            let state = personalTaskStates[task.id]?.state ?? .pending
+            let personalState = personalTaskStates[task.id]
+            let state = personalState?.state ?? .pending
             let confidence = leader.map { ProposalRanker.confidence(leader: $0, runnerUp: ranked.dropFirst().first) }
+            let sharedUpdatedAt = [
+                task.updatedAt,
+                proposal?.createdAt,
+                proposal.flatMap { proposalVoteTotals[$0.id]?.updatedAt },
+            ].compactMap { $0 }.max() ?? task.updatedAt
+            let hasSharedUpdate = state != .pending
+                && personalState.map { sharedUpdatedAt > $0.updatedAt } == true
             presentedSharedTaskIDs.insert(task.id)
             result.append(TaskListItem(
                 id: task.id,
@@ -60,7 +70,8 @@ public extension ClientProjection {
                 deadline: overlay?.privateDeadline ?? proposal?.deadline,
                 note: overlay?.privateNote ?? proposal?.description,
                 state: state,
-                confidence: confidence
+                confidence: confidence,
+                hasSharedUpdate: hasSharedUpdate
             ))
         }
         let privateSharedTaskIDs = Set(personalTaskDetails.keys).union(personalTaskStates.keys)

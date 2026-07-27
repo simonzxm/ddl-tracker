@@ -102,3 +102,43 @@ func taskWithoutVisibleProposalsIsNotActive() throws {
     )))
     #expect(try projection.taskListItems().allSatisfy { $0.courseTaskID != taskID })
 }
+
+@Test("completed shared tasks flag newer public information without reopening")
+func completedTaskFlagsSharedUpdate() throws {
+    let taskID = id(60)
+    let proposalID = id(61)
+    var projection = ClientProjection()
+    projection.apply(.courseTask(.init(
+        id: taskID,
+        classSectionID: id(62),
+        createdBy: nil,
+        state: .visible,
+        revision: 1,
+        createdAt: date(1),
+        updatedAt: date(5)
+    )))
+    projection.apply(.taskProposal(proposal(
+        id: proposalID,
+        taskID: taskID,
+        title: "Updated shared info",
+        deadline: date(100)
+    )))
+    projection.apply(.proposalVoteTotals(.init(
+        proposalID: proposalID,
+        up: 3,
+        down: 0,
+        updatedAt: date(20),
+        revision: 2
+    )))
+    projection.apply(.personalTaskState(.init(
+        courseTaskID: taskID,
+        state: .completed,
+        revision: 1,
+        createdAt: date(8),
+        updatedAt: date(10)
+    )))
+
+    let item = try #require(try projection.taskListItems().first { $0.courseTaskID == taskID })
+    #expect(item.state == .completed)
+    #expect(item.hasSharedUpdate)
+}

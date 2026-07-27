@@ -8,7 +8,7 @@ struct TodayView: View {
     @State private var showingCompleted = false
 
     private var visibleItems: [TaskListItem] {
-        model.taskItems.filter { showingCompleted || $0.state == .pending }
+        model.taskItems.filter { showingCompleted || $0.state == .pending || $0.hasSharedUpdate }
     }
 
     var body: some View {

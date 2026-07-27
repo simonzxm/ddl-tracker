@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import process from 'node:process';
@@ -21,7 +21,7 @@ function run(command, args) {
 function writeGenerated(path, content) {
   if (checkOnly) {
     if (!existsSync(path) || readFileSync(path, 'utf8') !== content) {
-      console.error(`Generated iOS contract is stale: ${path}`);
+      process.stderr.write(`Generated iOS contract is stale: ${path}\n`);
       process.exitCode = 1;
     }
     return;
@@ -54,4 +54,6 @@ for (const name of vectors) {
 }
 
 if (process.exitCode) process.exit(process.exitCode);
-console.log(checkOnly ? 'iOS contracts are current.' : 'Updated iOS contract resources.');
+process.stdout.write(
+  `${checkOnly ? 'iOS contracts are current.' : 'Updated iOS contract resources.'}\n`,
+);

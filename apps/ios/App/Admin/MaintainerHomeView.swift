@@ -23,6 +23,12 @@ struct MaintainerHomeView: View {
                 } label: {
                     Label("内容与账户", systemImage: "wrench.and.screwdriver")
                 }
+
+                NavigationLink {
+                    CatalogImportsView()
+                } label: {
+                    Label("课程目录导入", systemImage: "square.and.arrow.down.on.square")
+                }
             }
         }
         .navigationTitle("管理")

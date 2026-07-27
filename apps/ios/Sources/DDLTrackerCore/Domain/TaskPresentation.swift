@@ -33,6 +33,7 @@ public extension ClientProjection {
             let proposals = taskProposals.values.filter {
                 $0.courseTaskID == task.id && $0.state == .visible && proposalRedirects[$0.id] == nil
             }
+            guard !proposals.isEmpty else { continue }
             let ranked = try ProposalRanker.rank(proposals.map { proposal in
                 let totals = proposalVoteTotals[proposal.id]
                 return ProposalRankingInput(

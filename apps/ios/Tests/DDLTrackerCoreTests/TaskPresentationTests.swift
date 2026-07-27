@@ -86,3 +86,19 @@ func hiddenSharedTaskRetainsPrivatePresentation() throws {
     #expect(item.state == .completed)
     #expect(item.canonicalProposalID == nil)
 }
+
+@Test("shared tasks without visible proposals are omitted unless private state remains")
+func taskWithoutVisibleProposalsIsNotActive() throws {
+    let taskID = id(40)
+    var projection = ClientProjection()
+    projection.apply(.courseTask(.init(
+        id: taskID,
+        classSectionID: id(41),
+        createdBy: nil,
+        state: .visible,
+        revision: 1,
+        createdAt: date(1),
+        updatedAt: date(1)
+    )))
+    #expect(try projection.taskListItems().allSatisfy { $0.courseTaskID != taskID })
+}

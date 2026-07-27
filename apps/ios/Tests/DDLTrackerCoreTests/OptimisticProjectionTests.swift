@@ -123,3 +123,33 @@ func publishingTodoPreservesPrivateOverlay() {
     #expect(projection.taskProposals[proposalID]?.title == "Public title")
     #expect(projection.taskProposals[proposalID]?.description == "Public description")
 }
+
+@Test("new shared tasks optimistically include the author up vote")
+func newSharedTaskIncludesAuthorVote() {
+    let taskID = id(401)
+    let proposalID = id(402)
+    var projection = ClientProjection()
+    projection.applyOptimistically(
+        .createCourseTaskWithInitialProposal(.init(
+            operationID: id(403),
+            payload: .init(
+                courseTaskID: taskID,
+                classSectionID: id(404),
+                proposalID: proposalID,
+                proposal: .init(
+                    title: "Initial proposal",
+                    deadline: date(500),
+                    description: nil,
+                    evidenceNote: nil,
+                    evidenceURL: nil
+                )
+            )
+        )),
+        now: date(10),
+        currentUserID: id(500)
+    )
+
+    #expect(projection.proposalVoteTotals[proposalID]?.up == 1)
+    #expect(projection.proposalVoteTotals[proposalID]?.down == 0)
+    #expect(projection.accuracyVotes[proposalID]?.value == .up)
+}

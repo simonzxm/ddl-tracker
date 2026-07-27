@@ -174,6 +174,19 @@ public extension ClientProjection {
     private mutating func createSharedTask(taskID: UUIDv7, sectionID: UUIDv7, proposalID: UUIDv7, proposal: CanonicalProposalPayload, authorID: UUIDv7?, now: Date) {
         apply(.courseTask(CourseTask(id: taskID, classSectionID: sectionID, createdBy: authorID, state: .visible, revision: 1, createdAt: now, updatedAt: now)))
         createProposal(taskID: taskID, proposalID: proposalID, proposal: proposal, authorID: authorID, now: now)
+        apply(.proposalVoteTotals(.init(
+            proposalID: proposalID,
+            up: 1,
+            down: 0,
+            updatedAt: now,
+            revision: 1
+        )))
+        apply(.accuracyVote(.init(
+            proposalID: proposalID,
+            value: .up,
+            updatedAt: now,
+            revision: 1
+        )))
     }
 
     private mutating func createProposal(taskID: UUIDv7, proposalID: UUIDv7, proposal: CanonicalProposalPayload, authorID: UUIDv7?, now: Date) {

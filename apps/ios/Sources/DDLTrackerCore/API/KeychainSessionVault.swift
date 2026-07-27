@@ -51,7 +51,14 @@ public actor KeychainSessionVault: AccessTokenProvider {
         let status = SecItemCopyMatching(query as CFDictionary, &item)
         if status == errSecItemNotFound { return nil }
         guard status == errSecSuccess else { throw SessionVaultError.unexpectedStatus(status) }
-        guard let data = item as? Data else { throw SessionVaultError.invalidData }
+        let data: Data
+        if let value = item as? Data {
+            data = value
+        } else if let value = item as? NSData {
+            data = Data(referencing: value)
+        } else {
+            throw SessionVaultError.invalidData
+        }
         return try JSONCoding.decoder.decode(SessionCredential.self, from: data)
     }
 

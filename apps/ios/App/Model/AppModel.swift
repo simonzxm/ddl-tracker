@@ -82,20 +82,33 @@ final class AppModel {
     func launch() async {
         if case .unavailable = phase { return }
         guard let store else { return }
+
+        let credential: SessionCredential?
         do {
-            guard let credential = try await vault.load(),
-                  credential.expiresAt > Date(),
-                  try await vault.accessToken() != nil else {
-                try? await vault.delete()
-                phase = .signedOut
-                return
-            }
+            credential = try await vault.load()
+        } catch {
+            try? await vault.delete()
+            currentUser = nil
+            phase = .signedOut
+            return
+        }
+
+        guard let credential,
+              credential.expiresAt > Date(),
+              (try? await vault.accessToken()) != nil else {
+            try? await vault.delete()
+            phase = .signedOut
+            return
+        }
+
+        do {
             currentUser = credential.user
             phase = .signedIn
             try await reloadLocal(from: store)
             await refreshCurrentUser()
             await synchronize()
         } catch {
+            currentUser = nil
             phase = .signedOut
             alertMessage = userMessage(for: error)
         }

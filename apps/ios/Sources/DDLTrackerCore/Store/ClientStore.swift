@@ -64,6 +64,18 @@ public struct OutboxRecord: Equatable, Sendable {
 public actor ClientStore {
     private let context: ModelContext
 
+    public static func live() throws -> ClientStore {
+        let schema = Schema([StoredClientState.self, StoredOutboxItem.self])
+        let configuration = ModelConfiguration("DDLTracker", schema: schema)
+        return try ClientStore(container: ModelContainer(for: schema, configurations: [configuration]))
+    }
+
+    public static func inMemory() throws -> ClientStore {
+        let schema = Schema([StoredClientState.self, StoredOutboxItem.self])
+        let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
+        return try ClientStore(container: ModelContainer(for: schema, configurations: [configuration]))
+    }
+
     public init(container: ModelContainer) throws {
         context = ModelContext(container)
         context.autosaveEnabled = false

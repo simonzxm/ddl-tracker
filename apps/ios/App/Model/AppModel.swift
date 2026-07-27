@@ -231,6 +231,74 @@ final class AppModel {
         catch { alertMessage = userMessage(for: error) }
     }
 
+    func createPersonalTodo(
+        title: String,
+        deadline: Date?,
+        note: String?,
+        classSectionID: UUIDv7? = nil
+    ) async {
+        let operation = StudentOperation.createPersonalTodo(.init(
+            operationID: UUIDv7.generate(),
+            payload: .init(
+                personalTodoID: UUIDv7.generate(),
+                classSectionID: classSectionID,
+                title: title,
+                deadline: deadline,
+                note: note,
+                state: .pending
+            )
+        ))
+        await enqueue(operation)
+    }
+
+    func updatePersonalTodo(
+        _ todo: PersonalTodo,
+        title: String,
+        deadline: Date?,
+        note: String?,
+        state: TaskProgressState
+    ) async {
+        let operation = StudentOperation.updatePersonalTodo(.init(
+            operationID: UUIDv7.generate(),
+            payload: .init(
+                personalTodoID: todo.id,
+                classSectionID: todo.classSectionID,
+                title: title,
+                deadline: deadline,
+                note: note,
+                state: state,
+                expectedRevision: todo.revision
+            )
+        ))
+        await enqueue(operation)
+    }
+
+    func deletePersonalTodo(_ todo: PersonalTodo) async {
+        await enqueue(.deletePersonalTodo(.init(
+            operationID: UUIDv7.generate(),
+            payload: .init(personalTodoID: todo.id, expectedRevision: todo.revision)
+        )))
+    }
+
+    func setTaskState(_ item: TaskListItem, state: TaskProgressState) async {
+        if let todoID = item.personalTodoID, let todo = projection.personalTodos[todoID] {
+            await updatePersonalTodo(
+                todo,
+                title: todo.title,
+                deadline: todo.deadline,
+                note: todo.note,
+                state: state
+            )
+            return
+        }
+        guard let taskID = item.courseTaskID else { return }
+        let revision = projection.personalTaskStates[taskID]?.revision ?? 0
+        await enqueue(.setPersonalTaskState(.init(
+            operationID: UUIDv7.generate(),
+            payload: .init(courseTaskID: taskID, state: state, expectedRevision: revision)
+        )))
+    }
+
     func enqueue(_ operation: StudentOperation) async {
         guard let store else { return }
         do {

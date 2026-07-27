@@ -28,6 +28,7 @@ public struct TaskListItem: Identifiable, Equatable, Sendable {
 public extension ClientProjection {
     func taskListItems() throws -> [TaskListItem] {
         var result: [TaskListItem] = []
+        var presentedSharedTaskIDs = Set<UUIDv7>()
         for task in courseTasks.values where task.state == .visible {
             let proposals = taskProposals.values.filter {
                 $0.courseTaskID == task.id && $0.state == .visible && proposalRedirects[$0.id] == nil
@@ -46,6 +47,7 @@ public extension ClientProjection {
             let overlay = personalTaskDetails[task.id]
             let state = personalTaskStates[task.id]?.state ?? .pending
             let confidence = leader.map { ProposalRanker.confidence(leader: $0, runnerUp: ranked.dropFirst().first) }
+            presentedSharedTaskIDs.insert(task.id)
             result.append(TaskListItem(
                 id: task.id,
                 kind: .shared,
@@ -58,6 +60,23 @@ public extension ClientProjection {
                 note: overlay?.privateNote ?? proposal?.description,
                 state: state,
                 confidence: confidence
+            ))
+        }
+        let privateSharedTaskIDs = Set(personalTaskDetails.keys).union(personalTaskStates.keys)
+        for taskID in privateSharedTaskIDs where !presentedSharedTaskIDs.contains(taskID) {
+            let overlay = personalTaskDetails[taskID]
+            result.append(TaskListItem(
+                id: taskID,
+                kind: .shared,
+                classSectionID: courseTasks[taskID]?.classSectionID,
+                courseTaskID: taskID,
+                personalTodoID: nil,
+                canonicalProposalID: nil,
+                title: overlay?.privateTitle ?? "已隐藏的共享任务",
+                deadline: overlay?.privateDeadline,
+                note: overlay?.privateNote,
+                state: personalTaskStates[taskID]?.state ?? .pending,
+                confidence: nil
             ))
         }
         result.append(contentsOf: personalTodos.values.map { todo in

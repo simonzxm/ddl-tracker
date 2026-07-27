@@ -40,3 +40,49 @@ private func proposal(id: UUIDv7, taskID: UUIDv7, title: String, deadline: Date)
 }
 private func date(_ value: TimeInterval) -> Date { Date(timeIntervalSince1970: value) }
 private func id(_ suffix: Int) -> UUIDv7 { UUIDv7(String(format: "018f0000-0000-7000-8000-%012x", suffix))! }
+
+@Test("hidden shared tasks retain private details and state")
+func hiddenSharedTaskRetainsPrivatePresentation() throws {
+    let taskID = id(20)
+    let sectionID = id(21)
+    var projection = ClientProjection()
+    projection.apply(.courseTask(.init(
+        id: taskID,
+        classSectionID: sectionID,
+        createdBy: nil,
+        state: .visible,
+        revision: 1,
+        createdAt: date(1),
+        updatedAt: date(1)
+    )))
+    projection.apply(.personalTaskDetails(.init(
+        courseTaskID: taskID,
+        privateTitle: "Private retained title",
+        privateDeadline: date(50),
+        privateNote: "Still available",
+        revision: 1,
+        createdAt: date(1),
+        updatedAt: date(1)
+    )))
+    projection.apply(.personalTaskState(.init(
+        courseTaskID: taskID,
+        state: .completed,
+        revision: 1,
+        createdAt: date(1),
+        updatedAt: date(1)
+    )))
+    projection.apply(.contentTombstone(.init(
+        entityType: .courseTask,
+        entityID: taskID,
+        state: .hidden,
+        revision: 2,
+        deletedAt: nil
+    )))
+
+    let item = try #require(try projection.taskListItems().first { $0.courseTaskID == taskID })
+    #expect(item.title == "Private retained title")
+    #expect(item.deadline == date(50))
+    #expect(item.note == "Still available")
+    #expect(item.state == .completed)
+    #expect(item.canonicalProposalID == nil)
+}

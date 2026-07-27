@@ -1,5 +1,3 @@
-public import Foundation
-
 public enum StudentOperationType: String, Codable, CaseIterable, Sendable {
     case followClassSection = "follow_class_section"
     case unfollowClassSection = "unfollow_class_section"

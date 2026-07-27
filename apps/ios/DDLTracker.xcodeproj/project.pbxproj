@@ -20,6 +20,7 @@
 		CFF66C85402134AE23DAA173 /* AuthenticationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26C0C898858E5E1481091BA7 /* AuthenticationView.swift */; };
 		DC488377EAFE30D0CF5FA400 /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4C03F716B24C41542CACCB5 /* ProfileView.swift */; };
 		E193AA02CDD71EB2DBB68C49 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = BD42E4D33E6FB57DA1374F22 /* Assets.xcassets */; };
+		F191474771259F18E4301316 /* CatalogBrowserView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10B67BD8D6036CA8B0F5034 /* CatalogBrowserView.swift */; };
 		F5D52E70F8010C3148CCB37B /* PersonalTodoEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 54E7C71040FA7BD4C3E268B1 /* PersonalTodoEditor.swift */; };
 /* End PBXBuildFile section */
 
@@ -34,6 +35,7 @@
 		5AB22696EB857E43170D9A4E /* AppRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppRootView.swift; sourceTree = "<group>"; };
 		739EC5A8E046255E024B2D03 /* DDLTrackerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DDLTrackerApp.swift; sourceTree = "<group>"; };
 		8A978FBECE04AA2EDC19CD24 /* CoursesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoursesView.swift; sourceTree = "<group>"; };
+		A10B67BD8D6036CA8B0F5034 /* CatalogBrowserView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatalogBrowserView.swift; sourceTree = "<group>"; };
 		BD42E4D33E6FB57DA1374F22 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		C4C03F716B24C41542CACCB5 /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileView.swift; sourceTree = "<group>"; };
 		DE4EE45F7C5A83147917B4D0 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
@@ -159,6 +161,7 @@
 		EAFE39E85FE8A96C4F5D809C /* Catalog */ = {
 			isa = PBXGroup;
 			children = (
+				A10B67BD8D6036CA8B0F5034 /* CatalogBrowserView.swift */,
 				8A978FBECE04AA2EDC19CD24 /* CoursesView.swift */,
 			);
 			path = Catalog;
@@ -252,6 +255,7 @@
 				C079DE7DAC0FABAAFD3A2AA2 /* AppModel.swift in Sources */,
 				8065D14C40B24199EB52CB3A /* AppRootView.swift in Sources */,
 				CFF66C85402134AE23DAA173 /* AuthenticationView.swift in Sources */,
+				F191474771259F18E4301316 /* CatalogBrowserView.swift in Sources */,
 				3E8A92D878216D5DB06E6B5E /* CoursesView.swift in Sources */,
 				96C749D30466F9D21BD4E8DC /* DDLTrackerApp.swift in Sources */,
 				F5D52E70F8010C3148CCB37B /* PersonalTodoEditor.swift in Sources */,

@@ -231,6 +231,22 @@ final class AppModel {
         catch { alertMessage = userMessage(for: error) }
     }
 
+    func followClassSection(_ classSectionID: UUIDv7) async {
+        guard projection.followedClassSections[classSectionID] == nil else { return }
+        await enqueue(.followClassSection(.init(
+            operationID: UUIDv7.generate(),
+            payload: .init(classSectionID: classSectionID)
+        )))
+    }
+
+    func unfollowClassSection(_ classSectionID: UUIDv7) async {
+        guard projection.followedClassSections[classSectionID] != nil else { return }
+        await enqueue(.unfollowClassSection(.init(
+            operationID: UUIDv7.generate(),
+            payload: .init(classSectionID: classSectionID)
+        )))
+    }
+
     func createPersonalTodo(
         title: String,
         deadline: Date?,

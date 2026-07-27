@@ -11,23 +11,54 @@ struct CoursesView: View {
                     Label("尚未关注课程", systemImage: "books.vertical")
                 } description: {
                     Text("浏览学期、课程和教学班后即可关注。")
+                } actions: {
+                    NavigationLink("浏览课程") {
+                        CatalogBrowserView()
+                    }
+                    .buttonStyle(.borderedProminent)
                 }
             } else {
-                List(model.projection.followedClassSections.keys.sorted(), id: \.self) { sectionID in
-                    let section = model.projection.classSections[sectionID]
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(section?.sectionNumber ?? "教学班")
-                            .font(.headline)
-                        Text(section?.instructors.joined(separator: "、") ?? sectionID.uuidString)
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
+                List {
+                    Section("已关注教学班") {
+                        ForEach(model.projection.followedClassSections.keys.sorted(), id: \.self) { sectionID in
+                            let section = model.projection.classSections[sectionID]
+                            VStack(alignment: .leading, spacing: 5) {
+                                Text(section.map { "教学班 \($0.sectionNumber)" } ?? "教学班")
+                                    .font(.headline)
+                                if let section {
+                                    if !section.instructors.isEmpty {
+                                        Text(section.instructors.joined(separator: "、"))
+                                            .font(.subheadline)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                    if let schedule = section.scheduleText, !schedule.isEmpty {
+                                        Text(schedule)
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                }
+                            }
+                            .swipeActions {
+                                Button("取消关注", role: .destructive) {
+                                    Task { await model.unfollowClassSection(sectionID) }
+                                }
+                            }
+                        }
                     }
                 }
             }
         }
         .navigationTitle("课程")
         .refreshable { await model.synchronize() }
-        .toolbar { SyncToolbar() }
+        .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                NavigationLink {
+                    CatalogBrowserView()
+                } label: {
+                    Label("浏览课程", systemImage: "magnifyingglass")
+                }
+            }
+            SyncToolbar()
+        }
     }
 }

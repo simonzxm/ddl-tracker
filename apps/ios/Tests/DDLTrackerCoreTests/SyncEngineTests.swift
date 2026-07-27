@@ -108,10 +108,81 @@ func operationFollowUpsRunSnapshots() async throws {
     #expect(await api.modes() == [.incremental, .classSectionSnapshot])
 }
 
+
+@Test("transient sync failures retry with exponential backoff")
+func transientFailuresRetryWithBackoff() async throws {
+    let store = try makeStore()
+    try await store.replaceRemoteState(projection: ClientProjection(), metadata: .init(cursor: "cursor"))
+    let api = ScriptedSyncAPI(steps: [
+        .networkFailure,
+        .networkFailure,
+        .response(.incremental(.init(
+            requestID: id(31), operationResults: [], events: [],
+            nextCursor: "after-retry", hasMore: false
+        ))),
+    ])
+    let sleeps = SleepRecorder()
+    let engine = SyncEngine(
+        api: api,
+        store: store,
+        retryPolicy: .init(
+            maxRetries: 3,
+            initialDelayNanoseconds: 100,
+            maxDelayNanoseconds: 1_000,
+            jitterRatio: 0
+        ),
+        sleep: { delay in await sleeps.record(delay) },
+        random: { 0.5 }
+    )
+
+    let result = try await engine.synchronize()
+    #expect(result.metadata.cursor == "after-retry")
+    #expect(await api.requests().count == 3)
+    #expect(await sleeps.values() == [100, 200])
+}
+
+@Test("retryable API errors honor retry after")
+func retryableAPIErrorsHonorRetryAfter() async throws {
+    let store = try makeStore()
+    try await store.replaceRemoteState(projection: ClientProjection(), metadata: .init(cursor: "cursor"))
+    let api = ScriptedSyncAPI(steps: [
+        .apiError(APIError(
+            code: .rateLimited,
+            details: [:],
+            message: "Retry later.",
+            retryable: true,
+            retryAfter: 2,
+            requestID: id(32)
+        )),
+        .response(.incremental(.init(
+            requestID: id(33), operationResults: [], events: [],
+            nextCursor: "after-rate-limit", hasMore: false
+        ))),
+    ])
+    let sleeps = SleepRecorder()
+    let engine = SyncEngine(
+        api: api,
+        store: store,
+        retryPolicy: .init(
+            maxRetries: 1,
+            initialDelayNanoseconds: 100,
+            maxDelayNanoseconds: 1_000,
+            jitterRatio: 0
+        ),
+        sleep: { delay in await sleeps.record(delay) },
+        random: { 0.5 }
+    )
+
+    _ = try await engine.synchronize()
+    #expect(await sleeps.values() == [2_000_000_000])
+}
+
 private actor ScriptedSyncAPI: SyncAPI {
     enum Step: Sendable {
         case response(SyncResponse)
         case cursorExpired
+        case networkFailure
+        case apiError(APIError)
     }
 
     private var steps: [Step]
@@ -132,11 +203,21 @@ private actor ScriptedSyncAPI: SyncAPI {
                 retryable: false,
                 requestID: id(999)
             )
+        case .networkFailure:
+            throw URLError(.networkConnectionLost)
+        case let .apiError(error):
+            throw error
         }
     }
 
     func requests() -> [SyncRequest] { recorded }
     func modes() -> [SyncMode] { recorded.map(\.mode) }
+}
+
+private actor SleepRecorder {
+    private var recorded: [UInt64] = []
+    func record(_ value: UInt64) { recorded.append(value) }
+    func values() -> [UInt64] { recorded }
 }
 
 private enum TestFailure: Error { case missingStep }

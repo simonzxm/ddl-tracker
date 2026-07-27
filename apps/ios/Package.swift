@@ -18,7 +18,8 @@ let package = Package(
             swiftSettings: [
                 .enableUpcomingFeature("ExistentialAny"),
                 .enableUpcomingFeature("InternalImportsByDefault"),
-            ]
+            ],
+            linkerSettings: [.linkedFramework("Security")]
         ),
         .testTarget(
             name: "DDLTrackerCoreTests",

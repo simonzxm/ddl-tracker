@@ -11,13 +11,16 @@
 		38D452881D47F713F22A49BC /* SyncStatusView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15695ABAAC333C460B3B75E9 /* SyncStatusView.swift */; };
 		3BA02A0385E74FA38829F9FB /* ActivityView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56797A4201536370E1D7683C /* ActivityView.swift */; };
 		3E8A92D878216D5DB06E6B5E /* CoursesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A978FBECE04AA2EDC19CD24 /* CoursesView.swift */; };
+		47A9E1D20019E68158455A5A /* ProposalEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C816E78BE4268FC0EA6740A /* ProposalEditor.swift */; };
 		595531BBF9DB1C8A809CA480 /* TaskRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB1DB6FF6EDAF2A43237D5FF /* TaskRow.swift */; };
 		8065D14C40B24199EB52CB3A /* AppRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5AB22696EB857E43170D9A4E /* AppRootView.swift */; };
 		8786EC2F9D8F87B1C68131E6 /* DDLTrackerCore in Frameworks */ = {isa = PBXBuildFile; productRef = 1AAF408319EBDA335F3FFE86 /* DDLTrackerCore */; };
 		96C749D30466F9D21BD4E8DC /* DDLTrackerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 739EC5A8E046255E024B2D03 /* DDLTrackerApp.swift */; };
+		9BEFBCBFC956CB4268A840A0 /* PrivateTaskDetailsEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7335DEE0DE03156FFF510863 /* PrivateTaskDetailsEditor.swift */; };
 		A5B8D4F083ED652A1DA299C5 /* TodayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2150D56BA5E53186BA68EFA /* TodayView.swift */; };
 		C079DE7DAC0FABAAFD3A2AA2 /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40992D7E2DC2C952C7E6582E /* AppModel.swift */; };
 		CFF66C85402134AE23DAA173 /* AuthenticationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26C0C898858E5E1481091BA7 /* AuthenticationView.swift */; };
+		D294536854A99D3B0579B4FA /* SharedTaskDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 935D151604C3287ABAF3FC69 /* SharedTaskDetailView.swift */; };
 		DC488377EAFE30D0CF5FA400 /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4C03F716B24C41542CACCB5 /* ProfileView.swift */; };
 		E193AA02CDD71EB2DBB68C49 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = BD42E4D33E6FB57DA1374F22 /* Assets.xcassets */; };
 		F191474771259F18E4301316 /* CatalogBrowserView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10B67BD8D6036CA8B0F5034 /* CatalogBrowserView.swift */; };
@@ -30,11 +33,14 @@
 		26C0C898858E5E1481091BA7 /* AuthenticationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthenticationView.swift; sourceTree = "<group>"; };
 		40992D7E2DC2C952C7E6582E /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
 		49EACF5AAE8726198A965B9C /* ios */ = {isa = PBXFileReference; lastKnownFileType = folder; name = ios; path = .; sourceTree = SOURCE_ROOT; };
+		4C816E78BE4268FC0EA6740A /* ProposalEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProposalEditor.swift; sourceTree = "<group>"; };
 		54E7C71040FA7BD4C3E268B1 /* PersonalTodoEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersonalTodoEditor.swift; sourceTree = "<group>"; };
 		56797A4201536370E1D7683C /* ActivityView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityView.swift; sourceTree = "<group>"; };
 		5AB22696EB857E43170D9A4E /* AppRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppRootView.swift; sourceTree = "<group>"; };
+		7335DEE0DE03156FFF510863 /* PrivateTaskDetailsEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrivateTaskDetailsEditor.swift; sourceTree = "<group>"; };
 		739EC5A8E046255E024B2D03 /* DDLTrackerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DDLTrackerApp.swift; sourceTree = "<group>"; };
 		8A978FBECE04AA2EDC19CD24 /* CoursesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoursesView.swift; sourceTree = "<group>"; };
+		935D151604C3287ABAF3FC69 /* SharedTaskDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedTaskDetailView.swift; sourceTree = "<group>"; };
 		A10B67BD8D6036CA8B0F5034 /* CatalogBrowserView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatalogBrowserView.swift; sourceTree = "<group>"; };
 		BD42E4D33E6FB57DA1374F22 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		C4C03F716B24C41542CACCB5 /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileView.swift; sourceTree = "<group>"; };
@@ -136,6 +142,9 @@
 			isa = PBXGroup;
 			children = (
 				54E7C71040FA7BD4C3E268B1 /* PersonalTodoEditor.swift */,
+				7335DEE0DE03156FFF510863 /* PrivateTaskDetailsEditor.swift */,
+				4C816E78BE4268FC0EA6740A /* ProposalEditor.swift */,
+				935D151604C3287ABAF3FC69 /* SharedTaskDetailView.swift */,
 				FB1DB6FF6EDAF2A43237D5FF /* TaskRow.swift */,
 				F2150D56BA5E53186BA68EFA /* TodayView.swift */,
 			);
@@ -259,7 +268,10 @@
 				3E8A92D878216D5DB06E6B5E /* CoursesView.swift in Sources */,
 				96C749D30466F9D21BD4E8DC /* DDLTrackerApp.swift in Sources */,
 				F5D52E70F8010C3148CCB37B /* PersonalTodoEditor.swift in Sources */,
+				9BEFBCBFC956CB4268A840A0 /* PrivateTaskDetailsEditor.swift in Sources */,
 				DC488377EAFE30D0CF5FA400 /* ProfileView.swift in Sources */,
+				47A9E1D20019E68158455A5A /* ProposalEditor.swift in Sources */,
+				D294536854A99D3B0579B4FA /* SharedTaskDetailView.swift in Sources */,
 				28570D32614CB83770396994 /* StudentRootView.swift in Sources */,
 				38D452881D47F713F22A49BC /* SyncStatusView.swift in Sources */,
 				595531BBF9DB1C8A809CA480 /* TaskRow.swift in Sources */,

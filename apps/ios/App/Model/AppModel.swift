@@ -247,6 +247,64 @@ final class AppModel {
         )))
     }
 
+    func upsertPersonalTaskDetails(
+        courseTaskID: UUIDv7,
+        privateTitle: String?,
+        privateDeadline: Date?,
+        privateNote: String?
+    ) async {
+        let revision = projection.personalTaskDetails[courseTaskID]?.revision ?? 0
+        await enqueue(.upsertPersonalTaskDetails(.init(
+            operationID: UUIDv7.generate(),
+            payload: .init(
+                courseTaskID: courseTaskID,
+                privateTitle: privateTitle,
+                privateDeadline: privateDeadline,
+                privateNote: privateNote,
+                expectedRevision: revision
+            )
+        )))
+    }
+
+    func deletePersonalTaskDetails(courseTaskID: UUIDv7) async {
+        guard let details = projection.personalTaskDetails[courseTaskID] else { return }
+        await enqueue(.deletePersonalTaskDetails(.init(
+            operationID: UUIDv7.generate(),
+            payload: .init(courseTaskID: courseTaskID, expectedRevision: details.revision)
+        )))
+    }
+
+    func createTaskProposal(
+        courseTaskID: UUIDv7,
+        title: String,
+        deadline: Date,
+        description: String?,
+        evidenceNote: String?,
+        evidenceURL: String?
+    ) async {
+        await enqueue(.createTaskProposal(.init(
+            operationID: UUIDv7.generate(),
+            payload: .init(
+                courseTaskID: courseTaskID,
+                proposalID: UUIDv7.generate(),
+                proposal: .init(
+                    title: title,
+                    deadline: deadline,
+                    description: description,
+                    evidenceNote: evidenceNote,
+                    evidenceURL: evidenceURL
+                )
+            )
+        )))
+    }
+
+    func setAccuracyVote(proposalID: UUIDv7, value: AccuracyVoteValue) async {
+        await enqueue(.setAccuracyVote(.init(
+            operationID: UUIDv7.generate(),
+            payload: .init(proposalID: proposalID, value: value)
+        )))
+    }
+
     func createPersonalTodo(
         title: String,
         deadline: Date?,

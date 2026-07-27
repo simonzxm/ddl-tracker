@@ -25,22 +25,32 @@ struct TodayView: View {
             } else {
                 List {
                     ForEach(visibleItems) { item in
-                        TaskRow(item: item)
-                            .contentShape(Rectangle())
-                            .onTapGesture { editIfPersonal(item) }
-                            .swipeActions(edge: .leading, allowsFullSwipe: true) {
-                                completionAction(for: item)
-                            }
-                            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                                if let todoID = item.personalTodoID,
-                                   let todo = model.projection.personalTodos[todoID] {
-                                    Button("删除", role: .destructive) {
-                                        Task { await model.deletePersonalTodo(todo) }
-                                    }
-                                    Button("编辑") { editingTodo = todo }
-                                        .tint(.blue)
+                        Group {
+                            if let taskID = item.courseTaskID {
+                                NavigationLink {
+                                    SharedTaskDetailView(courseTaskID: taskID)
+                                } label: {
+                                    TaskRow(item: item)
                                 }
+                            } else {
+                                TaskRow(item: item)
+                                    .contentShape(Rectangle())
+                                    .onTapGesture { editIfPersonal(item) }
                             }
+                        }
+                        .swipeActions(edge: .leading, allowsFullSwipe: true) {
+                            completionAction(for: item)
+                        }
+                        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                            if let todoID = item.personalTodoID,
+                               let todo = model.projection.personalTodos[todoID] {
+                                Button("删除", role: .destructive) {
+                                    Task { await model.deletePersonalTodo(todo) }
+                                }
+                                Button("编辑") { editingTodo = todo }
+                                    .tint(.blue)
+                            }
+                        }
                     }
                 }
             }

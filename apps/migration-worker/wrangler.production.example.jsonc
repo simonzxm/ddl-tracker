@@ -1,0 +1,27 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "ddl-tracker-migration-worker",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-07-29",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  "observability": {
+    "enabled": true,
+    "logs": {
+      "enabled": true
+    }
+  },
+  "hyperdrive": [
+    {
+      "binding": "MIGRATION_DATABASE",
+      "id": "00000000000000000000000000000000"
+    }
+  ],
+  "vars": {
+    "EXPECTED_DATABASE": "ddl_tracker",
+    "EXPECTED_ROLE": "ddl_tracker_migration"
+  },
+  "secrets": {
+    "required": ["MIGRATION_TOKEN"]
+  }
+}

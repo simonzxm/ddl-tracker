@@ -8,6 +8,7 @@ export default defineConfig({
     },
     include: [
       'apps/**/test/**/*.test.ts',
+      'apps/**/test/**/*.test.mjs',
       'packages/**/test/**/*.test.ts',
     ],
     exclude: [

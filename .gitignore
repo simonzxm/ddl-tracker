@@ -5,6 +5,7 @@
 .dev.vars.*
 !apps/api/.dev.vars.example
 apps/api/wrangler.production.jsonc
+apps/migration-worker/wrangler.production.jsonc
 
 # Real course data is managed outside this repository
 *.csv

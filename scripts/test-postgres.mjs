@@ -43,9 +43,21 @@ run('pnpm', [
   'node',
   'scripts/reset-test-database.mjs',
 ]);
-run('pnpm', ['--filter', '@ddl-tracker/api', 'db:migrate'], {
-  DATABASE_URL: connectionString,
-});
+run(
+  'pnpm',
+  [
+    'vitest',
+    'run',
+    'apps/migration-worker/test/postgres-migrate.test.ts',
+    '--no-file-parallelism',
+    '--maxWorkers',
+    '1',
+  ],
+  {
+    TEST_DATABASE_URL: connectionString,
+    MIGRATION_REPLAY_EXPECT_EMPTY: '1',
+  },
+);
 run(
   'pnpm',
   ['vitest', 'run', '--no-file-parallelism', '--maxWorkers', '1'],

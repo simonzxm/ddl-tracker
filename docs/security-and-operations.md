@@ -155,6 +155,7 @@ Session 使用至少 256 bits Web Crypto 随机 opaque bearer token：
 - PostgreSQL 使用 hostname 匹配的受信证书；禁止生产 `cert_verification_mode = disabled`。
 - Runtime database user 只拥有所需 schema 的 DML/sequence 权限，无 DDL、role、extension 或其他 database 权限。
 - Migration、backup 和 runtime 使用不同数据库角色与凭据。
+- Migration role 只保存在独立、cache-disabled 的 Hyperdrive 中；该 Hyperdrive 平时不绑定任何 Worker。生产 migration 临时部署专用 Worker，完成或失败后删除，生产 API 永远不绑定该 Hyperdrive。
 - `pg_hba.conf` 默认拒绝，按角色、database 和连接路径精确允许。
 - 所有凭据有轮换和撤销步骤；rotation 后 remote smoke 必须通过。
 
@@ -176,6 +177,7 @@ MVP 使用 cache-disabled Hyperdrive 配置，保留连接池，不使用 query 
 
 - `wrangler.jsonc` 只保存 non-secret vars、binding names 和 resource IDs。
 - Workers secrets 保存 SMTP credential、HMAC/pepper 和 bootstrap token。
+- 临时 Migration Worker 的一次性 token 通过权限为 `0600` 的临时 secrets file 注入，结束后随 Worker 和本地临时目录删除；不能复用生产 API secret。
 - 本地 `.dev.vars`/`.env`、课程 CSV、数据库 dump、证书私钥和备份配置全部 gitignore。
 - 绑定类型由 `wrangler types` 生成，config/binding 改动后必须重新生成并提交类型 diff。
 - VPS secrets 使用 root-readable secret file 或专用 secret manager，不能出现在 shell history、systemd unit 明文或仓库。
@@ -224,8 +226,8 @@ Worker 开启 Workers Logs 与 traces，使用结构化 JSON。每个请求生�
 
 1. CI 通过 lint、types、unit、PostgreSQL integration、Worker runtime、contracts 和 migration tests。
 2. 创建 production backup，并验证最近一次 restore drill 未过期。
-3. 在本地临时 PostgreSQL 应用待发布 migrations。
-4. 对 production 执行已审查 migration；不可事务化操作必须有单独 rollback/runbook。
+3. 在本地临时 PostgreSQL 使用与生产相同的 generated bundle 和 migration executor 应用待发布 migrations。
+4. 执行 `pnpm db:migrate:prod`，由临时 Migration Worker 通过独立 migration Hyperdrive 应用已审查 migration；不可事务化操作必须有单独 rollback/runbook。
 5. `wrangler versions upload` 生成 Preview URL，限制为维护者访问。
 6. 对 preview 运行 live、ready、auth parameter、OpenAPI、read-only API 与 SMTP smoke。
 7. 部署已验证 version；发布后重复 smoke，并监控错误率。

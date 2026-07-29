@@ -197,8 +197,9 @@ Bearer API 不使用 cookie。为第三方客户端支持 CORS 时不得启用 c
 - 每个 Worker 请求创建、连接并在 `finally` 中关闭一个 `pg.Client`；不能把 client 或 request state 放入 module global。
 - 生产连接只使用 `env.HYPERDRIVE.connectionString`。
 - Hyperdrive query cache 对整个 MVP 配置禁用，避免 auth、revision 和 sync 的 stale read；仍使用连接池。
-- migration 由部署 CLI 使用独立最小权限凭据直连 PostgreSQL；普通 runtime user 无 DDL 权限。
+- migration 由部署 CLI 临时部署专用 Worker，通过独立、cache-disabled 的 migration Hyperdrive 与现有 VPC service/Tunnel 连接 PostgreSQL；普通 runtime user 无 DDL 权限，生产 API 不绑定 migration Hyperdrive。
 - migration SQL 必须生成、提交、审查，并在临时真实 PostgreSQL 验证从空库和上一版本升级。
+- migration bundle 由 Drizzle journal 和 SQL 自动生成；executor 要求数据库 journal 是 bundle 的精确前缀，验证 database/role，并在 advisory transaction lock 下原子应用全部 pending migration。
 
 ## Workers 运行规范
 

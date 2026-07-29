@@ -75,25 +75,65 @@ OTP HMAC、token pepper、sync token 和 bootstrap token 使用独立的至少 3
 
 ## Migration
 
-先使用临时 PostgreSQL 从空库重放全部 migration：
+生产 migration 使用 [ADR 0009](./adr/0009-ephemeral-worker-database-migrations.md) 定义的临时 Migration Worker。它通过独立 migration Hyperdrive 复用现有 Workers VPC service 与 Tunnel；不需要 SSH、数据库公网入口或 VPS 上的额外程序。生产 API Worker 始终只持有 runtime role。
+
+### 首次配置
+
+确认 PostgreSQL 已有独立 migration role，并且该 role 只能访问目标 database、拥有应用 schema 所需 DDL 权限且不能管理 role、extension 或其他 database。然后执行：
 
 ```bash
-pnpm test:postgres:docker
+pnpm db:migrate:setup
 ```
+
+命令读取已忽略的 `apps/api/wrangler.production.jsonc`，取得 runtime Hyperdrive 使用的 database 与 VPC service，创建或验证名为 `ddl-tracker-postgres-migration` 的 cache-disabled Hyperdrive，并写入权限为 `0600`、不提交仓库的 `apps/migration-worker/wrangler.production.jsonc`。第一次创建时会无回显读取 migration role 密码；非交互环境可临时设置 `DDL_TRACKER_MIGRATION_DATABASE_PASSWORD`。密码只作为 Wrangler 子进程参数传递给 Cloudflare，不写入配置文件、仓库或日志。
+
+若 role 或 Hyperdrive 名称不同，可分别设置 `DDL_TRACKER_MIGRATION_ROLE` 与 `DDL_TRACKER_MIGRATION_HYPERDRIVE_NAME`。已存在的 Hyperdrive 必须与 runtime Hyperdrive 使用同一 VPC service 和 database、使用预期 migration role，并禁用 query cache，否则配置命令拒绝继续。
+
+### 每次 migration
+
+生成 migration 时继续使用：
+
+```bash
+pnpm --filter @ddl-tracker/api db:generate
+```
+
+该命令同时从 Drizzle `_journal.json` 和 SQL 生成临时 Worker 的不可变 migration bundle；SQL、journal、bundle 和 `latestMigrationHash` 必须一起提交并审查。不得修改已经发布的 migration。
 
 生产 migration 前：
 
 1. 创建并验证 production backup。
 2. 记录当前 Worker version 和当前 schema migration journal。
-3. 确认 migration SQL 已人工审查；不可事务化步骤必须有单独 runbook。
-4. 使用 migration role，而不是 Worker runtime role：
+3. 确认最近一次 restore drill 仍在允许窗口内。
+4. 确认 migration SQL 已人工审查；不可事务化步骤必须有单独 runbook，不能使用一键命令。
+5. 确认当前 Git 工作树与 index 干净，待执行 migration 已提交。
+6. 执行：
 
 ```bash
-DATABASE_URL='postgresql://migration-role@private-host/database' \
-  pnpm --filter @ddl-tracker/api db:migrate
+pnpm db:migrate:prod
 ```
 
-5. 用 runtime role 验证 `SELECT 1` 和读取 migration journal，但不得执行 DDL。
+该命令自动完成：
+
+1. 验证 Wrangler 生成物、Drizzle journal、migration bundle 和最新 hash 一致。
+2. 用 Docker PostgreSQL 从空库走生产 migration executor，并运行完整 PostgreSQL integration suite。
+3. dry-run 构建 Migration Worker。
+4. 生成包含 Git SHA 的随机 Worker 名称和 32-byte 一次性 token。
+5. 将 token 通过权限为 `0600` 的临时 secrets file 注入并部署 Worker。
+6. 调用唯一的 `POST /migrate`；Worker 验证目标 database/role、获取 advisory transaction lock、验证 journal 是 bundle 的精确前缀，并在同一个事务中应用 pending migration。
+7. 验证最新 journal hash，输出 applied migration。
+8. 无论成功或失败都删除临时 Worker；删除失败时输出精确的 `wrangler delete ... --force` 清理命令。
+
+本地不保存生产 `DATABASE_URL`，调用请求不能携带 SQL、database、role 或 migration 选择。独立 migration Hyperdrive 可以保留，但平时不绑定任何 Worker。
+
+迁移后用 runtime role 通过 `/api/health/ready` 和 smoke 验证连接与当前 Worker 所需 schema；runtime role 不得执行 DDL。
+
+### 失败处理
+
+- Worker 内 migration 失败会回滚全部 pending migration；命令不会自动 restore backup。
+- journal 出现未知 hash、被修改的历史 migration、时间戳空洞、错误 database 或错误 role 时，在执行 DDL 前失败。
+- 同时运行的 migration 由 PostgreSQL advisory transaction lock 串行化；锁等待受 `lock_timeout` 限制。
+- 临时 Worker 调用或部署失败后仍会尝试删除；若自动清理失败，必须立即执行错误中给出的命令并在 Cloudflare dashboard 确认不存在该 Worker。
+- 当前链路不能调用 VPS 上的 pgBackRest。backup 创建、WAL archive 检查和 restore drill 验证必须在 migration 命令之外完成，不能因为“一键”而省略。
 
 破坏性变更必须采用 expand → migrate → contract。数据库回滚默认使用 forward-fix；不能在无法证明安全时反向执行 destructive migration。
 

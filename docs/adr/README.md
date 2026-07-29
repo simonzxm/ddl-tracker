@@ -10,3 +10,4 @@ ADR 只记录难以逆转、缺少上下文会令人意外、并经过真实取�
 - [0006：通过 Workers VPC 私网连接 PostgreSQL](./0006-private-postgres-over-workers-vpc.md)
 - [0007：MVP 是单学校部署而非多租户系统](./0007-single-school-deployment.md)
 - [0008：在共享课程任务上保留每用户私人覆盖](./0008-shared-tasks-with-private-overlays.md)
+- [0009：使用临时 Worker 执行生产数据库 migration](./0009-ephemeral-worker-database-migrations.md)

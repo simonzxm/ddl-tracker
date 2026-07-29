@@ -220,7 +220,9 @@ Smoke 失败立即停止发布；不能通过开放公网 PostgreSQL、关闭 TL
 
 ## Migration、backup 与恢复
 
-- 每个 migration 测试空库 up 与上一版本 up。
+- 每个 migration 测试空库 up 与上一版本 up；空库测试必须使用生产 Migration Worker 的 generated bundle 和 executor，而不是另一套迁移实现。
+- migration executor 覆盖 database/role 错配、journal 非精确前缀、并发 advisory lock、事务回滚与重复执行幂等性。
+- 本地编排覆盖部署成功、调用失败、部署输出异常、Worker 删除失败与精确手工清理命令；测试不得创建真实 Cloudflare resource。
 - destructive change 使用 expand/migrate/contract，并验证旧 Worker 与新 schema、新 Worker 与过渡 schema。
 - pgBackRest backup job 有成功、失败与过期告警测试。
 - 定期恢复到隔离 PostgreSQL，应用关键一致性查询和随机业务抽样。

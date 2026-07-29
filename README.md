@@ -88,7 +88,19 @@ CLI 只调用维护者 HTTP API，不直连 PostgreSQL。课程原始 CSV 默认
 
 ## 生产发布
 
-生产配置、secret 注入、migration、preview smoke、部署、回滚和恢复步骤见 [部署运行手册](./docs/deployment.md)。`apps/api/wrangler.jsonc` 仅用于开发、类型生成和 dry-run，不能未经检查直接作为生产配置。
+生产数据库 migration 不要求 SSH、公开 PostgreSQL 或修改 VPS。第一次使用时配置独立 migration Hyperdrive：
+
+```bash
+pnpm db:migrate:setup
+```
+
+之后从干净、已提交的工作树一键完成本地验证、临时 Migration Worker 部署、migration、结果验证和 Worker 删除：
+
+```bash
+pnpm db:migrate:prod
+```
+
+该命令不会创建或验证 VPS 上的 pgBackRest backup；发布者必须先按运行手册确认可用 backup。生产配置、secret 注入、完整 migration 前置条件、preview smoke、部署、回滚和恢复步骤见 [部署运行手册](./docs/deployment.md)。`apps/api/wrangler.jsonc` 仅用于开发、类型生成和 dry-run，不能未经检查直接作为生产配置。
 
 ## 阅读顺序
 

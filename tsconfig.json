@@ -4,6 +4,7 @@
     { "path": "./packages/contracts" },
     { "path": "./packages/catalog-import" },
     { "path": "./apps/api" },
+    { "path": "./apps/migration-worker" },
     { "path": "./apps/admin-cli" }
   ]
 }

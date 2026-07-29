@@ -81,6 +81,12 @@ importers:
         specifier: 4.4.3
         version: 4.4.3
 
+  apps/migration-worker:
+    dependencies:
+      pg:
+        specifier: 8.22.0
+        version: 8.22.0
+
   packages/catalog-import:
     dependencies:
       '@ddl-tracker/contracts':

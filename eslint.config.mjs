@@ -9,6 +9,7 @@ export default tseslint.config(
       '**/node_modules/**',
       '.wrangler/**',
       'apps/api/worker-configuration.d.ts',
+      'apps/migration-worker/worker-configuration.d.ts',
     ],
   },
   eslint.configs.recommended,

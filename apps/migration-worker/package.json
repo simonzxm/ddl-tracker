@@ -1,0 +1,14 @@
+{
+  "name": "@ddl-tracker/migration-worker",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "wrangler deploy --dry-run --outdir dist",
+    "typecheck": "tsc -b --pretty false",
+    "types:worker": "wrangler types --env-interface MigrationWorkerBindings --strict-vars false --include-runtime false"
+  },
+  "dependencies": {
+    "pg": "8.22.0"
+  }
+}

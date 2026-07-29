@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "wrangler deploy --dry-run --outdir dist",
-    "db:generate": "drizzle-kit generate --config=drizzle.config.mjs",
+    "db:generate": "drizzle-kit generate --config=drizzle.config.mjs && node ../../scripts/generate-migration-bundle.mjs",
     "db:migrate": "drizzle-kit migrate --config=drizzle.config.mjs",
     "dev": "wrangler dev",
     "typecheck": "tsc -b --pretty false",

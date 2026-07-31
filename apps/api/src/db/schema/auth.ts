@@ -19,11 +19,12 @@ export const userStatus = pgEnum('user_status', [
   'deleted',
 ]);
 export const userRole = pgEnum('user_role', ['maintainer']);
-export const authChallengeStatus = pgEnum('auth_challenge_status', [
+export const oidcLoginStatus = pgEnum('oidc_login_status', [
   'pending',
-  'active',
+  'exchanging',
+  'completed',
   'consumed',
-  'expired',
+  'failed',
 ]);
 
 export const users = pgTable(
@@ -68,78 +69,60 @@ export const userRoles = pgTable(
   (table) => [primaryKey({ columns: [table.userId, table.role] })],
 );
 
-export const institutionalIdentities = pgTable(
-  'institutional_identities',
+export const oidcIdentities = pgTable(
+  'oidc_identities',
   {
     id: uuid('id').primaryKey(),
     userId: uuid('user_id')
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
-    provider: text('provider').notNull(),
-    normalizedSubject: text('normalized_subject').notNull(),
+    issuer: text('issuer').notNull(),
+    subject: text('subject').notNull(),
+    email: text('email'),
     createdAt: timestamp('created_at', { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    lastLoginAt: timestamp('last_login_at', { withTimezone: true })
       .defaultNow()
       .notNull(),
   },
   (table) => [
-    uniqueIndex('institutional_identities_subject_unique').on(
-      table.provider,
-      table.normalizedSubject,
+    uniqueIndex('oidc_identities_subject_unique').on(
+      table.issuer,
+      table.subject,
     ),
-    index('institutional_identities_user_idx').on(table.userId),
+    index('oidc_identities_user_idx').on(table.userId),
   ],
 );
 
-export const authChallenges = pgTable(
-  'auth_challenges',
+export const oidcLoginTransactions = pgTable(
+  'oidc_login_transactions',
   {
     id: uuid('id').primaryKey(),
-    provider: text('provider').notNull(),
-    normalizedSubject: text('normalized_subject').notNull(),
-    subjectDisplay: text('subject_display').notNull(),
-    codeHmac: text('code_hmac').notNull(),
-    status: authChallengeStatus('status').default('pending').notNull(),
-    attempts: integer('attempts').default(0).notNull(),
-    sendAttemptedAt: timestamp('send_attempted_at', { withTimezone: true }),
-    sentAt: timestamp('sent_at', { withTimezone: true }),
-    activatedAt: timestamp('activated_at', { withTimezone: true }),
-    consumedAt: timestamp('consumed_at', { withTimezone: true }),
+    stateHash: text('state_hash').notNull(),
+    secretsCiphertext: text('secrets_ciphertext'),
+    redirectUri: text('redirect_uri').notNull(),
+    status: oidcLoginStatus('status').default('pending').notNull(),
+    issuer: text('issuer'),
+    subject: text('subject'),
+    email: text('email'),
+    displayName: text('display_name'),
+    avatarUrl: text('avatar_url'),
+    exchangeCodeHash: text('exchange_code_hash'),
+    errorCode: text('error_code'),
     expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
     createdAt: timestamp('created_at', { withTimezone: true })
       .defaultNow()
       .notNull(),
-  },
-  (table) => [
-    uniqueIndex('auth_challenges_active_subject_unique')
-      .on(table.provider, table.normalizedSubject)
-      .where(sql`${table.status} = 'active'`),
-    uniqueIndex('auth_challenges_pending_subject_unique')
-      .on(table.provider, table.normalizedSubject)
-      .where(sql`${table.status} = 'pending'`),
-    index('auth_challenges_expiry_idx').on(table.expiresAt),
-    check('auth_challenges_attempts_nonnegative', sql`${table.attempts} >= 0`),
-  ],
-);
-
-export const registrationTokens = pgTable(
-  'registration_tokens',
-  {
-    id: uuid('id').primaryKey(),
-    tokenHash: text('token_hash').notNull(),
-    provider: text('provider').notNull(),
-    normalizedSubject: text('normalized_subject').notNull(),
-    subjectDisplay: text('subject_display').notNull(),
-    attempts: integer('attempts').default(0).notNull(),
-    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    completedAt: timestamp('completed_at', { withTimezone: true }),
     consumedAt: timestamp('consumed_at', { withTimezone: true }),
-    createdAt: timestamp('created_at', { withTimezone: true })
-      .defaultNow()
-      .notNull(),
   },
   (table) => [
-    uniqueIndex('registration_tokens_hash_unique').on(table.tokenHash),
-    index('registration_tokens_expiry_idx').on(table.expiresAt),
-    check('registration_tokens_attempts_nonnegative', sql`${table.attempts} >= 0`),
+    uniqueIndex('oidc_login_transactions_state_hash_unique').on(table.stateHash),
+    uniqueIndex('oidc_login_transactions_exchange_code_unique')
+      .on(table.exchangeCodeHash)
+      .where(sql`${table.exchangeCodeHash} is not null`),
+    index('oidc_login_transactions_expiry_idx').on(table.expiresAt),
   ],
 );
 

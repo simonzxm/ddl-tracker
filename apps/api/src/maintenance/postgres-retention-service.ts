@@ -8,8 +8,7 @@ const RETENTION_LOCK = 4_819_252;
 
 export interface RetentionBatchResult {
   catalog_imports: number;
-  auth_challenges: number;
-  registration_tokens: number;
+  oidc_login_transactions: number;
   sessions: number;
   operation_receipts: number;
   rate_limit_counters: number;
@@ -47,21 +46,15 @@ export class PostgresRetentionService {
         input.now.getTime() - EVENT_RETENTION_DAYS * DAY_MS,
       );
 
-      const authChallenges = await this.#deleteById(
-        'auth_challenges',
-        `(expires_at <= $1 or consumed_at <= $1)`,
+      const oidcLoginTransactions = await this.#deleteById(
+        'oidc_login_transactions',
+        `(expires_at <= $1 or consumed_at <= $1 or completed_at <= $1)`,
         temporaryCutoff,
         input.limit,
       );
       const catalogImports = await this.#expireCatalogImports(
         temporaryCutoff,
         input.now,
-        input.limit,
-      );
-      const registrationTokens = await this.#deleteById(
-        'registration_tokens',
-        `(expires_at <= $1 or consumed_at <= $1)`,
-        temporaryCutoff,
         input.limit,
       );
       const sessions = await this.#deleteById(
@@ -84,8 +77,7 @@ export class PostgresRetentionService {
       const syncEvents = await this.#deleteEvents(eventCutoff, input.limit);
       const result: RetentionBatchResult = {
         catalog_imports: catalogImports.count,
-        auth_challenges: authChallenges,
-        registration_tokens: registrationTokens,
+        oidc_login_transactions: oidcLoginTransactions,
         sessions,
         operation_receipts: operationReceipts,
         rate_limit_counters: rateLimitCounters,
@@ -157,7 +149,7 @@ export class PostgresRetentionService {
   }
 
   async #deleteById(
-    table: 'auth_challenges' | 'registration_tokens' | 'sessions',
+    table: 'oidc_login_transactions' | 'sessions',
     predicate: string,
     cutoff: Date,
     limit: number,

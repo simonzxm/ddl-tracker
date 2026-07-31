@@ -242,5 +242,26 @@ export const migrationBundle = [
       "CREATE TABLE \"catalog_revision\" (\n\t\"singleton_id\" integer PRIMARY KEY DEFAULT 1 NOT NULL,\n\t\"revision\" integer DEFAULT 1 NOT NULL,\n\t\"updated_at\" timestamp with time zone DEFAULT now() NOT NULL,\n\tCONSTRAINT \"catalog_revision_singleton\" CHECK (\"catalog_revision\".\"singleton_id\" = 1),\n\tCONSTRAINT \"catalog_revision_positive\" CHECK (\"catalog_revision\".\"revision\" > 0)\n);",
       "\nINSERT INTO \"catalog_revision\" (\"singleton_id\", \"revision\") VALUES (1, 1);\n"
     ]
+  },
+  {
+    "tag": "0012_bored_kronos",
+    "folderMillis": 1785467007054,
+    "hash": "19af8968edd8de9308c6aac1b8aa3fd9eb210a99927756f8ceef7b33c65ce99d",
+    "statements": [
+      "TRUNCATE TABLE \"users\", \"academic_terms\", \"rate_limit_counters\", \"sync_event_retention\" RESTART IDENTITY CASCADE;",
+      "\nCREATE TYPE \"public\".\"oidc_login_status\" AS ENUM('pending', 'exchanging', 'completed', 'consumed', 'failed');",
+      "\nCREATE TABLE \"oidc_identities\" (\n\t\"id\" uuid PRIMARY KEY NOT NULL,\n\t\"user_id\" uuid NOT NULL,\n\t\"issuer\" text NOT NULL,\n\t\"subject\" text NOT NULL,\n\t\"email\" text,\n\t\"created_at\" timestamp with time zone DEFAULT now() NOT NULL,\n\t\"last_login_at\" timestamp with time zone DEFAULT now() NOT NULL\n);\n",
+      "\nCREATE TABLE \"oidc_login_transactions\" (\n\t\"id\" uuid PRIMARY KEY NOT NULL,\n\t\"state_hash\" text NOT NULL,\n\t\"secrets_ciphertext\" text,\n\t\"redirect_uri\" text NOT NULL,\n\t\"status\" \"oidc_login_status\" DEFAULT 'pending' NOT NULL,\n\t\"issuer\" text,\n\t\"subject\" text,\n\t\"email\" text,\n\t\"display_name\" text,\n\t\"avatar_url\" text,\n\t\"exchange_code_hash\" text,\n\t\"error_code\" text,\n\t\"expires_at\" timestamp with time zone NOT NULL,\n\t\"created_at\" timestamp with time zone DEFAULT now() NOT NULL,\n\t\"completed_at\" timestamp with time zone,\n\t\"consumed_at\" timestamp with time zone\n);\n",
+      "\nDROP TABLE \"auth_challenges\" CASCADE;",
+      "\nDROP TABLE \"institutional_identities\" CASCADE;",
+      "\nDROP TABLE \"registration_tokens\" CASCADE;",
+      "\nALTER TABLE \"oidc_identities\" ADD CONSTRAINT \"oidc_identities_user_id_users_id_fk\" FOREIGN KEY (\"user_id\") REFERENCES \"public\".\"users\"(\"id\") ON DELETE cascade ON UPDATE no action;",
+      "\nCREATE UNIQUE INDEX \"oidc_identities_subject_unique\" ON \"oidc_identities\" USING btree (\"issuer\",\"subject\");",
+      "\nCREATE INDEX \"oidc_identities_user_idx\" ON \"oidc_identities\" USING btree (\"user_id\");",
+      "\nCREATE UNIQUE INDEX \"oidc_login_transactions_state_hash_unique\" ON \"oidc_login_transactions\" USING btree (\"state_hash\");",
+      "\nCREATE UNIQUE INDEX \"oidc_login_transactions_exchange_code_unique\" ON \"oidc_login_transactions\" USING btree (\"exchange_code_hash\") WHERE \"oidc_login_transactions\".\"exchange_code_hash\" is not null;",
+      "\nCREATE INDEX \"oidc_login_transactions_expiry_idx\" ON \"oidc_login_transactions\" USING btree (\"expires_at\");",
+      "\nDROP TYPE \"public\".\"auth_challenge_status\";"
+    ]
   }
 ] as const satisfies readonly MigrationDefinition[];

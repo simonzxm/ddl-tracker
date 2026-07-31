@@ -45,14 +45,14 @@ const openapi = await request('/api/openapi.json');
 expectStatus('/api/openapi.json', openapi.response.status, 200);
 if (openapi.body?.openapi !== '3.1.0') throw new Error('OpenAPI document is invalid.');
 
-const invalidAuth = await request('/api/v1/auth/email/challenges', {
+const invalidAuth = await request('/api/v1/auth/oidc/start', {
   method: 'POST',
   headers: { 'content-type': 'application/json' },
-  body: JSON.stringify({ email: 'not-an-email' }),
+  body: JSON.stringify({ redirect_uri: '/not-an-absolute-callback' }),
 });
-expectStatus('/api/v1/auth/email/challenges', invalidAuth.response.status, 400);
+expectStatus('/api/v1/auth/oidc/start', invalidAuth.response.status, 400);
 if (invalidAuth.body?.code !== 'invalid_request') {
-  throw new Error('Invalid auth parameter did not return invalid_request.');
+  throw new Error('Invalid OIDC redirect did not return invalid_request.');
 }
 
 if (token !== undefined && token.length > 0) {

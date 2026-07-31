@@ -21,6 +21,7 @@ const errors = [];
 const vars = config.vars ?? {};
 const hyperdrive = Array.isArray(config.hyperdrive) ? config.hyperdrive : [];
 const hyperdriveId = hyperdrive[0]?.id;
+const routes = Array.isArray(config.routes) ? config.routes : [];
 
 if (config.main !== 'src/index.ts') errors.push('main must be src/index.ts');
 if (!config.compatibility_flags?.includes('nodejs_compat')) {
@@ -29,20 +30,46 @@ if (!config.compatibility_flags?.includes('nodejs_compat')) {
 if (vars.APP_ENVIRONMENT !== 'production') {
   errors.push('APP_ENVIRONMENT must be production');
 }
-if (
-  typeof vars.ALLOWED_EMAIL_DOMAINS !== 'string' ||
-  vars.ALLOWED_EMAIL_DOMAINS.includes('example')
-) {
-  errors.push('ALLOWED_EMAIL_DOMAINS must contain real institutional domains');
+if (vars.OIDC_ISSUER !== 'https://auth.nju.at') {
+  errors.push('OIDC_ISSUER must be https://auth.nju.at');
 }
 if (
-  typeof vars.SMTP_FROM_ADDRESS !== 'string' ||
-  vars.SMTP_FROM_ADDRESS.includes('example')
+  typeof vars.OIDC_CLIENT_ID !== 'string' ||
+  !/^[A-Za-z0-9_-]{16,128}$/u.test(vars.OIDC_CLIENT_ID)
 ) {
-  errors.push('SMTP_FROM_ADDRESS must be a real sender address');
+  errors.push('OIDC_CLIENT_ID must be a non-placeholder public client ID');
 }
-if (vars.SMTP_PORT !== '465' && vars.SMTP_PORT !== '587') {
-  errors.push('SMTP_PORT must be 465 or 587');
+if (
+  vars.OIDC_REDIRECT_URI !==
+  'https://ddl.nju.at/api/v1/auth/oidc/callback'
+) {
+  errors.push(
+    'OIDC_REDIRECT_URI must use https://ddl.nju.at/api/v1/auth/oidc/callback',
+  );
+}
+if (vars.OIDC_POST_LOGIN_REDIRECT_URIS !== 'https://ddl.nju.at/auth/callback') {
+  errors.push(
+    'OIDC_POST_LOGIN_REDIRECT_URIS must be the approved ddl.nju.at client callback',
+  );
+}
+for (const removedName of [
+  'ALLOWED_EMAIL_DOMAINS',
+  'SMTP_HOST',
+  'SMTP_PORT',
+  'SMTP_FROM_ADDRESS',
+  'SMTP_FROM_NAME',
+]) {
+  if (removedName in vars) errors.push(`${removedName} must be removed`);
+}
+if (
+  routes.length !== 1 ||
+  routes[0]?.pattern !== 'ddl.nju.at/api/*' ||
+  routes[0]?.custom_domain === true
+) {
+  errors.push('routes must contain only ddl.nju.at/api/*');
+}
+if (JSON.stringify(config).includes('api.210023.xyz')) {
+  errors.push('retired api.210023.xyz domain must not appear in production config');
 }
 if (
   typeof hyperdriveId !== 'string' ||

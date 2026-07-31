@@ -6,9 +6,9 @@ import { openApiDocument } from '../src/openapi.js';
 const expectedPaths = [
   '/health/live',
   '/health/ready',
-  '/v1/auth/email/challenges',
-  '/v1/auth/email/verifications',
-  '/v1/accounts/registrations',
+  '/v1/auth/oidc/start',
+  '/v1/auth/oidc/callback',
+  '/v1/auth/oidc/exchange',
   '/v1/me',
   '/v1/me/profile',
   '/v1/sessions',
@@ -38,7 +38,7 @@ const expectedPaths = [
 describe('OpenAPI document', () => {
   it('documents every implemented path with contract components', () => {
     expect(openApiDocument.openapi).toBe('3.1.0');
-    expect(openApiDocument.info.version).toBe('2.0.0');
+    expect(openApiDocument.info.version).toBe('3.0.0');
     expect(openApiDocument.servers).toEqual([{ url: '/api' }]);
     expect(Object.keys(openApiDocument.paths).sort()).toEqual(
       expectedPaths.sort(),
@@ -47,6 +47,8 @@ describe('OpenAPI document', () => {
       'bearerAuth',
     );
     expect(openApiDocument.components.schemas).toHaveProperty('CurrentUser');
+    expect(openApiDocument.components.schemas).toHaveProperty('OidcAuthorizationRequest');
+    expect(openApiDocument.components.schemas).toHaveProperty('OidcExchangeRequest');
     expect(openApiDocument.components.schemas).toHaveProperty('SyncRequest');
     expect(openApiDocument.components.schemas).toHaveProperty('StudentOperation');
     expect(openApiDocument.components.schemas).toHaveProperty('SyncEvent');
@@ -235,11 +237,10 @@ describe('OpenAPI document', () => {
   it('contains no runtime secret names or configured values', () => {
     const serialized = JSON.stringify(openApiDocument);
     for (const forbidden of [
-      'OTP_HMAC_SECRET',
+      'OIDC_TRANSACTION_SECRET',
       'TOKEN_PEPPER',
       'SYNC_TOKEN_SECRET',
       'MAINTAINER_BOOTSTRAP_TOKEN',
-      'SMTP_PASSWORD',
       'postgresql://',
     ]) {
       expect(serialized).not.toContain(forbidden);

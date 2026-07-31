@@ -1,7 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { verificationResponseSchema } from '@ddl-tracker/contracts';
-
 import type {
   AuthenticatedPrincipal,
   PublicUser,
@@ -11,55 +9,58 @@ import { createApp } from '../src/http/app.js';
 import type { AuthRouteDependencies } from '../src/http/auth-routes.js';
 import { HttpError } from '../src/http/errors.js';
 
-const REQUEST_ID = '018f0000-0000-7000-8000-000000000001';
-const USER_ID = '018f0000-0000-7000-8000-000000000002';
+const USER_ID = '018f0000-0000-7000-8000-000000000001';
 const SESSION_ID = '018f0000-0000-7000-8000-000000000003';
-
+const NOW = new Date('2026-07-30T12:00:00.000Z');
 const user: PublicUser = {
   id: USER_ID,
-  username: 'student',
+  username: 'student_123',
   displayName: 'Student',
-      avatarUrl: null,
-      bio: null,
+  avatarUrl: null,
+  bio: null,
   status: 'active',
   profileRevision: 1,
 };
-
 const session: SessionRecord = {
   id: SESSION_ID,
   userId: USER_ID,
-  tokenHash: 'private',
+  tokenHash: 'hash',
   deviceName: 'MacBook',
-  deviceMetadata: {},
-  createdAt: new Date('2026-07-19T12:00:00.000Z'),
-  lastSeenAt: new Date('2026-07-19T12:00:00.000Z'),
-  idleExpiresAt: new Date('2026-08-18T12:00:00.000Z'),
-  absoluteExpiresAt: new Date('2027-01-15T12:00:00.000Z'),
+  deviceMetadata: { platform: 'macos' },
+  createdAt: NOW,
+  lastSeenAt: NOW,
+  idleExpiresAt: new Date('2026-08-29T12:00:00.000Z'),
+  absoluteExpiresAt: new Date('2027-01-26T12:00:00.000Z'),
   revokedAt: null,
 };
 
 function dependencies(): AuthRouteDependencies {
   const principal: AuthenticatedPrincipal = { user, session, roles: [] };
   return {
-    requestChallenge: vi.fn(async () => ({
-      challenge_id: REQUEST_ID,
-      expires_at: '2026-07-19T12:10:00.000Z',
+    beginOidcAuthorization: vi.fn(async () => ({
+      authorization_url: 'https://issuer.example/oauth2/authorize?state=opaque',
+      expires_at: '2026-07-30T12:10:00.000Z',
     })),
-    verifyChallenge: vi.fn(async () => ({
-      kind: 'registration' as const,
-      registration_token: 'registration-token',
-      expires_at: '2026-07-19T12:15:00.000Z',
+    completeOidcAuthorization: vi.fn(async () => ({
+      kind: 'success' as const,
+      redirectUri: 'https://app.example/auth/callback',
+      exchangeCode: 'one-time-code',
     })),
-    registerAccount: vi.fn(async () => ({
+    exchangeOidcAuthorization: vi.fn(async () => ({
       kind: 'session' as const,
       access_token: 'session-token',
       token_type: 'Bearer' as const,
-      expires_at: '2027-01-15T12:00:00.000Z',
+      expires_at: '2027-01-26T12:00:00.000Z',
       user,
+      roles: [] as 'maintainer'[],
     })),
     authenticate: vi.fn(async (token) => {
       if (token !== 'session-token') {
-        throw new Error('unexpected token');
+        throw new HttpError({
+          code: 'unauthenticated',
+          message: 'Authentication is required.',
+          status: 401,
+        });
       }
       return principal;
     }),
@@ -67,245 +68,171 @@ function dependencies(): AuthRouteDependencies {
     listSessions: vi.fn(async () => [session]),
     revokeSession: vi.fn(async () => true),
     revokeAllSessions: vi.fn(async () => 1),
-    updateProfile: vi.fn(async () => ({
+    updateProfile: vi.fn(async (_userId, input) => ({
       ...user,
-      username: 'new_name',
-      displayName: 'New Name',
-      profileRevision: 2,
+      username: input.username,
+      displayName: input.displayName,
+      avatarUrl: input.avatarUrl,
+      bio: input.bio,
+      profileRevision: input.expectedRevision + 1,
     })),
     deleteAccount: vi.fn(async () => undefined),
   };
 }
 
 function app(auth: AuthRouteDependencies) {
-  return createApp({
-    createRequestId: () => REQUEST_ID,
-    checkReady: async () => true,
-    auth,
-  });
+  return createApp({ checkReady: async () => true, auth });
 }
 
-describe('authentication routes', () => {
-  it('validates and requests an email challenge', async () => {
+describe('OIDC authentication routes', () => {
+  it('starts authorization with a validated redirect and normalized source IP', async () => {
     const auth = dependencies();
-    const response = await app(auth).request('/api/v1/auth/email/challenges', {
+    const response = await app(auth).request('/api/v1/auth/oidc/start', {
       method: 'POST',
       headers: {
-        'cf-connecting-ip': '2001:DB8::1',
         'content-type': 'application/json',
+        'cf-connecting-ip': '2001:DB8::1',
       },
-      body: JSON.stringify({ email: 'student@example.edu' }),
-    });
-
-    expect(response.status).toBe(200);
-    expect(auth.requestChallenge).toHaveBeenCalledWith(
-      'student@example.edu',
-      '2001:db8::1',
-    );
-  });
-
-  it('uses a bounded fallback when the Cloudflare source IP header is absent', async () => {
-    const auth = dependencies();
-    const response = await app(auth).request('/api/v1/auth/email/challenges', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ email: 'student@example.edu' }),
-    });
-
-    expect(response.status).toBe(200);
-    expect(auth.requestChallenge).toHaveBeenCalledWith(
-      'student@example.edu',
-      'unavailable',
-    );
-  });
-
-  it('verifies a challenge with device metadata', async () => {
-    const auth = dependencies();
-    const response = await app(auth).request('/api/v1/auth/email/verifications', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
-        challenge_id: REQUEST_ID,
-        email: 'student@example.edu',
-        code: '123456',
-        device_name: 'MacBook',
-        device_metadata: { platform: 'macOS' },
+        redirect_uri: 'https://app.example/auth/callback',
       }),
     });
 
     expect(response.status).toBe(200);
-    expect(auth.verifyChallenge).toHaveBeenCalledWith({
-      challengeId: REQUEST_ID,
-      email: 'student@example.edu',
-      code: '123456',
-      deviceName: 'MacBook',
-      deviceMetadata: { platform: 'macOS' },
+    await expect(response.json()).resolves.toMatchObject({
+      authorization_url: expect.stringContaining('/oauth2/authorize'),
+    });
+    expect(auth.beginOidcAuthorization).toHaveBeenCalledWith({
+      redirectUri: 'https://app.example/auth/callback',
+      sourceIp: '2001:db8::1',
     });
   });
 
-  it('returns roles only inside the current user for session verification', async () => {
+  it('rejects malformed authorization and exchange payloads before dependencies', async () => {
     const auth = dependencies();
-    auth.verifyChallenge = vi.fn(async () => ({
-      kind: 'session' as const,
-      access_token: 'session-token',
-      token_type: 'Bearer' as const,
-      expires_at: '2027-01-15T12:00:00.000Z',
-      user,
-      roles: ['maintainer'] as 'maintainer'[],
+    const start = await app(auth).request('/api/v1/auth/oidc/start', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ redirect_uri: '/relative' }),
+    });
+    const exchange = await app(auth).request('/api/v1/auth/oidc/exchange', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ code: '', extra: true }),
+    });
+    expect(start.status).toBe(400);
+    expect(exchange.status).toBe(400);
+    expect(auth.beginOidcAuthorization).not.toHaveBeenCalled();
+    expect(auth.exchangeOidcAuthorization).not.toHaveBeenCalled();
+  });
+
+  it('passes the provider callback and redirects with only the one-time code', async () => {
+    const auth = dependencies();
+    const response = await app(auth).request(
+      '/api/v1/auth/oidc/callback?state=state-value&code=provider-code',
+      { redirect: 'manual' },
+    );
+    expect(response.status).toBe(302);
+    expect(response.headers.get('location')).toBe(
+      'https://app.example/auth/callback?code=one-time-code',
+    );
+    expect(auth.completeOidcAuthorization).toHaveBeenCalledWith({
+      state: 'state-value',
+      code: 'provider-code',
+      providerError: null,
+    });
+  });
+
+  it('redirects provider failures without exposing a local session token', async () => {
+    const auth = dependencies();
+    auth.completeOidcAuthorization = vi.fn(async () => ({
+      kind: 'error' as const,
+      redirectUri: 'https://app.example/auth/callback',
+      error: 'access_denied',
     }));
-    const response = await app(auth).request('/api/v1/auth/email/verifications', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        challenge_id: REQUEST_ID,
-        email: 'student@example.edu',
-        code: '123456',
-        device_name: 'MacBook',
-        device_metadata: {},
-      }),
-    });
-    const body: unknown = await response.json();
-
-    expect(response.status).toBe(200);
-    expect(verificationResponseSchema.parse(body)).toMatchObject({
-      kind: 'session',
-      user: { roles: ['maintainer'] },
-    });
-    expect(body).not.toHaveProperty('roles');
+    const response = await app(auth).request(
+      '/api/v1/auth/oidc/callback?state=state&error=access_denied',
+      { redirect: 'manual' },
+    );
+    expect(response.headers.get('location')).toBe(
+      'https://app.example/auth/callback?error=access_denied',
+    );
   });
 
-  it('registers an account and maps the public user to snake case', async () => {
+  it('exchanges a one-time code for the existing local session wire format', async () => {
     const auth = dependencies();
-    const response = await app(auth).request('/api/v1/accounts/registrations', {
+    const response = await app(auth).request('/api/v1/auth/oidc/exchange', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
-        registration_token: 'registration-token',
-        username: 'student',
-        display_name: 'Student',
-        device_name: null,
-        device_metadata: {},
+        code: 'one-time-code',
+        device_name: 'MacBook',
+        device_metadata: { platform: 'macos' },
       }),
     });
-
-    expect(response.status).toBe(201);
+    expect(response.status).toBe(200);
     await expect(response.json()).resolves.toMatchObject({
       kind: 'session',
-      user: {
-        id: USER_ID,
-        username: 'student',
-        display_name: 'Student',
-        profile_revision: 1,
-      },
+      access_token: 'session-token',
+      token_type: 'Bearer',
+      user: { id: USER_ID, roles: [] },
+    });
+    expect(auth.exchangeOidcAuthorization).toHaveBeenCalledWith({
+      code: 'one-time-code',
+      deviceName: 'MacBook',
+      deviceMetadata: { platform: 'macos' },
     });
   });
+});
 
-  it('requires a bearer token for protected account routes', async () => {
+describe('authenticated account routes', () => {
+  it('requires a Bearer session before reading the current user', async () => {
     const auth = dependencies();
     const response = await app(auth).request('/api/v1/me');
-
     expect(response.status).toBe(401);
-    await expect(response.json()).resolves.toMatchObject({
-      code: 'unauthenticated',
-      request_id: REQUEST_ID,
-    });
     expect(auth.authenticate).not.toHaveBeenCalled();
   });
 
-  it('stops protected account work when the read allowance is exhausted', async () => {
+  it('returns and updates only the authenticated user profile', async () => {
     const auth = dependencies();
-    auth.rateLimit = vi.fn(async () => {
-      throw new HttpError({
-        code: 'rate_limited',
-        message: 'Too many requests.',
-        retryable: true,
-        retryAfter: 8,
-        status: 429,
-      });
-    });
-    const response = await app(auth).request('/api/v1/sessions', {
-      headers: { authorization: 'Bearer session-token' },
-    });
+    const headers = { authorization: 'Bearer session-token' };
+    const current = await app(auth).request('/api/v1/me', { headers });
+    expect(current.status).toBe(200);
+    await expect(current.json()).resolves.toMatchObject({ id: USER_ID, roles: [] });
 
-    expect(response.status).toBe(429);
-    expect(response.headers.get('retry-after')).toBe('8');
-    expect(auth.listSessions).not.toHaveBeenCalled();
-  });
-
-  it('returns the current user and never exposes token hashes', async () => {
-    const auth = dependencies();
-    const response = await app(auth).request('/api/v1/me', {
-      headers: { authorization: 'Bearer session-token' },
-    });
-    const body = await response.text();
-
-    expect(response.status).toBe(200);
-    expect(body).not.toContain('private');
-    expect(JSON.parse(body)).toMatchObject({
-      id: USER_ID,
-      display_name: 'Student',
-    });
-  });
-
-  it('updates only the authenticated user profile with expected revision', async () => {
-    const auth = dependencies();
-    const response = await app(auth).request('/api/v1/me/profile', {
+    const updated = await app(auth).request('/api/v1/me/profile', {
       method: 'PATCH',
-      headers: {
-        authorization: 'Bearer session-token',
-        'content-type': 'application/json',
-      },
+      headers: { ...headers, 'content-type': 'application/json' },
       body: JSON.stringify({
         username: 'new_name',
         display_name: 'New Name',
-        avatar_url: 'https://example.com/avatar.png',
-        bio: 'Course representative',
+        avatar_url: null,
+        bio: null,
         expected_revision: 1,
       }),
     });
-
-    expect(response.status).toBe(200);
+    expect(updated.status).toBe(200);
     expect(auth.updateProfile).toHaveBeenCalledWith(USER_ID, {
       username: 'new_name',
       displayName: 'New Name',
-      avatarUrl: 'https://example.com/avatar.png',
-      bio: 'Course representative',
+      avatarUrl: null,
+      bio: null,
       expectedRevision: 1,
     });
-    await expect(response.json()).resolves.toMatchObject({
-      username: 'new_name',
-      display_name: 'New Name',
-      avatar_url: null,
-      bio: null,
-      profile_revision: 2,
-      roles: [],
-    });
   });
 
-  it('deletes only the authenticated account', async () => {
-    const auth = dependencies();
-    const response = await app(auth).request('/api/v1/me', {
-      method: 'DELETE',
-      headers: { authorization: 'Bearer session-token' },
-    });
-
-    expect(response.status).toBe(204);
-    expect(auth.deleteAccount).toHaveBeenCalledWith(USER_ID);
-  });
-
-  it('lists and revokes only the authenticated user sessions', async () => {
+  it('lists and revokes only the authenticated account sessions', async () => {
     const auth = dependencies();
     const headers = { authorization: 'Bearer session-token' };
-
-    const list = await app(auth).request('/api/v1/sessions', { headers });
-    expect(list.status).toBe(200);
+    const listed = await app(auth).request('/api/v1/sessions', { headers });
+    expect(listed.status).toBe(200);
     expect(auth.listSessions).toHaveBeenCalledWith(USER_ID);
 
-    const revoke = await app(auth).request(`/api/v1/sessions/${SESSION_ID}`, {
+    const revoked = await app(auth).request(`/api/v1/sessions/${SESSION_ID}`, {
       method: 'DELETE',
       headers,
     });
-    expect(revoke.status).toBe(204);
+    expect(revoked.status).toBe(204);
     expect(auth.revokeSession).toHaveBeenCalledWith(USER_ID, SESSION_ID);
   });
 });

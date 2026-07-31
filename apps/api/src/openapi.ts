@@ -2,7 +2,6 @@ import { z, type ZodType } from 'zod';
 
 import {
   API_CONTRACT_VERSION,
-  accountRegistrationRequestSchema,
   accountSnapshotResponseSchema,
   adminBootstrapRequestSchema,
   adminContentActionRequestSchema,
@@ -24,19 +23,19 @@ import {
   commentRevisionPageSchema,
   coursesResponseSchema,
   currentUserSchema,
-  emailChallengeRequestSchema,
-  emailChallengeResponseSchema,
-  emailVerificationRequestSchema,
   incrementalSyncResponseSchema,
+  oidcAuthorizationRequestSchema,
+  oidcAuthorizationResponseSchema,
+  oidcExchangeRequestSchema,
   profileUpdateRequestSchema,
   publicUserSchema,
   sessionSchema,
+  sessionVerificationResponseSchema,
   snapshotRecordSchema,
   studentOperationSchema,
   syncEventSchema,
   syncRequestSchema,
   termsResponseSchema,
-  verificationResponseSchema,
 } from '@ddl-tracker/contracts';
 
 function component(schema: ZodType): Record<string, unknown> {
@@ -223,7 +222,7 @@ export const openApiDocument = addRateLimitResponses({
     title: 'DDL Tracker API',
     version: API_CONTRACT_VERSION,
     description:
-      'Passwordless course deadline tracking, offline synchronization, catalog administration, and moderation API.',
+      'OIDC-authenticated course deadline tracking, offline synchronization, catalog administration, and moderation API.',
   },
   servers: [{ url: '/api' }],
   tags: [
@@ -252,38 +251,47 @@ export const openApiDocument = addRateLimitResponses({
         },
       },
     },
-    '/v1/auth/email/challenges': {
+    '/v1/auth/oidc/start': {
       post: {
         tags: ['auth'],
-        summary: 'Request an institutional email verification code',
-        requestBody: requestBody('EmailChallengeRequest'),
+        summary: 'Start an OIDC authorization',
+        requestBody: requestBody('OidcAuthorizationRequest'),
         responses: {
-          '200': response('Challenge created.', 'EmailChallengeResponse'),
-          '400': response('Invalid email or request.', 'ApiError'),
-          '429': response('Challenge rate limited.', 'ApiError'),
+          '200': response('Authorization started.', 'OidcAuthorizationResponse'),
+          '400': response('Invalid or disallowed redirect URI.', 'ApiError'),
+          '429': response('Login attempts rate limited.', 'ApiError'),
+          '503': response('OIDC provider unavailable.', 'ApiError'),
         },
       },
     },
-    '/v1/auth/email/verifications': {
-      post: {
+    '/v1/auth/oidc/callback': {
+      get: {
         tags: ['auth'],
-        summary: 'Verify an email code',
-        requestBody: requestBody('EmailVerificationRequest'),
+        summary: 'Complete the OIDC provider callback',
+        parameters: [
+          { name: 'state', in: 'query', required: false, schema: { type: 'string' } },
+          { name: 'code', in: 'query', required: false, schema: { type: 'string' } },
+          { name: 'error', in: 'query', required: false, schema: { type: 'string' } },
+        ],
         responses: {
-          '200': response('Verification completed.', 'VerificationResponse'),
-          '400': response('Invalid or expired challenge.', 'ApiError'),
+          '302': {
+            description: 'Redirect to the approved client callback with a one-time code or error.',
+            headers: {
+              Location: { schema: { type: 'string', format: 'uri' } },
+            },
+          },
+          '400': response('Invalid or expired authorization.', 'ApiError'),
         },
       },
     },
-    '/v1/accounts/registrations': {
+    '/v1/auth/oidc/exchange': {
       post: {
         tags: ['auth'],
-        summary: 'Register an account after verification',
-        requestBody: requestBody('AccountRegistrationRequest'),
+        summary: 'Exchange a one-time OIDC code for a local session',
+        requestBody: requestBody('OidcExchangeRequest'),
         responses: {
-          '201': response('Account registered.', 'SessionVerificationResponse'),
-          '400': response('Invalid registration.', 'ApiError'),
-          '409': response('Username conflict.', 'ApiError'),
+          '200': response('Local session created.', 'SessionVerificationResponse'),
+          '400': response('Invalid or expired exchange code.', 'ApiError'),
         },
       },
     },
@@ -628,13 +636,11 @@ export const openApiDocument = addRateLimitResponses({
     },
     schemas: {
       ApiError: component(apiErrorSchema),
-      EmailChallengeRequest: component(emailChallengeRequestSchema),
-      EmailChallengeResponse: component(emailChallengeResponseSchema),
-      EmailVerificationRequest: component(emailVerificationRequestSchema),
-      VerificationResponse: component(verificationResponseSchema),
-      AccountRegistrationRequest: component(accountRegistrationRequestSchema),
+      OidcAuthorizationRequest: component(oidcAuthorizationRequestSchema),
+      OidcAuthorizationResponse: component(oidcAuthorizationResponseSchema),
+      OidcExchangeRequest: component(oidcExchangeRequestSchema),
       SessionVerificationResponse: component(
-        verificationResponseSchema.options[1],
+        sessionVerificationResponseSchema,
       ),
       PublicUser: component(publicUserSchema),
       CurrentUser: component(currentUserSchema),

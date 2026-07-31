@@ -1,7 +1,6 @@
 import {
-  accountRegistrationRequestSchema,
-  emailChallengeRequestSchema,
-  emailVerificationRequestSchema,
+  oidcAuthorizationRequestSchema,
+  oidcExchangeRequestSchema,
   parseUuidV7,
   profileUpdateRequestSchema,
   type CurrentUserWire,
@@ -12,9 +11,10 @@ import type { Hono } from 'hono';
 import type {
   AuthenticatedPrincipal,
   PublicUser,
+  SessionCompletion,
   SessionRecord,
-  VerificationCompletion,
 } from '../auth/account-service.js';
+import type { OidcCallbackResult } from '../auth/oidc-login-service.js';
 import { authenticateBearer } from './bearer.js';
 import { HttpError } from './errors.js';
 import type { AppVariables } from './app.js';
@@ -23,29 +23,20 @@ import { readValidatedJson } from './json-body.js';
 const AUTH_BODY_LIMIT = 64 * 1024;
 
 export interface AuthRouteDependencies {
-  requestChallenge(email: string, sourceIp: string): Promise<{
-    challenge_id: string;
-    expires_at: string;
-  }>;
-  verifyChallenge(input: {
-    challengeId: string;
-    email: string;
+  beginOidcAuthorization(input: {
+    redirectUri: string;
+    sourceIp: string;
+  }): Promise<{ authorization_url: string; expires_at: string }>;
+  completeOidcAuthorization(input: {
+    state: string | null;
+    code: string | null;
+    providerError: string | null;
+  }): Promise<OidcCallbackResult>;
+  exchangeOidcAuthorization(input: {
     code: string;
     deviceName: string | null;
     deviceMetadata: Record<string, unknown>;
-  }): Promise<VerificationCompletion>;
-  registerAccount(input: {
-    registrationToken: string;
-    username: string;
-    displayName: string | null;
-    deviceName: string | null;
-    deviceMetadata: Record<string, unknown>;
-  }): Promise<{
-    access_token: string;
-    token_type: 'Bearer';
-    expires_at: string;
-    user: PublicUser;
-  }>;
+  }): Promise<SessionCompletion>;
   authenticate(token: string): Promise<AuthenticatedPrincipal>;
   rateLimit(userId: string): Promise<void>;
   listSessions(userId: string): Promise<SessionRecord[]>;
@@ -91,10 +82,7 @@ function toCurrentUser(
   user: PublicUser,
   roles: 'maintainer'[],
 ): CurrentUserWire {
-  return {
-    ...toPublicUser(user),
-    roles,
-  };
+  return { ...toPublicUser(user), roles };
 }
 
 function toSession(session: SessionRecord) {
@@ -114,65 +102,52 @@ export function registerAuthRoutes(
   app: Hono<{ Variables: AppVariables }>,
   dependencies: AuthRouteDependencies,
 ): void {
-  app.post('/v1/auth/email/challenges', async (context) => {
+  app.post('/v1/auth/oidc/start', async (context) => {
     const body = await readValidatedJson(
       context.req.raw,
-      emailChallengeRequestSchema,
+      oidcAuthorizationRequestSchema,
       AUTH_BODY_LIMIT,
     );
     return context.json(
-      await dependencies.requestChallenge(
-        body.email,
-        normalizedConnectingIp(context.req.header('cf-connecting-ip')),
-      ),
+      await dependencies.beginOidcAuthorization({
+        redirectUri: body.redirect_uri,
+        sourceIp: normalizedConnectingIp(
+          context.req.header('cf-connecting-ip'),
+        ),
+      }),
     );
   });
 
-  app.post('/v1/auth/email/verifications', async (context) => {
+  app.get('/v1/auth/oidc/callback', async (context) => {
+    const result = await dependencies.completeOidcAuthorization({
+      state: context.req.query('state') ?? null,
+      code: context.req.query('code') ?? null,
+      providerError: context.req.query('error') ?? null,
+    });
+    const redirect = new URL(result.redirectUri);
+    if (result.kind === 'success') {
+      redirect.searchParams.set('code', result.exchangeCode);
+    } else {
+      redirect.searchParams.set('error', result.error);
+    }
+    return context.redirect(redirect.toString(), 302);
+  });
+
+  app.post('/v1/auth/oidc/exchange', async (context) => {
     const body = await readValidatedJson(
       context.req.raw,
-      emailVerificationRequestSchema,
+      oidcExchangeRequestSchema,
       AUTH_BODY_LIMIT,
     );
-    const result = await dependencies.verifyChallenge({
-      challengeId: body.challenge_id,
-      email: body.email,
+    const result = await dependencies.exchangeOidcAuthorization({
       code: body.code,
       deviceName: body.device_name,
       deviceMetadata: body.device_metadata,
     });
-    if (result.kind === 'registration') {
-      return context.json(result);
-    }
     return context.json({
-      kind: result.kind,
-      access_token: result.access_token,
-      token_type: result.token_type,
-      expires_at: result.expires_at,
+      ...result,
       user: toCurrentUser(result.user, result.roles),
     });
-  });
-
-  app.post('/v1/accounts/registrations', async (context) => {
-    const body = await readValidatedJson(
-      context.req.raw,
-      accountRegistrationRequestSchema,
-      AUTH_BODY_LIMIT,
-    );
-    const result = await dependencies.registerAccount({
-      registrationToken: body.registration_token,
-      username: body.username,
-      displayName: body.display_name,
-      deviceName: body.device_name,
-      deviceMetadata: body.device_metadata,
-    });
-    return context.json(
-      {
-        ...result,
-        user: toCurrentUser(result.user, []),
-      },
-      201,
-    );
   });
 
   app.get('/v1/me', async (context) => {

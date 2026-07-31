@@ -5,13 +5,9 @@ import {
 } from '@ddl-tracker/contracts';
 
 import { HttpError } from '../http/errors.js';
-import {
-  createOpaqueSecret,
-  hmacSha256,
-} from './primitives.js';
-import type { VerifiedInstitutionalIdentity } from './email-challenge-service.js';
+import type { VerifiedOidcIdentity } from './oidc-provider-client.js';
+import { createOpaqueSecret, hmacSha256 } from './primitives.js';
 
-const REGISTRATION_TTL_MS = 15 * 60 * 1000;
 const SESSION_IDLE_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const SESSION_ABSOLUTE_TTL_MS = 180 * 24 * 60 * 60 * 1000;
 const LAST_SEEN_TOUCH_INTERVAL_MS = 15 * 60 * 1000;
@@ -24,17 +20,6 @@ export interface PublicUser {
   bio: string | null;
   status: 'active' | 'suspended' | 'deleted';
   profileRevision: number;
-}
-
-export interface RegistrationIdentity {
-  id: string;
-  tokenHash: string;
-  provider: 'email';
-  normalizedSubject: string;
-  subjectDisplay: string;
-  attempts: number;
-  expiresAt: Date;
-  createdAt: Date;
 }
 
 export interface SessionRecord {
@@ -57,20 +42,23 @@ export interface AuthenticatedPrincipal {
 }
 
 export interface AccountRepository {
-  findUserByIdentity(
-    provider: 'email',
-    normalizedSubject: string,
-  ): Promise<PublicUser | null>;
+  findUserByIdentity(issuer: string, subject: string): Promise<PublicUser | null>;
   findRoles(userId: string): Promise<'maintainer'[]>;
-  saveRegistrationIdentity(input: RegistrationIdentity): Promise<void>;
   createSession(input: SessionRecord): Promise<void>;
-  registerAccount(input: {
-    registrationTokenHash: string;
+  updateIdentityLogin(input: {
+    issuer: string;
+    subject: string;
+    userId: string;
+    email: string | null;
     now: Date;
+  }): Promise<void>;
+  createOidcAccount(input: {
     user: PublicUser;
     identityId: string;
+    identity: VerifiedOidcIdentity;
     session: SessionRecord;
-  }): Promise<'invalid' | 'username_taken' | 'success'>;
+    now: Date;
+  }): Promise<'identity_exists' | 'username_taken' | 'success'>;
   findPrincipalBySessionHash(
     tokenHash: string,
     now: Date,
@@ -85,20 +73,14 @@ export interface AccountRepository {
   revokeAllSessions(userId: string, now: Date): Promise<number>;
 }
 
-export type VerificationCompletion =
-  | {
-      kind: 'registration';
-      registration_token: string;
-      expires_at: string;
-    }
-  | {
-      kind: 'session';
-      access_token: string;
-      token_type: 'Bearer';
-      expires_at: string;
-      user: PublicUser;
-      roles: 'maintainer'[];
-    };
+export interface SessionCompletion {
+  kind: 'session';
+  access_token: string;
+  token_type: 'Bearer';
+  expires_at: string;
+  user: PublicUser;
+  roles: 'maintainer'[];
+}
 
 export interface DeviceMetadataInput {
   deviceName: string | null;
@@ -126,126 +108,72 @@ export class AccountService {
     this.#createSecret = options.createSecret ?? createOpaqueSecret;
   }
 
-  async completeVerification(
-    identity: VerifiedInstitutionalIdentity,
+  async signInWithOidc(
+    identity: VerifiedOidcIdentity,
     device: DeviceMetadataInput,
-  ): Promise<VerificationCompletion> {
-    const existingUser = await this.#repository.findUserByIdentity(
-      identity.provider,
-      identity.normalizedSubject,
-    );
+  ): Promise<SessionCompletion> {
+    for (const username of await this.#usernameCandidates(identity)) {
+      const existingUser = await this.#repository.findUserByIdentity(
+        identity.issuer,
+        identity.subject,
+      );
+      if (existingUser !== null) {
+        this.#assertActiveUser(existingUser);
+        const issued = await this.#issueSession(existingUser.id, device);
+        await this.#repository.updateIdentityLogin({
+          issuer: identity.issuer,
+          subject: identity.subject,
+          userId: existingUser.id,
+          email: identity.email,
+          now: this.#now(),
+        });
+        return {
+          kind: 'session',
+          access_token: issued.token,
+          token_type: 'Bearer',
+          expires_at: issued.session.absoluteExpiresAt.toISOString(),
+          user: existingUser,
+          roles: await this.#repository.findRoles(existingUser.id),
+        };
+      }
 
-    if (existingUser === null) {
       const now = this.#now();
-      const token = this.#createSecret();
-      const expiresAt = new Date(now.getTime() + REGISTRATION_TTL_MS);
-      await this.#repository.saveRegistrationIdentity({
+      const user: PublicUser = {
         id: this.#createId(),
-        tokenHash: await this.#hashToken(token),
-        provider: identity.provider,
-        normalizedSubject: identity.normalizedSubject,
-        subjectDisplay: identity.subjectDisplay,
-        attempts: 0,
-        expiresAt,
-        createdAt: now,
+        username,
+        displayName: this.#displayName(identity, username),
+        avatarUrl: identity.avatarUrl,
+        bio: null,
+        status: 'active',
+        profileRevision: 1,
+      };
+      const token = this.#createSecret();
+      const session = await this.#buildSession(user.id, token, device, now);
+      const outcome = await this.#repository.createOidcAccount({
+        user,
+        identityId: this.#createId(),
+        identity,
+        session,
+        now,
       });
+      if (outcome === 'identity_exists') continue;
+      if (outcome === 'username_taken') continue;
       return {
-        kind: 'registration',
-        registration_token: token,
-        expires_at: expiresAt.toISOString(),
+        kind: 'session',
+        access_token: token,
+        token_type: 'Bearer',
+        expires_at: session.absoluteExpiresAt.toISOString(),
+        user,
+        roles: [],
       };
     }
 
-    this.#assertActiveUser(existingUser);
-    const issued = await this.#issueSession(existingUser.id, device);
-    const roles = await this.#repository.findRoles(existingUser.id);
-    return {
-      kind: 'session',
-      access_token: issued.token,
-      token_type: 'Bearer',
-      expires_at: issued.session.absoluteExpiresAt.toISOString(),
-      user: existingUser,
-      roles,
-    };
-  }
-
-  async register(input: {
-    registrationToken: string;
-    username: string;
-    displayName: string | null;
-    deviceName: string | null;
-    deviceMetadata: Record<string, unknown>;
-  }): Promise<{
-    kind: 'session';
-    access_token: string;
-    token_type: 'Bearer';
-    expires_at: string;
-    user: PublicUser;
-  }> {
-    let username: string;
-    let displayName: string;
-    try {
-      username = parseUsername(input.username);
-      displayName = parseDisplayName(input.displayName ?? username);
-    } catch (error) {
-      throw new HttpError({
-        code: 'invalid_request',
-        message:
-          error instanceof Error ? error.message : 'Invalid account profile.',
-        status: 400,
-      });
-    }
-
-    const now = this.#now();
-    const sessionToken = this.#createSecret();
-    const user: PublicUser = {
-      id: this.#createId(),
-      username,
-      displayName,
-      avatarUrl: null,
-      bio: null,
-      status: 'active',
-      profileRevision: 1,
-    };
-    const session = await this.#buildSession(
-      user.id,
-      sessionToken,
-      {
-        deviceName: input.deviceName,
-        deviceMetadata: input.deviceMetadata,
-      },
-      now,
-    );
-    const outcome = await this.#repository.registerAccount({
-      registrationTokenHash: await this.#hashToken(input.registrationToken),
-      now,
-      user,
-      identityId: this.#createId(),
-      session,
+    throw new HttpError({
+      code: 'internal_error',
+      message: 'A unique account username could not be generated.',
+      retryable: true,
+      status: 500,
     });
-
-    if (outcome === 'invalid') {
-      throw new HttpError({
-        code: 'registration_token_invalid',
-        message: 'Registration token is invalid or expired.',
-        status: 400,
-      });
-    }
-    if (outcome === 'username_taken') {
-      throw new HttpError({
-        code: 'username_taken',
-        message: 'Username is already in use.',
-        status: 409,
-      });
-    }
-
-    return {
-      kind: 'session',
-      access_token: sessionToken,
-      token_type: 'Bearer',
-      expires_at: session.absoluteExpiresAt.toISOString(),
-      user,
-    };
   }
 
   async authenticate(token: string): Promise<AuthenticatedPrincipal> {
@@ -254,13 +182,7 @@ export class AccountService {
       await this.#hashToken(token),
       now,
     );
-    if (principal === null) {
-      throw new HttpError({
-        code: 'unauthenticated',
-        message: 'Authentication is required.',
-        status: 401,
-      });
-    }
+    if (principal === null) throw unauthenticated();
     this.#assertActiveUser(principal.user);
     const { session } = principal;
     if (
@@ -268,11 +190,7 @@ export class AccountService {
       session.idleExpiresAt.getTime() <= now.getTime() ||
       session.absoluteExpiresAt.getTime() <= now.getTime()
     ) {
-      throw new HttpError({
-        code: 'unauthenticated',
-        message: 'Authentication is required.',
-        status: 401,
-      });
+      throw unauthenticated();
     }
 
     if (
@@ -291,10 +209,7 @@ export class AccountService {
     return this.#repository.listSessions(userId);
   }
 
-  async revokeSession(
-    userId: string,
-    sessionId: string,
-  ): Promise<boolean> {
+  async revokeSession(userId: string, sessionId: string): Promise<boolean> {
     return this.#repository.revokeSession(userId, sessionId, this.#now());
   }
 
@@ -333,6 +248,47 @@ export class AccountService {
     };
   }
 
+  async #usernameCandidates(identity: VerifiedOidcIdentity): Promise<string[]> {
+    const source =
+      identity.email?.split('@')[0] ?? identity.displayName ?? identity.subject;
+    let base = source
+      .normalize('NFKD')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/gu, '_')
+      .replace(/^_+|_+$/gu, '');
+    if (base.length < 3) base = 'user';
+    base = base.slice(0, 18).replace(/_+$/u, '') || 'user';
+    const digest = (
+      await hmacSha256(
+        this.#tokenPepper,
+        `${identity.issuer}\u0000${identity.subject}`,
+      )
+    )
+      .toLowerCase()
+      .replace(/[^a-z0-9]/gu, '');
+    return [
+      `${base}_${digest.slice(0, 8)}`,
+      `${base.slice(0, 14)}_${digest.slice(0, 12)}`,
+      `user_${digest.slice(0, 20)}`,
+    ].map((value) => parseUsername(value.slice(0, 32)));
+  }
+
+  #displayName(identity: VerifiedOidcIdentity, username: string): string {
+    for (const candidate of [
+      identity.displayName,
+      identity.email?.split('@')[0] ?? null,
+      username,
+    ]) {
+      if (candidate === null) continue;
+      try {
+        return parseDisplayName(candidate);
+      } catch {
+        // Try the next stable fallback.
+      }
+    }
+    return username;
+  }
+
   async #hashToken(token: string): Promise<string> {
     return hmacSha256(this.#tokenPepper, token);
   }
@@ -345,12 +301,14 @@ export class AccountService {
         status: 403,
       });
     }
-    if (user.status !== 'active') {
-      throw new HttpError({
-        code: 'unauthenticated',
-        message: 'Authentication is required.',
-        status: 401,
-      });
-    }
+    if (user.status !== 'active') throw unauthenticated();
   }
+}
+
+function unauthenticated(): HttpError {
+  return new HttpError({
+    code: 'unauthenticated',
+    message: 'Authentication is required.',
+    status: 401,
+  });
 }

@@ -5,68 +5,86 @@ import {
   type AccountRepository,
   type AuthenticatedPrincipal,
   type PublicUser,
-  type RegistrationIdentity,
   type SessionRecord,
 } from '../src/auth/account-service.js';
+import type { VerifiedOidcIdentity } from '../src/auth/oidc-provider-client.js';
 
-const NOW = new Date('2026-07-19T12:00:00.000Z');
-const USER_ID = '018f0000-0000-7000-8000-000000000010';
-const SESSION_ID = '018f0000-0000-7000-8000-000000000011';
-const REGISTRATION_ID = '018f0000-0000-7000-8000-000000000012';
+const NOW = new Date('2026-07-30T12:00:00.000Z');
+const USER_ID = '018f0000-0000-7000-8000-000000000001';
+const SESSION_ID = '018f0000-0000-7000-8000-000000000002';
+const IDENTITY_ID = '018f0000-0000-7000-8000-000000000003';
 
-const user: PublicUser = {
-  id: USER_ID,
-  username: 'student',
-  displayName: 'Student',
-      avatarUrl: null,
-      bio: null,
-  status: 'active',
-  profileRevision: 1,
+const identity: VerifiedOidcIdentity = {
+  issuer: 'https://issuer.example',
+  subject: 'student-123',
+  email: 'Student@smail.example.edu',
+  displayName: 'Student Name',
+  avatarUrl: 'https://issuer.example/avatar.png',
 };
 
+function publicUser(overrides: Partial<PublicUser> = {}): PublicUser {
+  return {
+    id: USER_ID,
+    username: 'student_existing',
+    displayName: 'Student Existing',
+    avatarUrl: null,
+    bio: null,
+    status: 'active',
+    profileRevision: 1,
+    ...overrides,
+  };
+}
+
 class FakeAccountRepository implements AccountRepository {
-  accountByIdentity: PublicUser | null = null;
-  registration: RegistrationIdentity | null = null;
-  sessionPrincipal: AuthenticatedPrincipal | null = null;
+  user: PublicUser | null = null;
+  roles: 'maintainer'[] = [];
   sessions: SessionRecord[] = [];
-  registrationOutcome: 'invalid' | 'username_taken' | 'success' = 'success';
+  principal: AuthenticatedPrincipal | null = null;
+  createOutcomes: ('identity_exists' | 'username_taken' | 'success')[] = [
+    'success',
+  ];
+  createdAccounts: Parameters<AccountRepository['createOidcAccount']>[0][] = [];
+  identityUpdates: Parameters<AccountRepository['updateIdentityLogin']>[0][] = [];
+  touches: { id: string; now: Date; expiresAt: Date }[] = [];
 
   async findUserByIdentity(): Promise<PublicUser | null> {
-    return this.accountByIdentity;
+    return this.user;
   }
 
-  findRoles(): Promise<'maintainer'[]> {
-    return Promise.resolve(['maintainer']);
-  }
-
-  async saveRegistrationIdentity(input: RegistrationIdentity): Promise<void> {
-    this.registration = input;
+  async findRoles(): Promise<'maintainer'[]> {
+    return this.roles;
   }
 
   async createSession(input: SessionRecord): Promise<void> {
     this.sessions.push(input);
   }
 
-  async registerAccount(input: {
-    registrationTokenHash: string;
-    now: Date;
-    user: PublicUser;
-    identityId: string;
-    session: SessionRecord;
-  }): Promise<'invalid' | 'username_taken' | 'success'> {
-    if (this.registrationOutcome === 'success') {
-      this.sessions.push(input.session);
-      this.accountByIdentity = input.user;
-    }
-    return this.registrationOutcome;
+  async updateIdentityLogin(
+    input: Parameters<AccountRepository['updateIdentityLogin']>[0],
+  ): Promise<void> {
+    this.identityUpdates.push(input);
+  }
+
+  async createOidcAccount(
+    input: Parameters<AccountRepository['createOidcAccount']>[0],
+  ): Promise<'identity_exists' | 'username_taken' | 'success'> {
+    this.createdAccounts.push(input);
+    const outcome = this.createOutcomes.shift() ?? 'success';
+    if (outcome === 'identity_exists') this.user = publicUser();
+    if (outcome === 'success') this.sessions.push(input.session);
+    return outcome;
   }
 
   async findPrincipalBySessionHash(): Promise<AuthenticatedPrincipal | null> {
-    return this.sessionPrincipal;
+    return this.principal;
   }
 
-  touchSession(): Promise<void> {
-    return Promise.resolve();
+  async touchSession(
+    id: string,
+    now: Date,
+    expiresAt: Date,
+  ): Promise<void> {
+    this.touches.push({ id, now, expiresAt });
   }
 
   async listSessions(): Promise<SessionRecord[]> {
@@ -84,169 +102,175 @@ class FakeAccountRepository implements AccountRepository {
 
 function service(
   repository: FakeAccountRepository,
-  sequences?: { ids: string[]; secrets: string[] },
+  options: { ids?: string[]; secrets?: string[]; now?: Date } = {},
 ): AccountService {
-  const ids = sequences?.ids ?? [
-    REGISTRATION_ID,
-    USER_ID,
-    SESSION_ID,
-    '018f0000-0000-7000-8000-000000000013',
-  ];
-  const secrets = sequences?.secrets ?? [
-    'registration-secret',
-    'session-secret',
-  ];
+  const ids = [...(options.ids ?? [USER_ID, SESSION_ID, IDENTITY_ID])];
+  const secrets = [...(options.secrets ?? ['session-secret'])];
   return new AccountService({
     repository,
-    tokenPepper: 'pepper',
-    now: () => NOW,
+    tokenPepper: 'p'.repeat(64),
+    now: () => options.now ?? NOW,
     createId: () => {
-      const id = ids.shift();
-      if (id === undefined) throw new Error('No ID');
-      return id;
+      const value = ids.shift();
+      if (value === undefined) throw new Error('No test ID available.');
+      return value;
     },
     createSecret: () => {
-      const secret = secrets.shift();
-      if (secret === undefined) throw new Error('No secret');
-      return secret;
+      const value = secrets.shift();
+      if (value === undefined) throw new Error('No test secret available.');
+      return value;
     },
   });
 }
 
-const identity = {
-  provider: 'email' as const,
-  normalizedSubject: 'student@example.edu',
-  subjectDisplay: 'student@example.edu',
-};
+function session(overrides: Partial<SessionRecord> = {}): SessionRecord {
+  return {
+    id: SESSION_ID,
+    userId: USER_ID,
+    tokenHash: 'hash',
+    deviceName: null,
+    deviceMetadata: {},
+    createdAt: NOW,
+    lastSeenAt: NOW,
+    idleExpiresAt: new Date('2026-08-29T12:00:00.000Z'),
+    absoluteExpiresAt: new Date('2027-01-26T12:00:00.000Z'),
+    revokedAt: null,
+    ...overrides,
+  };
+}
 
-describe('AccountService', () => {
-  it('returns a registration token for a new identity', async () => {
+describe('AccountService OIDC sign-in', () => {
+  it('auto-provisions a public profile, OIDC identity and local session', async () => {
     const repository = new FakeAccountRepository();
-
-    const result = await service(repository).completeVerification(identity, {
+    const result = await service(repository).signInWithOidc(identity, {
       deviceName: 'MacBook',
-      deviceMetadata: { platform: 'macOS' },
-    });
-
-    expect(result).toEqual({
-      kind: 'registration',
-      registration_token: 'registration-secret',
-      expires_at: '2026-07-19T12:15:00.000Z',
-    });
-    expect(repository.registration).toMatchObject({
-      id: REGISTRATION_ID,
-      normalizedSubject: 'student@example.edu',
-    });
-    expect(repository.registration?.tokenHash).not.toBe('registration-secret');
-  });
-
-  it('returns a device session for an existing active identity', async () => {
-    const repository = new FakeAccountRepository();
-    repository.accountByIdentity = user;
-
-    const result = await service(repository).completeVerification(identity, {
-      deviceName: 'MacBook',
-      deviceMetadata: {},
+      deviceMetadata: { platform: 'macos' },
     });
 
     expect(result).toMatchObject({
       kind: 'session',
-      access_token: 'registration-secret',
-      token_type: 'Bearer',
-      user,
-      roles: ['maintainer'],
-    });
-    expect(repository.sessions).toHaveLength(1);
-    expect(repository.sessions[0]).toMatchObject({
-      userId: USER_ID,
-      idleExpiresAt: new Date('2026-08-18T12:00:00.000Z'),
-      absoluteExpiresAt: new Date('2027-01-15T12:00:00.000Z'),
-    });
-  });
-
-  it('blocks login for a suspended account', async () => {
-    const repository = new FakeAccountRepository();
-    repository.accountByIdentity = { ...user, status: 'suspended' };
-
-    await expect(
-      service(repository).completeVerification(identity, {
-        deviceName: null,
-        deviceMetadata: {},
-      }),
-    ).rejects.toMatchObject({ code: 'account_suspended' });
-  });
-
-  it('registers a new account and returns its first session', async () => {
-    const repository = new FakeAccountRepository();
-    const result = await service(repository, {
-      ids: [USER_ID, SESSION_ID, REGISTRATION_ID],
-      secrets: ['session-secret'],
-    }).register({
-      registrationToken: 'registration-token',
-      username: 'new_user',
-      displayName: 'New User',
-      deviceName: 'Phone',
-      deviceMetadata: {},
-    });
-
-    expect(result).toMatchObject({
       access_token: 'session-secret',
       token_type: 'Bearer',
       user: {
         id: USER_ID,
-        username: 'new_user',
-        displayName: 'New User',
-      },
-    });
-  });
-
-  it('maps registration token and username conflicts to stable errors', async () => {
-    const invalidRepository = new FakeAccountRepository();
-    invalidRepository.registrationOutcome = 'invalid';
-    await expect(
-      service(invalidRepository).register({
-        registrationToken: 'token',
-        username: 'valid_name',
-        displayName: null,
-        deviceName: null,
-        deviceMetadata: {},
-      }),
-    ).rejects.toMatchObject({ code: 'registration_token_invalid' });
-
-    const conflictRepository = new FakeAccountRepository();
-    conflictRepository.registrationOutcome = 'username_taken';
-    await expect(
-      service(conflictRepository).register({
-        registrationToken: 'token',
-        username: 'valid_name',
-        displayName: null,
-        deviceName: null,
-        deviceMetadata: {},
-      }),
-    ).rejects.toMatchObject({ code: 'username_taken' });
-  });
-
-  it('authenticates only active, unexpired sessions and throttles last seen updates', async () => {
-    const repository = new FakeAccountRepository();
-    repository.sessionPrincipal = {
-      user,
-      session: {
-        id: SESSION_ID,
-        userId: USER_ID,
-        tokenHash: 'hash',
-        deviceName: null,
-        deviceMetadata: {},
-        createdAt: new Date('2026-07-01T00:00:00.000Z'),
-        lastSeenAt: new Date('2026-07-19T11:00:00.000Z'),
-        idleExpiresAt: new Date('2026-08-18T11:00:00.000Z'),
-        absoluteExpiresAt: new Date('2027-01-01T00:00:00.000Z'),
-        revokedAt: null,
+        displayName: 'Student Name',
+        avatarUrl: 'https://issuer.example/avatar.png',
       },
       roles: [],
+    });
+    expect(result.user.username).toMatch(/^student_[a-z0-9]{8}$/u);
+    expect(repository.createdAccounts).toHaveLength(1);
+    expect(repository.createdAccounts[0]).toMatchObject({
+      identityId: IDENTITY_ID,
+      identity,
+      session: {
+        id: SESSION_ID,
+        deviceName: 'MacBook',
+        deviceMetadata: { platform: 'macos' },
+      },
+    });
+    expect(repository.createdAccounts[0]?.session.tokenHash).not.toBe(
+      'session-secret',
+    );
+  });
+
+  it('issues a fresh local session for an existing active identity', async () => {
+    const repository = new FakeAccountRepository();
+    repository.user = publicUser();
+    repository.roles = ['maintainer'];
+    const result = await service(repository, {
+      ids: [SESSION_ID],
+      secrets: ['existing-session'],
+    }).signInWithOidc(identity, { deviceName: null, deviceMetadata: {} });
+
+    expect(result).toMatchObject({
+      access_token: 'existing-session',
+      user: publicUser(),
+      roles: ['maintainer'],
+    });
+    expect(repository.sessions).toHaveLength(1);
+    expect(repository.identityUpdates).toEqual([
+      expect.objectContaining({
+        issuer: identity.issuer,
+        subject: identity.subject,
+        email: identity.email,
+        userId: USER_ID,
+      }),
+    ]);
+  });
+
+  it('retries deterministic username collisions without changing identity', async () => {
+    const repository = new FakeAccountRepository();
+    repository.createOutcomes = ['username_taken', 'success'];
+    const ids = [
+      USER_ID,
+      SESSION_ID,
+      IDENTITY_ID,
+      '018f0000-0000-7000-8000-000000000004',
+      '018f0000-0000-7000-8000-000000000005',
+      '018f0000-0000-7000-8000-000000000006',
+    ];
+    await service(repository, {
+      ids,
+      secrets: ['first-session', 'second-session'],
+    }).signInWithOidc(identity, { deviceName: null, deviceMetadata: {} });
+
+    expect(repository.createdAccounts).toHaveLength(2);
+    expect(repository.createdAccounts[0]?.user.username).not.toBe(
+      repository.createdAccounts[1]?.user.username,
+    );
+    expect(repository.createdAccounts.map((value) => value.identity)).toEqual([
+      identity,
+      identity,
+    ]);
+  });
+
+  it('rejects suspended identities before issuing a session', async () => {
+    const repository = new FakeAccountRepository();
+    repository.user = publicUser({ status: 'suspended' });
+    await expect(
+      service(repository).signInWithOidc(identity, {
+        deviceName: null,
+        deviceMetadata: {},
+      }),
+    ).rejects.toMatchObject({ code: 'account_suspended' });
+    expect(repository.sessions).toHaveLength(0);
+  });
+});
+
+describe('AccountService local sessions', () => {
+  it('authenticates an active session and refreshes stale last-seen state', async () => {
+    const repository = new FakeAccountRepository();
+    repository.principal = {
+      user: publicUser(),
+      roles: [],
+      session: session({
+        lastSeenAt: new Date('2026-07-30T11:00:00.000Z'),
+      }),
     };
-
-    const principal = await service(repository).authenticate('session-token');
-
+    const principal = await service(repository, { ids: [], secrets: [] }).authenticate(
+      'opaque-session',
+    );
     expect(principal.user.id).toBe(USER_ID);
+    expect(repository.touches).toHaveLength(1);
+  });
+
+  it('rejects missing, expired, revoked and deleted sessions', async () => {
+    for (const principal of [
+      null,
+      { user: publicUser(), roles: [], session: session({ revokedAt: NOW }) },
+      {
+        user: publicUser(),
+        roles: [],
+        session: session({ idleExpiresAt: new Date('2026-07-30T11:59:59Z') }),
+      },
+      { user: publicUser({ status: 'deleted' }), roles: [], session: session() },
+    ] satisfies (AuthenticatedPrincipal | null)[]) {
+      const repository = new FakeAccountRepository();
+      repository.principal = principal;
+      await expect(
+        service(repository, { ids: [], secrets: [] }).authenticate('token'),
+      ).rejects.toMatchObject({ code: 'unauthenticated' });
+    }
   });
 });

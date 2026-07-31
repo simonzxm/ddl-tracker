@@ -216,7 +216,7 @@ export class PostgresAccountLifecycleRepository
         'delete from personal_todos where user_id = $1',
         'delete from followed_class_sections where user_id = $1',
         'delete from sessions where user_id = $1',
-        'delete from institutional_identities where user_id = $1',
+        'delete from oidc_identities where user_id = $1',
         'delete from user_roles where user_id = $1',
       ];
       for (const statement of privateDeleteStatements) {

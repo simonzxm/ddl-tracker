@@ -4,7 +4,6 @@ import type {
   AccountRepository,
   AuthenticatedPrincipal,
   PublicUser,
-  RegistrationIdentity,
   SessionRecord,
 } from './account-service.js';
 
@@ -29,13 +28,6 @@ interface SessionRow {
   idle_expires_at: Date;
   absolute_expires_at: Date;
   revoked_at: Date | null;
-}
-
-interface RegistrationRow {
-  id: string;
-  provider: string;
-  normalized_subject: string;
-  subject_display: string;
 }
 
 function toPublicUser(row: UserRow): PublicUser {
@@ -84,17 +76,17 @@ export class PostgresAccountRepository implements AccountRepository {
   }
 
   async findUserByIdentity(
-    provider: 'email',
-    normalizedSubject: string,
+    issuer: string,
+    subject: string,
   ): Promise<PublicUser | null> {
     const result = await this.#client.query<UserRow>(
       `select u.id, u.username, u.display_name, u.avatar_url, u.bio,
               u.status, u.profile_revision
-       from institutional_identities i
+       from oidc_identities i
        join users u on u.id = i.user_id
-       where i.provider = $1 and i.normalized_subject = $2
+       where i.issuer = $1 and i.subject = $2
        limit 1`,
-      [provider, normalizedSubject],
+      [issuer, subject],
     );
     const row = result.rows[0];
     return row === undefined ? null : toPublicUser(row);
@@ -108,109 +100,78 @@ export class PostgresAccountRepository implements AccountRepository {
     return result.rows.map(({ role }) => role);
   }
 
-  async saveRegistrationIdentity(input: RegistrationIdentity): Promise<void> {
-    await this.#client.query(
-      `insert into registration_tokens (
-         id, token_hash, provider, normalized_subject, subject_display,
-         attempts, expires_at, created_at
-       ) values ($1, $2, $3, $4, $5, $6, $7, $8)`,
-      [
-        input.id,
-        input.tokenHash,
-        input.provider,
-        input.normalizedSubject,
-        input.subjectDisplay,
-        input.attempts,
-        input.expiresAt,
-        input.createdAt,
-      ],
-    );
-  }
-
   async createSession(input: SessionRecord): Promise<void> {
     await this.#insertSession(input);
   }
 
-  async registerAccount(input: {
-    registrationTokenHash: string;
+  async updateIdentityLogin(input: {
+    issuer: string;
+    subject: string;
+    userId: string;
+    email: string | null;
     now: Date;
-    user: PublicUser;
-    identityId: string;
-    session: SessionRecord;
-  }): Promise<'invalid' | 'username_taken' | 'success'> {
+  }): Promise<void> {
+    await this.#client.query(
+      `update oidc_identities
+       set email = $4, last_login_at = $5
+       where issuer = $1 and subject = $2 and user_id = $3`,
+      [input.issuer, input.subject, input.userId, input.email, input.now],
+    );
+  }
+
+  async createOidcAccount(
+    input: Parameters<AccountRepository['createOidcAccount']>[0],
+  ): Promise<'identity_exists' | 'username_taken' | 'success'> {
     await this.#client.query('begin');
     try {
-      const registration = await this.#client.query<RegistrationRow>(
-        `select id, provider, normalized_subject, subject_display
-         from registration_tokens
-         where token_hash = $1
-           and consumed_at is null
-           and expires_at > $2
-           and attempts < 10
-         for update`,
-        [input.registrationTokenHash, input.now],
-      );
-      const record = registration.rows[0];
-      if (record?.provider !== 'email') {
-        await this.#client.query('rollback');
-        return 'invalid';
-      }
-
-      await this.#client.query(
-        `update registration_tokens set attempts = attempts + 1 where id = $1`,
-        [record.id],
-      );
-
-      await this.#client.query('savepoint username_registration');
       try {
         await this.#client.query(
           `insert into users (
-             id, username, username_key, display_name, status,
-             profile_revision, created_at, updated_at
-           ) values ($1, $2, $3, $4, 'active', $5, $6, $6)`,
+             id, username, username_key, display_name, avatar_url, bio,
+             status, profile_revision, created_at, updated_at
+           ) values ($1, $2, $3, $4, $5, null, 'active', $6, $7, $7)`,
           [
             input.user.id,
             input.user.username,
             input.user.username,
             input.user.displayName,
+            input.user.avatarUrl,
             input.user.profileRevision,
             input.now,
           ],
         );
-        await this.#client.query('release savepoint username_registration');
+        await this.#client.query(
+          `insert into oidc_identities (
+             id, user_id, issuer, subject, email, created_at, last_login_at
+           ) values ($1, $2, $3, $4, $5, $6, $6)`,
+          [
+            input.identityId,
+            input.user.id,
+            input.identity.issuer,
+            input.identity.subject,
+            input.identity.email,
+            input.now,
+          ],
+        );
+        await this.#insertSession(input.session);
+        await this.#client.query('commit');
+        return 'success';
       } catch (error) {
+        await this.#client.query('rollback');
         if (isUniqueViolation(error, 'users_username_key_unique')) {
-          await this.#client.query('rollback to savepoint username_registration');
-          await this.#client.query('release savepoint username_registration');
-          await this.#client.query('commit');
           return 'username_taken';
+        }
+        if (isUniqueViolation(error, 'oidc_identities_subject_unique')) {
+          return 'identity_exists';
         }
         throw error;
       }
-
-      await this.#client.query(
-        `insert into institutional_identities (
-           id, user_id, provider, normalized_subject, created_at
-         ) values ($1, $2, $3, $4, $5)`,
-        [
-          input.identityId,
-          input.user.id,
-          'email',
-          record.normalized_subject,
-          input.now,
-        ],
-      );
-      await this.#insertSession(input.session);
-      await this.#client.query(
-        `update registration_tokens
-         set consumed_at = $2
-         where id = $1 and consumed_at is null`,
-        [record.id, input.now],
-      );
-      await this.#client.query('commit');
-      return 'success';
     } catch (error) {
-      await this.#client.query('rollback');
+      try {
+        await this.#client.query('rollback');
+      } catch {
+        // Preserve the original database error.
+      }
       throw error;
     }
   }
@@ -238,9 +199,7 @@ export class PostgresAccountRepository implements AccountRepository {
     const row = result.rows[0] as
       | ((SessionRow & Omit<UserRow, 'id'>) & { user_record_id: string })
       | undefined;
-    if (row === undefined) {
-      return null;
-    }
+    if (row === undefined) return null;
     const roles = await this.findRoles(row.user_id);
     return {
       user: toPublicUser({

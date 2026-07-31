@@ -1,55 +1,49 @@
 import { Client } from 'pg';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
-import type {
-  PublicUser,
-  RegistrationIdentity,
-  SessionRecord,
-} from '../src/auth/account-service.js';
+import type { PublicUser, SessionRecord } from '../src/auth/account-service.js';
+import type { VerifiedOidcIdentity } from '../src/auth/oidc-provider-client.js';
 import { PostgresAccountRepository } from '../src/auth/postgres-account-repository.js';
 
 const databaseUrl = process.env['TEST_DATABASE_URL'];
 const describePostgres = databaseUrl === undefined ? describe.skip : describe;
-const NOW = new Date('2026-07-19T12:00:00.000Z');
+const NOW = new Date('2026-07-30T12:00:00.000Z');
+const USER_ID = '018f0000-0000-7000-8000-000000000102';
+const IDENTITY_ID = '018f0000-0000-7000-8000-000000000104';
+const SESSION_ID = '018f0000-0000-7000-8000-000000000103';
 
-function registration(overrides?: Partial<RegistrationIdentity>): RegistrationIdentity {
-  return {
-    id: '018f0000-0000-7000-8000-000000000101',
-    tokenHash: 'registration-hash',
-    provider: 'email',
-    normalizedSubject: 'student@example.edu',
-    subjectDisplay: 'student@example.edu',
-    attempts: 0,
-    expiresAt: new Date(NOW.getTime() + 60_000),
-    createdAt: NOW,
-    ...overrides,
-  };
-}
+const identity: VerifiedOidcIdentity = {
+  issuer: 'https://issuer.example',
+  subject: 'student-123',
+  email: 'student@example.edu',
+  displayName: 'Student',
+  avatarUrl: null,
+};
 
-function publicUser(overrides?: Partial<PublicUser>): PublicUser {
+function publicUser(overrides: Partial<PublicUser> = {}): PublicUser {
   return {
-    id: '018f0000-0000-7000-8000-000000000102',
-    username: 'student',
+    id: USER_ID,
+    username: 'student_123',
     displayName: 'Student',
-      avatarUrl: null,
-      bio: null,
+    avatarUrl: null,
+    bio: null,
     status: 'active',
     profileRevision: 1,
     ...overrides,
   };
 }
 
-function session(overrides?: Partial<SessionRecord>): SessionRecord {
+function session(overrides: Partial<SessionRecord> = {}): SessionRecord {
   return {
-    id: '018f0000-0000-7000-8000-000000000103',
-    userId: '018f0000-0000-7000-8000-000000000102',
+    id: SESSION_ID,
+    userId: USER_ID,
     tokenHash: 'session-hash',
     deviceName: 'MacBook',
-    deviceMetadata: { platform: 'macOS' },
+    deviceMetadata: { platform: 'macos' },
     createdAt: NOW,
     lastSeenAt: NOW,
-    idleExpiresAt: new Date(NOW.getTime() + 30 * 24 * 60 * 60 * 1000),
-    absoluteExpiresAt: new Date(NOW.getTime() + 180 * 24 * 60 * 60 * 1000),
+    idleExpiresAt: new Date('2026-08-29T12:00:00.000Z'),
+    absoluteExpiresAt: new Date('2026-10-28T12:00:00.000Z'),
     revokedAt: null,
     ...overrides,
   };
@@ -67,7 +61,7 @@ describePostgres('PostgresAccountRepository', () => {
 
   beforeEach(async () => {
     await client.query(
-      'truncate table user_roles, sessions, institutional_identities, registration_tokens, users cascade',
+      'truncate table user_roles, sessions, oidc_identities, users cascade',
     );
   });
 
@@ -75,29 +69,25 @@ describePostgres('PostgresAccountRepository', () => {
     await client.end();
   });
 
-  it('atomically consumes a registration token and creates account identity and session', async () => {
-    await repository.saveRegistrationIdentity(registration());
-
+  it('atomically creates an OIDC identity, public user and local session', async () => {
     await expect(
-      repository.registerAccount({
-        registrationTokenHash: 'registration-hash',
+      repository.createOidcAccount({
         now: NOW,
         user: publicUser(),
-        identityId: '018f0000-0000-7000-8000-000000000104',
+        identityId: IDENTITY_ID,
+        identity,
         session: session(),
       }),
     ).resolves.toBe('success');
     await client.query(
       `insert into user_roles (user_id, role) values ($1, 'maintainer')`,
-      [publicUser().id],
+      [USER_ID],
     );
 
-    await expect(repository.findRoles(publicUser().id)).resolves.toEqual([
-      'maintainer',
-    ]);
     await expect(
-      repository.findUserByIdentity('email', 'student@example.edu'),
+      repository.findUserByIdentity(identity.issuer, identity.subject),
     ).resolves.toEqual(publicUser());
+    await expect(repository.findRoles(USER_ID)).resolves.toEqual(['maintainer']);
     await expect(
       repository.findPrincipalBySessionHash('session-hash', NOW),
     ).resolves.toMatchObject({
@@ -105,71 +95,94 @@ describePostgres('PostgresAccountRepository', () => {
       session: session(),
       roles: ['maintainer'],
     });
-
-    await expect(
-      repository.registerAccount({
-        registrationTokenHash: 'registration-hash',
-        now: NOW,
-        user: publicUser({
-          id: '018f0000-0000-7000-8000-000000000105',
-          username: 'other',
-        }),
-        identityId: '018f0000-0000-7000-8000-000000000106',
-        session: session({
-          id: '018f0000-0000-7000-8000-000000000107',
-          userId: '018f0000-0000-7000-8000-000000000105',
-          tokenHash: 'other-session-hash',
-        }),
-      }),
-    ).resolves.toBe('invalid');
   });
 
-  it('returns username_taken without consuming the registration token', async () => {
+  it('returns username_taken without leaving a partial identity', async () => {
     await client.query(
       `insert into users (
-        id, username, username_key, display_name, status, profile_revision
-      ) values ($1, 'student', 'student', 'Existing', 'active', 1)`,
+         id, username, username_key, display_name, status, profile_revision
+       ) values ($1, 'student_123', 'student_123', 'Existing', 'active', 1)`,
       ['018f0000-0000-7000-8000-000000000110'],
     );
-    await repository.saveRegistrationIdentity(registration());
 
     await expect(
-      repository.registerAccount({
-        registrationTokenHash: 'registration-hash',
+      repository.createOidcAccount({
         now: NOW,
         user: publicUser(),
-        identityId: '018f0000-0000-7000-8000-000000000111',
+        identityId: IDENTITY_ID,
+        identity,
         session: session(),
       }),
     ).resolves.toBe('username_taken');
-
-    const token = await client.query<{
-      consumed_at: Date | null;
-      attempts: number;
-    }>(
-      `select consumed_at, attempts
-       from registration_tokens where token_hash = $1`,
-      ['registration-hash'],
+    const counts = await client.query<{ identities: string; sessions: string }>(
+      `select
+         (select count(*) from oidc_identities)::text as identities,
+         (select count(*) from sessions)::text as sessions`,
     );
-    expect(token.rows[0]).toEqual({ consumed_at: null, attempts: 1 });
+    expect(counts.rows[0]).toEqual({ identities: '0', sessions: '0' });
   });
 
-  it('uses fresh session and account state and supports revocation', async () => {
-    await repository.saveRegistrationIdentity(registration());
-    await repository.registerAccount({
-      registrationTokenHash: 'registration-hash',
+  it('returns identity_exists without creating a second user', async () => {
+    await repository.createOidcAccount({
       now: NOW,
       user: publicUser(),
-      identityId: '018f0000-0000-7000-8000-000000000112',
+      identityId: IDENTITY_ID,
+      identity,
       session: session(),
     });
+    await expect(
+      repository.createOidcAccount({
+        now: NOW,
+        user: publicUser({
+          id: '018f0000-0000-7000-8000-000000000120',
+          username: 'different_123',
+        }),
+        identityId: '018f0000-0000-7000-8000-000000000121',
+        identity,
+        session: session({
+          id: '018f0000-0000-7000-8000-000000000122',
+          userId: '018f0000-0000-7000-8000-000000000120',
+          tokenHash: 'other-hash',
+        }),
+      }),
+    ).resolves.toBe('identity_exists');
+    const users = await client.query<{ count: string }>(
+      'select count(*)::text as count from users',
+    );
+    expect(users.rows[0]?.count).toBe('1');
+  });
 
-    await expect(repository.listSessions(publicUser().id)).resolves.toHaveLength(1);
+  it('updates login metadata and supports session revocation', async () => {
+    await repository.createOidcAccount({
+      now: NOW,
+      user: publicUser(),
+      identityId: IDENTITY_ID,
+      identity,
+      session: session(),
+    });
+    const later = new Date('2026-07-31T12:00:00.000Z');
+    await repository.updateIdentityLogin({
+      issuer: identity.issuer,
+      subject: identity.subject,
+      userId: USER_ID,
+      email: 'updated@example.edu',
+      now: later,
+    });
+    const row = await client.query<{ email: string; last_login_at: Date }>(
+      'select email, last_login_at from oidc_identities where user_id = $1',
+      [USER_ID],
+    );
+    expect(row.rows[0]).toEqual({
+      email: 'updated@example.edu',
+      last_login_at: later,
+    });
+
+    await expect(repository.listSessions(USER_ID)).resolves.toHaveLength(1);
+    await expect(repository.revokeSession(USER_ID, SESSION_ID, later)).resolves.toBe(
+      true,
+    );
     await expect(
-      repository.revokeSession(publicUser().id, session().id, NOW),
-    ).resolves.toBe(true);
-    await expect(
-      repository.findPrincipalBySessionHash('session-hash', NOW),
+      repository.findPrincipalBySessionHash('session-hash', later),
     ).resolves.toBeNull();
   });
 });

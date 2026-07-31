@@ -39,7 +39,7 @@ describePostgres('PostgresAccountLifecycleRepository', () => {
         sync_events, operation_receipts, rate_limit_counters, accuracy_votes,
         proposal_vote_totals,
         task_proposals, course_tasks, personal_todos, followed_class_sections,
-        sessions, institutional_identities, user_roles, class_sections, courses,
+        sessions, oidc_identities, user_roles, class_sections, courses,
         academic_terms, users
       cascade
     `);
@@ -119,8 +119,8 @@ describePostgres('PostgresAccountLifecycleRepository', () => {
   it('anonymizes public authors, preserves votes, clears private data, and releases username', async () => {
     await insertUser(client, USER_ID, 'student');
     await client.query(
-      `insert into institutional_identities (id, user_id, provider, normalized_subject)
-       values ($1, $2, 'email', 'student@example.edu')`,
+      `insert into oidc_identities (id, user_id, issuer, subject, email)
+       values ($1, $2, 'https://issuer.example', 'student', 'student@example.edu')`,
       ['018f0000-0000-7000-8000-000000000204', USER_ID],
     );
     await client.query(
@@ -233,7 +233,7 @@ describePostgres('PostgresAccountLifecycleRepository', () => {
       rate_limits: string;
     }>(
       `select
-         (select count(*) from institutional_identities where user_id = $1)::text as identities,
+         (select count(*) from oidc_identities where user_id = $1)::text as identities,
          (select count(*) from sessions where user_id = $1)::text as sessions,
          (select count(*) from personal_todos where user_id = $1)::text as todos,
          (select count(*) from operation_receipts where user_id = $1)::text as receipts,

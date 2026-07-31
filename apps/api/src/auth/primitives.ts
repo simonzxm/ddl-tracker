@@ -3,59 +3,20 @@ export type RandomBytes = (length: number) => Uint8Array;
 const defaultRandomBytes: RandomBytes = (length) =>
   crypto.getRandomValues(new Uint8Array(length));
 
-function encodeBase64Url(bytes: Uint8Array): string {
+export function encodeBase64Url(bytes: Uint8Array): string {
   let binary = '';
-  for (const byte of bytes) {
-    binary += String.fromCharCode(byte);
-  }
+  for (const byte of bytes) binary += String.fromCharCode(byte);
   return btoa(binary)
     .replaceAll('+', '-')
     .replaceAll('/', '_')
     .replace(/=+$/u, '');
 }
 
-export function normalizeInstitutionalEmail(
-  input: string,
-  allowedDomains: readonly string[],
-): { normalized: string; display: string } {
-  const display = input.normalize('NFC').trim();
-  const at = display.lastIndexOf('@');
-  const local = display.slice(0, at);
-  const domain = display.slice(at + 1).toLowerCase();
-  const allowed = new Set(allowedDomains.map((value) => value.toLowerCase()));
-
-  if (
-    at <= 0 ||
-    at !== display.indexOf('@') ||
-    domain.length === 0 ||
-    local.length > 254 ||
-    /\s/u.test(display) ||
-    !allowed.has(domain)
-  ) {
-    throw new Error('A valid institutional email is required.');
-  }
-
-  return {
-    normalized: `${local.toLowerCase()}@${domain}`,
-    display,
-  };
-}
-
-export function createNumericCode(
-  randomBytes: RandomBytes = defaultRandomBytes,
-): string {
-  const digits: number[] = [];
-  while (digits.length < 6) {
-    for (const byte of randomBytes(16)) {
-      if (byte < 250) {
-        digits.push(byte % 10);
-        if (digits.length === 6) {
-          break;
-        }
-      }
-    }
-  }
-  return digits.join('');
+export function decodeBase64Url(value: string): Uint8Array {
+  const normalized = value.replaceAll('-', '+').replaceAll('_', '/');
+  const padding = '='.repeat((4 - (normalized.length % 4)) % 4);
+  const binary = atob(`${normalized}${padding}`);
+  return Uint8Array.from(binary, (character) => character.charCodeAt(0));
 }
 
 export function createOpaqueSecret(
@@ -66,6 +27,14 @@ export function createOpaqueSecret(
     throw new Error('Opaque secrets require exactly 32 random bytes.');
   }
   return encodeBase64Url(bytes);
+}
+
+export async function sha256(payload: string): Promise<string> {
+  const digest = await crypto.subtle.digest(
+    'SHA-256',
+    new TextEncoder().encode(payload),
+  );
+  return encodeBase64Url(new Uint8Array(digest));
 }
 
 export async function hmacSha256(
@@ -88,6 +57,53 @@ export async function hmacSha256(
   return encodeBase64Url(new Uint8Array(signature));
 }
 
+export async function sealJson(
+  secret: string,
+  value: unknown,
+  randomBytes: RandomBytes = defaultRandomBytes,
+): Promise<string> {
+  const iv = randomBytes(12);
+  if (iv.byteLength !== 12) throw new Error('AES-GCM IV must contain 12 bytes.');
+  const key = await importAesKey(secret, ['encrypt']);
+  const ciphertext = await crypto.subtle.encrypt(
+    { name: 'AES-GCM', iv: toArrayBuffer(iv) },
+    key,
+    new TextEncoder().encode(JSON.stringify(value)),
+  );
+  return `${encodeBase64Url(iv)}.${encodeBase64Url(new Uint8Array(ciphertext))}`;
+}
+
+export async function openJson<T>(secret: string, sealed: string): Promise<T> {
+  const [ivText, ciphertextText, extra] = sealed.split('.');
+  if (ivText === undefined || ciphertextText === undefined || extra !== undefined) {
+    throw new Error('Encrypted payload is malformed.');
+  }
+  const iv = decodeBase64Url(ivText);
+  if (iv.byteLength !== 12) throw new Error('Encrypted payload IV is invalid.');
+  const key = await importAesKey(secret, ['decrypt']);
+  const plaintext = await crypto.subtle.decrypt(
+    { name: 'AES-GCM', iv: toArrayBuffer(iv) },
+    key,
+    toArrayBuffer(decodeBase64Url(ciphertextText)),
+  );
+  return JSON.parse(new TextDecoder().decode(plaintext)) as T;
+}
+
+function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
+  return Uint8Array.from(bytes).buffer;
+}
+
+async function importAesKey(
+  secret: string,
+  usages: KeyUsage[],
+): Promise<CryptoKey> {
+  const digest = await crypto.subtle.digest(
+    'SHA-256',
+    new TextEncoder().encode(`ddl-tracker:oidc:${secret}`),
+  );
+  return crypto.subtle.importKey('raw', digest, 'AES-GCM', false, usages);
+}
+
 export function constantTimeEqual(left: string, right: string): boolean {
   const encoder = new TextEncoder();
   const leftBytes = encoder.encode(left);
@@ -98,6 +114,5 @@ export function constantTimeEqual(left: string, right: string): boolean {
   for (let index = 0; index < length; index += 1) {
     difference |= (leftBytes[index] ?? 0) ^ (rightBytes[index] ?? 0);
   }
-
   return difference === 0;
 }

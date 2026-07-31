@@ -1,7 +1,7 @@
 import type { Client } from 'pg';
 import { describe, expect, it, vi } from 'vitest';
 
-import type { MailDelivery } from '../src/auth/email-challenge-service.js';
+import type { OidcProvider } from '../src/auth/oidc-provider-client.js';
 import { latestMigrationHash } from '../src/db/latest-migration.js';
 import { createRuntimeApp } from '../src/runtime-app.js';
 
@@ -11,17 +11,14 @@ function environment(overrides: Partial<Env> = {}): Env {
       connectionString: 'postgresql://hyperdrive.invalid/database',
     } as Hyperdrive,
     APP_ENVIRONMENT: 'development',
-    ALLOWED_EMAIL_DOMAINS: 'example.edu',
-    SMTP_HOST: 'smtp.example.edu',
-    SMTP_PORT: '465',
-    SMTP_FROM_ADDRESS: 'mailer@example.edu',
-    SMTP_FROM_NAME: 'DDL Tracker',
-    OTP_HMAC_SECRET: 'o'.repeat(64),
+    OIDC_ISSUER: 'https://issuer.example',
+    OIDC_CLIENT_ID: 'client-id',
+    OIDC_REDIRECT_URI: 'https://api.example/api/v1/auth/oidc/callback',
+    OIDC_POST_LOGIN_REDIRECT_URIS: 'https://app.example/auth/callback',
+    OIDC_TRANSACTION_SECRET: 'o'.repeat(64),
     TOKEN_PEPPER: 'p'.repeat(64),
     SYNC_TOKEN_SECRET: 's'.repeat(64),
     MAINTAINER_BOOTSTRAP_TOKEN: 'b'.repeat(64),
-    SMTP_USERNAME: 'mailer@example.edu',
-    SMTP_PASSWORD: 'smtp-password',
     ...overrides,
   };
 }
@@ -35,14 +32,21 @@ function client() {
   } as unknown as Client;
 }
 
-const mailDelivery: MailDelivery = {
-  sendVerificationCode: vi.fn(async () => undefined),
+const oidcProvider: OidcProvider = {
+  createAuthorizationUrl: vi.fn(async () => 'https://issuer.example/authorize'),
+  exchangeAuthorizationCode: vi.fn(async () => ({
+    issuer: 'https://issuer.example',
+    subject: 'student',
+    email: null,
+    displayName: null,
+    avatarUrl: null,
+  })),
 };
 
 describe('createRuntimeApp', () => {
   it('serves liveness without querying PostgreSQL and readiness with the same client', async () => {
     const database = client();
-    const app = createRuntimeApp(database, environment(), { mailDelivery });
+    const app = createRuntimeApp(database, environment(), { oidcProvider });
 
     const live = await app.request('/api/health/live');
     expect(live.status).toBe(200);
@@ -56,32 +60,32 @@ describe('createRuntimeApp', () => {
     );
   });
 
-  it('rejects missing institutional domains during composition', () => {
+  it('rejects missing post-login redirect URIs during composition', () => {
     expect(() =>
       createRuntimeApp(
         client(),
-        environment({ ALLOWED_EMAIL_DOMAINS: '  ' }),
-        { mailDelivery },
+        environment({ OIDC_POST_LOGIN_REDIRECT_URIS: '  ' }),
+        { oidcProvider },
       ),
-    ).toThrow('allowed institutional email domain');
+    ).toThrow('post-login redirect URI');
   });
 
   it.each([
-    'OTP_HMAC_SECRET',
+    'OIDC_TRANSACTION_SECRET',
     'TOKEN_PEPPER',
     'SYNC_TOKEN_SECRET',
     'MAINTAINER_BOOTSTRAP_TOKEN',
   ] as const)('rejects a short %s during composition', (name) => {
     expect(() =>
       createRuntimeApp(client(), environment({ [name]: 'short' }), {
-        mailDelivery,
+        oidcProvider,
       }),
     ).toThrow(`${name} must contain at least 32 characters.`);
   });
 
-  it('rejects non-TLS SMTP ports in the production adapter', () => {
+  it('rejects an invalid OIDC issuer in the production adapter', () => {
     expect(() =>
-      createRuntimeApp(client(), environment({ SMTP_PORT: '25' })),
-    ).toThrow('465 or 587');
+      createRuntimeApp(client(), environment({ OIDC_ISSUER: 'http://issuer.example' })),
+    ).toThrow('OIDC issuer must be an HTTPS URL');
   });
 });

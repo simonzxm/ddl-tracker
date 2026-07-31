@@ -2,8 +2,7 @@ import type { Client } from 'pg';
 
 import { createUuidV7 } from '@ddl-tracker/contracts';
 
-import type { MailDelivery } from './auth/email-challenge-service.js';
-import type { SmtpSession } from './auth/smtp-mail-delivery.js';
+import type { OidcProvider } from './auth/oidc-provider-client.js';
 import { createApp, type RequestLogEntry } from './http/app.js';
 import { HttpError, toApiError } from './http/errors.js';
 import { PostgresRetentionService } from './maintenance/postgres-retention-service.js';
@@ -16,8 +15,7 @@ export interface RetentionRunner {
 export interface WorkerHandlerOptions {
   createClient(connectionString: string): Client;
   createRetentionRunner?: (client: Client) => RetentionRunner;
-  mailDelivery?: MailDelivery;
-  createSmtpSession?: () => SmtpSession;
+  oidcProvider?: OidcProvider;
   logRequest?: (entry: RequestLogEntry) => void;
 }
 
@@ -58,12 +56,9 @@ export function createWorkerHandler(
         }
         connected = true;
         return await createRuntimeApp(client, env, {
-          ...(options.mailDelivery === undefined
+          ...(options.oidcProvider === undefined
             ? {}
-            : { mailDelivery: options.mailDelivery }),
-          ...(options.createSmtpSession === undefined
-            ? {}
-            : { createSmtpSession: options.createSmtpSession }),
+            : { oidcProvider: options.oidcProvider }),
           ...(options.logRequest === undefined
             ? {}
             : { logRequest: options.logRequest }),

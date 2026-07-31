@@ -7,17 +7,14 @@ import { PostgresModerationRepository } from './admin/postgres-moderation-reposi
 import { PostgresTaskMergeRepository } from './admin/postgres-task-merge-repository.js';
 import { AccountLifecycleService } from './auth/account-lifecycle-service.js';
 import { AccountService } from './auth/account-service.js';
+import { OidcLoginService } from './auth/oidc-login-service.js';
 import {
-  EmailChallengeService,
-  type MailDelivery,
-} from './auth/email-challenge-service.js';
+  OidcProviderClient,
+  type OidcProvider,
+} from './auth/oidc-provider-client.js';
 import { PostgresAccountLifecycleRepository } from './auth/postgres-account-lifecycle-repository.js';
 import { PostgresAccountRepository } from './auth/postgres-account-repository.js';
-import { PostgresChallengeRepository } from './auth/postgres-challenge-repository.js';
-import {
-  SmtpMailDelivery,
-  type SmtpSession,
-} from './auth/smtp-mail-delivery.js';
+import { PostgresOidcLoginRepository } from './auth/postgres-oidc-login-repository.js';
 import { CatalogImportApplyService } from './catalog/import-apply-service.js';
 import { CatalogImportService } from './catalog/import-service.js';
 import { CatalogService } from './catalog/catalog-service.js';
@@ -44,8 +41,7 @@ import { SnapshotTokenCodec } from './sync/snapshot-token.js';
 import { SyncService } from './sync/sync-service.js';
 
 export interface RuntimeAppOptions {
-  mailDelivery?: MailDelivery;
-  createSmtpSession?: () => SmtpSession;
+  oidcProvider?: OidcProvider;
   createId?: () => string;
   now?: () => Date;
   nowMilliseconds?: () => number;
@@ -59,9 +55,9 @@ export function createRuntimeApp(
 ) {
   const createId = options.createId ?? createUuidV7;
   const now = options.now ?? (() => new Date());
-  const otpHmacSecret = requiredSecret(
-    'OTP_HMAC_SECRET',
-    env.OTP_HMAC_SECRET,
+  const oidcTransactionSecret = requiredSecret(
+    'OIDC_TRANSACTION_SECRET',
+    env.OIDC_TRANSACTION_SECRET,
   );
   const tokenPepper = requiredSecret('TOKEN_PEPPER', env.TOKEN_PEPPER);
   const syncTokenSecret = requiredSecret(
@@ -90,13 +86,19 @@ export function createRuntimeApp(
     createId,
     now,
   });
-  const challengeService = new EmailChallengeService({
-    repository: new PostgresChallengeRepository(client),
-    mailDelivery:
-      options.mailDelivery ??
-      createMailDelivery(env, options.createSmtpSession),
-    allowedDomains: parseAllowedDomains(env.ALLOWED_EMAIL_DOMAINS),
-    hmacSecret: otpHmacSecret,
+  const oidcService = new OidcLoginService({
+    repository: new PostgresOidcLoginRepository(client),
+    provider:
+      options.oidcProvider ??
+      new OidcProviderClient({
+        issuer: env.OIDC_ISSUER,
+        clientId: env.OIDC_CLIENT_ID,
+        redirectUri: env.OIDC_REDIRECT_URI,
+      }),
+    allowedRedirectUris: parseAllowedRedirectUris(
+      env.OIDC_POST_LOGIN_REDIRECT_URIS,
+    ),
+    transactionSecret: oidcTransactionSecret,
     rateLimiter,
     createId,
     now,
@@ -183,20 +185,17 @@ export function createRuntimeApp(
       : { logRequest: options.logRequest }),
     checkReady: () => readinessRepository.isReady(),
     auth: {
-      requestChallenge: (email, sourceIp) =>
-        challengeService.requestChallenge(email, sourceIp),
-      verifyChallenge: async (input) => {
-        const identity = await challengeService.verifyChallenge({
-          challengeId: input.challengeId,
-          email: input.email,
-          code: input.code,
-        });
-        return accountService.completeVerification(identity, {
+      beginOidcAuthorization: (input) =>
+        oidcService.beginAuthorization(input),
+      completeOidcAuthorization: (input) =>
+        oidcService.completeAuthorization(input),
+      exchangeOidcAuthorization: async (input) => {
+        const identity = await oidcService.consumeExchangeCode(input.code);
+        return accountService.signInWithOidc(identity, {
           deviceName: input.deviceName,
           deviceMetadata: input.deviceMetadata,
         });
       },
-      registerAccount: (input) => accountService.register(input),
       authenticate,
       rateLimit: (userId) => requestRateLimits.consumeRead(userId),
       listSessions: (userId) => accountService.listSessions(userId),
@@ -266,25 +265,6 @@ export function createRuntimeApp(
   });
 }
 
-function createMailDelivery(
-  env: Env,
-  createSmtpSession: (() => SmtpSession) | undefined,
-): MailDelivery {
-  return new SmtpMailDelivery({
-    host: env.SMTP_HOST,
-    port: Number(env.SMTP_PORT),
-    username: env.SMTP_USERNAME,
-    password: env.SMTP_PASSWORD,
-    fromAddress: env.SMTP_FROM_ADDRESS,
-    fromName: env.SMTP_FROM_NAME,
-    createSession:
-      createSmtpSession ??
-      (() => {
-        throw new Error('SMTP session factory is not configured.');
-      }),
-  });
-}
-
 function requiredSecret(name: string, value: string): string {
   if (value.length < 32) {
     throw new Error(`${name} must contain at least 32 characters.`);
@@ -300,13 +280,13 @@ function optionalSecret(
   return requiredSecret(name, value);
 }
 
-function parseAllowedDomains(value: string): string[] {
-  const domains = value
+function parseAllowedRedirectUris(value: string): string[] {
+  const uris = value
     .split(',')
-    .map((domain) => domain.trim().toLowerCase())
-    .filter((domain) => domain.length > 0);
-  if (domains.length === 0) {
-    throw new Error('At least one allowed institutional email domain is required.');
+    .map((uri) => uri.trim())
+    .filter((uri) => uri.length > 0);
+  if (uris.length === 0) {
+    throw new Error('At least one OIDC post-login redirect URI is required.');
   }
-  return domains;
+  return uris;
 }

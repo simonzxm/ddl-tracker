@@ -47,28 +47,17 @@ async function seed(client: Client): Promise<void> {
   );
 
   await client.query(
-    `insert into auth_challenges (
-       id, provider, normalized_subject, subject_display, code_hmac,
-       status, expires_at, created_at
+    `insert into oidc_login_transactions (
+       id, state_hash, secrets_ciphertext, redirect_uri, status,
+       expires_at, created_at, completed_at
      ) values
-       ('018f0000-0000-7000-8000-000000004011', 'email',
-        'old@example.edu', 'old@example.edu', 'old', 'expired',
-        '2026-07-17T10:00:00Z', '2026-07-17T09:00:00Z'),
-       ('018f0000-0000-7000-8000-000000004012', 'email',
-        'new@example.edu', 'new@example.edu', 'new', 'expired',
-        '2026-07-19T11:00:00Z', '2026-07-19T10:00:00Z')`,
-  );
-  await client.query(
-    `insert into registration_tokens (
-       id, token_hash, provider, normalized_subject, subject_display,
-       expires_at, created_at
-     ) values
-       ('018f0000-0000-7000-8000-000000004013', 'old-token', 'email',
-        'old-registration@example.edu', 'old-registration@example.edu',
-        '2026-07-17T10:00:00Z', '2026-07-17T09:00:00Z'),
-       ('018f0000-0000-7000-8000-000000004014', 'new-token', 'email',
-        'new-registration@example.edu', 'new-registration@example.edu',
-        '2026-07-19T11:00:00Z', '2026-07-19T10:00:00Z')`,
+       ('018f0000-0000-7000-8000-000000004011', 'old-state', null,
+        'https://app.example/auth/callback', 'failed',
+        '2026-07-17T10:00:00Z', '2026-07-17T09:00:00Z',
+        '2026-07-17T10:00:00Z'),
+       ('018f0000-0000-7000-8000-000000004012', 'new-state', 'sealed',
+        'https://app.example/auth/callback', 'pending',
+        '2026-07-19T11:00:00Z', '2026-07-19T10:00:00Z', null)`,
   );
   await client.query(
     `insert into sessions (
@@ -153,8 +142,8 @@ describePostgres('PostgresRetentionService', () => {
   beforeEach(async () => {
     await client.query(`
       truncate table audit_log, operation_receipts, rate_limit_counters,
-        sync_event_retention, sync_events, sessions, registration_tokens,
-        catalog_import_batches, catalog_imports, auth_challenges,
+        sync_event_retention, sync_events, sessions, oidc_login_transactions,
+        catalog_import_batches, catalog_imports,
         class_sections, courses, academic_terms, users restart identity cascade
     `);
     await seed(client);
@@ -173,16 +162,14 @@ describePostgres('PostgresRetentionService', () => {
 
     expect(result).toEqual({
       catalog_imports: 1,
-      auth_challenges: 1,
-      registration_tokens: 1,
+      oidc_login_transactions: 1,
       sessions: 1,
       operation_receipts: 1,
       rate_limit_counters: 1,
       sync_events: 1,
     });
     const counts = await client.query<{
-      challenges: string;
-      registrations: string;
+      oidc_transactions: string;
       sessions: string;
       receipts: string;
       rate_limits: string;
@@ -196,8 +183,7 @@ describePostgres('PostgresRetentionService', () => {
       };
     }>(
       `select
-         (select count(*) from auth_challenges)::text as challenges,
-         (select count(*) from registration_tokens)::text as registrations,
+         (select count(*) from oidc_login_transactions)::text as oidc_transactions,
          (select count(*) from sessions)::text as sessions,
          (select count(*) from operation_receipts)::text as receipts,
          (select count(*) from rate_limit_counters)::text as rate_limits,
@@ -211,8 +197,7 @@ describePostgres('PostgresRetentionService', () => {
           where action = 'retention_cleanup')::text as audits`,
     );
     expect(counts.rows[0]).toEqual({
-      challenges: '1',
-      registrations: '1',
+      oidc_transactions: '1',
       sessions: '1',
       receipts: '1',
       rate_limits: '1',

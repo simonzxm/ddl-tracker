@@ -116,7 +116,7 @@ export async function setupProductionMigration(options = {}) {
           password,
           '--caching-disabled',
           '--origin-connection-limit',
-          '2',
+          '5',
         ],
         { redact: [password] },
       );

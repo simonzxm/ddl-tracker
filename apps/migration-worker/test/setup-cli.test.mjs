@@ -142,6 +142,8 @@ describe('setupProductionMigration', () => {
         'ddl_tracker_migration',
         '--origin-password',
         'database-password',
+        '--origin-connection-limit',
+        '5',
       ]),
     );
     expect(writeText).toHaveBeenCalledOnce();

@@ -1,14 +1,24 @@
 # API 契约兼容矩阵
 
-当前 OpenAPI 契约版本为 `2.0.0`。`/api/v1` 表示 HTTP 路径 major；OpenAPI `info.version` 表示具体契约 release。2.0.0 没有改 HTTP 路径，但同步 wire contract 发生不兼容变更，因此仍是 API contract major release。
+当前 OpenAPI 契约版本为 `3.0.0`。`/api/v1` 表示 HTTP 路径 major；OpenAPI `info.version` 表示具体契约 release。3.0.0 删除邮箱验证码与 registration endpoints，改为 OIDC start/callback/exchange，因此是 API contract major release。
 
-机器可读的权威矩阵位于 [`packages/contracts/vectors/api-compatibility-v2.0.json`](../packages/contracts/vectors/api-compatibility-v2.0.json)，由 `@ddl-tracker/contracts` 的 schema 和测试校验。客户端不得只比较版本字符串后假设兼容，必须读取矩阵中的 compatibility 与 requirements。
+机器可读的权威矩阵位于 [`packages/contracts/vectors/api-compatibility-v3.0.json`](../packages/contracts/vectors/api-compatibility-v3.0.json)，由 `@ddl-tracker/contracts` 的 schema 和测试校验。客户端不得只比较版本字符串后假设兼容，必须读取矩阵中的 compatibility 与 requirements。
 
-| client \ server | 1.0.0 | 1.1.0 | 2.0.0 |
-| --- | --- | --- | --- |
-| 1.0.0 | 完全兼容 | 不兼容 | 不兼容 |
-| 1.1.0 | 条件兼容：显式使用 legacy catalog plan 流程并避开 1.1-only endpoint | 完全兼容 | 不兼容 |
-| 2.0.0 | 不兼容 | 不兼容 | 完全兼容 |
+| client \ server | 1.0.0 | 1.1.0 | 2.0.0 | 3.0.0 |
+| --- | --- | --- | --- | --- |
+| 1.0.0 | 完全兼容 | 不兼容 | 不兼容 | 不兼容 |
+| 1.1.0 | 条件兼容：显式使用 legacy catalog plan 流程并避开 1.1-only endpoint | 完全兼容 | 不兼容 | 不兼容 |
+| 2.0.0 | 不兼容 | 不兼容 | 完全兼容 | 不兼容 |
+| 3.0.0 | 不兼容 | 不兼容 | 不兼容 | 完全兼容 |
+
+## 3.0.0 变化
+
+- 删除 `POST /v1/auth/email/challenges`、`POST /v1/auth/email/verifications` 和 `POST /v1/accounts/registrations`。
+- 新增 `POST /v1/auth/oidc/start`、`GET /v1/auth/oidc/callback` 和 `POST /v1/auth/oidc/exchange`。
+- 登录使用 authorization code + PKCE S256；Provider client 是 public client，不使用 client secret。
+- Provider callback 只返回短期、单用途 exchange code；本地 bearer session token 不出现在浏览器 URL。
+- 新 OIDC identity 首次登录时自动创建账户；不再存在 registration token 或独立注册步骤。
+- 2.x 及更早客户端无法发起新登录，也不能把旧邮箱认证响应映射为 OIDC transaction，因此与 3.0.0 server 不兼容。
 
 ## 2.0.0 变化
 

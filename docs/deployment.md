@@ -8,8 +8,8 @@
 - PostgreSQL migration、runtime 和 backup 使用不同角色；runtime 角色没有 DDL、role 或 extension 权限。
 - PostgreSQL TLS 使用 `verify_full`，证书 hostname 与连接目标匹配。
 - pgBackRest 最近一次完整/增量备份成功，且最近一次隔离恢复演练仍在运维允许窗口内。
-- 飞书 SMTP credential 已创建；只允许 TLS 端口 465 或 587。
-- 应用内 PostgreSQL 限流已为 `POST /api/v1/auth/email/challenges` 配置源 IP 限制：20/hour、50/day。源 IP 必须来自 Cloudflare `CF-Connecting-IP`，数据库只保存带用途前缀的 HMAC。权限允许时再配置等价的 Cloudflare WAF/Rate Limiting 作为额外边缘防线。
+- `auth.nju.at` 已注册 DDL Tracker public OIDC client，固定 callback 为 `https://ddl.nju.at/api/v1/auth/oidc/callback`，强制 authorization code + PKCE S256。
+- 应用内 PostgreSQL 限流已为 `POST /api/v1/auth/oidc/start` 配置源 IP 限制：20/hour、50/day。源 IP 必须来自 Cloudflare `CF-Connecting-IP`，数据库只保存带用途前缀的 HMAC。权限允许时再配置等价的 Cloudflare WAF/Rate Limiting 作为额外边缘防线。
 - 发布者已通过 `pnpm verify` 或 CI 的 `pnpm verify:ci`。
 
 ## 创建生产配置
@@ -25,18 +25,20 @@ cp apps/api/wrangler.production.example.jsonc \
 
 - Worker name。
 - Hyperdrive config ID。
-- 允许的校内邮箱域名，多个域名用逗号分隔。
-- SMTP host、port、from address 和 display name。
+- OIDC issuer 与 public client ID。
+- 固定 Provider callback：`https://ddl.nju.at/api/v1/auth/oidc/callback`。
+- 客户端 callback allowlist：当前为 `https://ddl.nju.at/auth/callback`。
 
 配置必须保持：
 
 - `APP_ENVIRONMENT = production`。
 - `nodejs_compat`。
+- `routes` 只包含 `ddl.nju.at/api/*`；不得重新加入已退役的 `api.210023.xyz` custom domain。
 - 当前 Workers Free plan 不配置 `limits.cpu_ms`；专用目录上传限制 multipart 5 MiB、gzip 4 MiB、解压 CSV 10 MiB，并将规范化数据分为每类最多 100 条的存储 batch。升级到付费 Standard plan 后才可显式配置 CPU budget。
 - retention cleanup cron。
 - Workers logs 与 traces 开启。
 
-应用内 PostgreSQL 限流覆盖 source IP（20/hour、50/day）、email identity（1/min、5/hour、10/day）、sync user（5/10 seconds、30/min）、authenticated read（120/min）和 admin mutation（30/min）。Cloudflare 边缘 IP 规则是额外防线，不能替代应用内计数。
+应用内 PostgreSQL 限流覆盖 OIDC start source IP（20/hour、50/day）、sync user（5/10 seconds、30/min）、authenticated read（120/min）和 admin mutation（30/min）。Cloudflare 边缘 IP 规则是额外防线，不能替代应用内计数。
 
 执行本地保护检查：
 
@@ -57,7 +59,7 @@ WRANGLER_PRODUCTION_CONFIG=apps/api/wrangler.production.jsonc \
 
 ```bash
 cd apps/api
-pnpm exec wrangler secret put OTP_HMAC_SECRET \
+pnpm exec wrangler secret put OIDC_TRANSACTION_SECRET \
   --config wrangler.production.jsonc
 pnpm exec wrangler secret put TOKEN_PEPPER \
   --config wrangler.production.jsonc
@@ -65,13 +67,9 @@ pnpm exec wrangler secret put SYNC_TOKEN_SECRET \
   --config wrangler.production.jsonc
 pnpm exec wrangler secret put MAINTAINER_BOOTSTRAP_TOKEN \
   --config wrangler.production.jsonc
-pnpm exec wrangler secret put SMTP_USERNAME \
-  --config wrangler.production.jsonc
-pnpm exec wrangler secret put SMTP_PASSWORD \
-  --config wrangler.production.jsonc
 ```
 
-OTP HMAC、token pepper、sync token 和 bootstrap token 使用独立的至少 32-byte 随机值，不能复用。bootstrap 成功后立即轮换或删除 bootstrap secret。
+OIDC transaction secret、token pepper、sync token 和 bootstrap token 使用独立的至少 32-byte 随机值，不能复用。bootstrap 成功后立即轮换或删除 bootstrap secret。
 
 ## Migration
 
@@ -141,14 +139,14 @@ pnpm db:migrate:prod
 
 ## Remote dev smoke
 
-Remote dev 只用于短期验证 Cloudflare 网络、Hyperdrive、Tunnel 和 SMTP；完成后立即停止：
+Remote dev 只用于短期验证 Cloudflare 网络、Hyperdrive、Tunnel 和 OIDC discovery/token exchange；完成后立即停止：
 
 ```bash
 cd apps/api
 pnpm exec wrangler dev --remote --config wrangler.production.jsonc
 ```
 
-只向维护者 allowlist 邮箱发送一封验证码，不执行目录导入、审核、合并或其他持久化业务写入。
+只使用维护者测试账户完成一次受控 OIDC 登录，不执行目录导入、审核、合并或其他持久化业务写入；state、authorization code、exchange code、ID Token 与 session token 均不得进入日志。
 
 ## 上传 preview version
 
@@ -179,7 +177,7 @@ DDL_TRACKER_SMOKE_TOKEN='opaque-session-token' \
 
 ## 切流生产
 
-确认 preview smoke、SMTP allowlist 投递、数据库权限和日志均正常后，将已验证 version 切到 100%：
+确认 preview smoke、OIDC 登录、数据库权限和日志均正常后，将已验证 version 切到 100%：
 
 ```bash
 cd apps/api
@@ -191,7 +189,7 @@ pnpm exec wrangler versions deploy VERSION_ID@100% \
 
 - 5xx rate 与 P95/P99 latency。
 - PostgreSQL/Hyperdrive 连接失败。
-- SMTP 失败率。
+- OIDC discovery/token exchange 失败率。
 - sync rejection spike。
 - Tunnel health。
 - retention cron 最近一次结果。
@@ -233,9 +231,8 @@ pnpm exec wrangler versions deploy PREVIOUS_VERSION_ID@100% \
 ## Secret 轮换
 
 - Session 泄露：撤销对应 session；轮换 `TOKEN_PEPPER` 会使所有现有 session 失效。
-- OTP HMAC 泄露：轮换后所有未使用 challenge 失效。
+- OIDC transaction secret 泄露：立即轮换；所有未完成 transaction 和 exchange code 失效，并检查 Provider callback 与登录日志。
 - Sync token 泄露：轮换后 cursor/snapshot token 失效，客户端重新 bootstrap。
-- SMTP 泄露：先在飞书撤销 credential，再更新 Worker secret并执行 allowlist smoke。
 - Database credential 泄露：撤销 PostgreSQL role credential，更新 Hyperdrive，验证最小权限和 Tunnel/TLS，再恢复流量。
 
 任何轮换都必须记录变更理由、操作者、开始/结束时间、验证结果和回滚路径；不得把 secret 值写入记录。

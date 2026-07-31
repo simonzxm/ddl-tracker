@@ -23,7 +23,7 @@
 
 不连接数据库或网络：
 
-- 文本、邮箱、用户名、URL 与 proposal canonicalization。
+- 文本、用户名、URL、OIDC redirect allowlist 与 proposal canonicalization。
 - 内容指纹和精确重复判断。
 - Wilson score、tie-break 和置信状态。
 - operation dependency graph 校验。
@@ -34,12 +34,12 @@
 
 通过 module interface 测试完整行为，依赖使用 fake adapters：
 
-- Email OTP module + fake MailDelivery。
+- OIDC provider/login module + fake discovery、token endpoint 与 repository。
 - Account/session module + test repository。
 - Catalog plan module + 假 CSV。
 - Sync processor + transaction adapter。
 
-测试断言可观察结果，不读取 implementation 私有状态。生产 SMTP adapter 与 fake adapter 必须共享 contract suite。
+测试断言可观察结果，不读取 implementation 私有状态。生产 OIDC adapter 与 fake provider 必须覆盖相同的 authorization、exchange 与 identity contract。
 
 ### PostgreSQL integration
 
@@ -87,11 +87,12 @@ JSON vectors 不引用 TypeScript 特有数字、Date、Map 或 class。Swift/Ko
 
 | 场景 | 期望 |
 |---|---|
-| 非允许域名请求验证码 | 通用拒绝，不泄露账户存在性 |
-| 旧 challenge 有效，新邮件发送失败 | 旧 challenge 继续有效 |
-| 第 6 次错误验证码 | challenge locked |
-| 首次验证后未注册 username | 业务接口拒绝 registration token |
-| 并发注册同 username | 仅一个成功，另一个 `username_taken` |
+| 非 allowlist callback 发起登录 | `invalid_request`，不创建 transaction |
+| state 被篡改或 transaction 过期 | callback 拒绝，不调用 token endpoint |
+| Provider callback 并发重放 | 只有一个请求能原子进入 `exchanging` |
+| ID Token signature/issuer/audience/nonce 不匹配 | 登录失败，不创建账户或 session |
+| 首次 OIDC 登录 | user、OIDC identity、session 原子自动创建 |
+| 并发首次登录或 username 碰撞 | identity 只创建一次，username 使用确定性 fallback |
 | session 30 天无活动或 180 天绝对时间 | unauthenticated |
 | 暂停账户 | 所有 session 立即无效 |
 | 删除账户 | 私人数据消失，公开贡献显示已注销用户 |
@@ -199,9 +200,11 @@ fixture 必须包含：
 - 所有对象级权限做跨 user negative test。
 - SQL/HTML/control-character/超长输入。
 - URL 拒绝非 HTTPS、credential、畸形 host；后端不 fetch URL。
-- OTP 响应不区分已有/新账户。
+- OIDC state、authorization code、exchange code 与 ID Token 不出现在日志、错误或浏览器最终 session URL。
+- callback redirect 只能落到 exact allowlist；开放重定向测试必须失败。
+- exchange code 必须短期、单用途；callback 和 exchange 并发重放只有一个成功。
 - 限流跨 isolate 使用持久/edge 层而非 global memory。
-- Token、OTP、email、private body 不出现在日志和 error snapshot。
+- Bearer token、OIDC code/token/subject、email 与 private body 不出现在日志和 error snapshot。
 - Bootstrap 只能成功一次。
 - 最后一名 maintainer 不可移除。
 - Reporter identity 不进入 public event。
@@ -212,7 +215,7 @@ fixture 必须包含：
 
 不维护长期 staging。每次发布至少验证：
 
-- Remote dev：真实 Worker runtime、Hyperdrive/VPC/Tunnel `SELECT 1`、schema version、SMTP allowlist 投递。
+- Remote dev：真实 Worker runtime、Hyperdrive/VPC/Tunnel `SELECT 1`、schema version、OIDC discovery 与受控登录。
 - Preview URL：live/ready、OpenAPI、auth 参数错误、已授权只读目录和 snapshot。
 - Production deploy 后：相同只读 smoke、一次受控登录、日志与错误率。
 

@@ -2,6 +2,6 @@
 status: accepted
 ---
 
-# 在已验证校内身份处分隔认证方式与账户会话
+# 在已验证 OIDC 身份处分隔认证协议与账户会话
 
-邮箱验证码认证封装验证码生成、限流、过期、校验和邮件投递，并通过可替换的邮件投递 interface 使用飞书 SMTP；它成功后只产出已验证校内身份。未来的 CAS 或 OAuth 各自保留独立交互流程，但产出同一结果交给账户与会话 module，避免用一个带大量协议分支的万能认证 interface 耦合所有登录方式。
+OIDC adapter 封装 discovery、authorization code + PKCE、token exchange 与 ID Token 校验；它成功后只产出 `VerifiedOidcIdentity`。账户与会话 module 只依赖已验证的 `(issuer, subject)` 和可选 profile claims，不知道 state、nonce、PKCE、JWKS 或 Provider endpoint。未来新增 Provider 时保留独立协议 adapter，并在已验证身份结果处汇合，避免用带大量协议分支的万能登录 interface 耦合所有方式。

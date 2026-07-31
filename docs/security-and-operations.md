@@ -12,7 +12,7 @@
 
 ### 仅当前用户
 
-- 邮箱与校内身份 provider subject。
+- OIDC issuer/subject 与 Provider 返回的可选 email/profile claims。
 - sessions 与设备 metadata。
 - 关注教学班、个人待办、个人任务详情和个人任务状态。
 - 自己的准确性判断。
@@ -26,59 +26,39 @@
 
 ### Secrets
 
-- session token、registration token、bootstrap token。
-- OTP HMAC key、session token pepper。
-- SMTP 凭据。
+- session token、短期 OIDC exchange code、bootstrap token。
+- OIDC transaction encryption key、session token pepper。
 - Hyperdrive、Tunnel/VPC 与备份凭据。
 
 日志、错误响应、OpenAPI 示例和测试 fixture 不能包含 secret 或真实私人正文。
 
-## 邮箱认证
+## OIDC 认证
 
-只接受部署配置中的校内邮箱域名。邮箱先做确定性规范化，再查询 institutional identity；无论账户是否已存在，请求验证码都返回相同形状的响应，避免账户枚举。
+生产只信任配置中的 `OIDC_ISSUER` 与已注册 public client。登录使用 authorization code + PKCE S256：
 
-默认 challenge 规则：
+- `/auth/oidc/start` 只接受严格 allowlist 中的客户端 callback。
+- 服务端生成随机 state、nonce 与 PKCE verifier；数据库只保存 state HMAC，并用 `OIDC_TRANSACTION_SECRET` 通过 AES-GCM 加密 nonce/verifier。
+- Provider callback 必须校验 state，原子 claim transaction，再向 token endpoint 兑换 code。
+- ID Token 必须验证 RS256 signature、issuer、audience、expiry 与 nonce；账户身份只使用 `(issuer, subject)`。
+- Provider callback 不把本地 bearer token放入 URL，只重定向一个 10 分钟内有效、单用途的 exchange code。
+- transaction 状态为 `pending → exchanging → completed → consumed`，失败进入 `failed`；过期或完成记录最多保留 24 小时。
+- discovery、token endpoint 与 JWKS 必须是 HTTPS，错误响应不得泄露 Provider payload、token 或内部 endpoint 细节。
 
-- 6 位数字，使用 Web Crypto 生成。
-- 10 分钟过期。
-- 最多 5 次校验尝试。
-- 同一邮箱 60 秒后才能重发。
-- 一个邮箱只有一个 current challenge。
-- 数据库只保存 `HMAC(server_secret, challenge_id || normalized_email || code)`，不保存明文 code。
-- 校验使用 constant-time comparison。
-- 成功后立即消费；过期 challenge 最迟 24 小时后清理。
+OIDC Provider 是独立信任边界。Client ID、固定 callback 与客户端 callback allowlist 是 non-secret config；Provider client secret 不存在，PKCE 是必须条件。
 
-发送流程不能在数据库事务中等待 SMTP：
+## OIDC 自动建号与 session
 
-1. 生成 pending challenge。
-2. 通过 `MailDelivery` 发送。
-3. 发送成功后原子激活新 challenge 并替换旧 challenge。
-4. 发送失败则新 challenge 不可验证，旧 challenge 在原有效期内继续有效。
+OIDC exchange 成功时：
 
-响应不能泄露 SMTP provider 的内部错误。可重试投递故障返回统一 `temporarily_unavailable` 并记录安全脱敏日志。
-
-## 飞书 SMTP
-
-- 生产 adapter 使用飞书企业邮箱提供的 TLS SMTP endpoint，端口必须是 provider 支持的 465 或 587；禁止 port 25。
-- Host、port、username、password/app credential 和 from address 通过 config/secrets 注入。
-- 必须验证服务器证书；不能接受 insecure TLS 或跳过 hostname verification。
-- 只发送事务验证码，不发送营销、提醒或批量邮件。
-- 自动测试使用 fake SMTP adapter；remote smoke 只向维护者 allowlist 邮箱发送。
-- `MailDelivery` interface 隐藏 SMTP 协议，未来可替换 Cloudflare Email Service 或 HTTP provider。
-
-## Registration 与 session
-
-邮箱验证成功时：
-
-- 已有 identity：签发设备 session。
-- 新 identity：签发短期、单用途 registration token；提交合法唯一 username 后才创建 user、identity 和 session。
+- 已有 `(issuer, subject)` identity：更新最后登录 metadata 并签发新的设备 session。
+- 新 identity：从已验证 claims 生成稳定、唯一的初始 username，原子创建 user、OIDC identity 与 session；之后可通过 profile API 修改公开资料。
 
 Session 使用至少 256 bits Web Crypto 随机 opaque bearer token：
 
 - 响应只返回一次明文 token。
 - 数据库保存固定长度 HMAC/hash 与 token ID，不保存明文。
 - 每台设备独立记录 client metadata、created at、last seen、idle expiry 和 absolute expiry。
-- 30 天无活动过期；创建后 180 天绝对过期，必须重新验证邮箱。
+- 30 天无活动过期；创建后 180 天绝对过期，必须重新完成 OIDC 登录。
 - last seen 按窗口节流更新，不能每请求写库。
 - 用户可撤销单个或全部 session；暂停、删除账户立即撤销全部。
 - Bearer token 只经 HTTPS 传输；客户端负责放入 Keychain/Keystore 等系统安全存储。
@@ -100,23 +80,22 @@ Session 使用至少 256 bits Web Crypto 随机 opaque bearer token：
 
 ## 限流与资源保护
 
-限流分为 Cloudflare edge 层与 PostgreSQL 持久层。验证码请求的源 IP 从 Cloudflare `CF-Connecting-IP` 获取，先加用途前缀并做 HMAC，再使用 PostgreSQL 计数；数据库不保存原始 IP，Worker module global 也不保存计数。WAF/Rate Limiting 在权限允许时作为更靠前的额外防线。
+限流分为 Cloudflare edge 层与 PostgreSQL 持久层。OIDC start 的源 IP 从 Cloudflare `CF-Connecting-IP` 获取，先加用途前缀并做 HMAC，再使用 PostgreSQL 计数；数据库不保存原始 IP，Worker module global 也不保存计数。WAF/Rate Limiting 在权限允许时作为更靠前的额外防线。
 
 默认初始值：
 
 | 范围 | 默认限制 |
 |---|---|
-| 请求验证码 / email | 1/min、5/hour、10/day |
-| 请求验证码 / IP | 20/hour、50/day |
-| 校验 challenge | 每 challenge 5 次 |
-| 注册尝试 / registration token | 10 次 |
+| OIDC start / IP | 20/hour、50/day |
+| OIDC callback / transaction | state、expiry 与原子 claim 限制为一次 |
+| OIDC exchange code | 10 分钟内、单用途 |
 | sync / user | 30/min，burst 5 |
 | 普通 authenticated reads / user | 120/min |
 | 管理 mutation / maintainer | 30/min |
 | sync request body | 512 KiB |
 | sync operations | 100 |
 
-阈值是配置，不进入客户端逻辑。所有 429 响应包含 `retry_after`；错误 message 不说明是 IP、邮箱还是账户命中限制。持续攻击应优先在 Cloudflare WAF/rate limiting 层拦截，数据库限流保证 IP、邮箱与账户规则在所有 Worker 实例间一致。
+阈值是配置，不进入客户端逻辑。所有 429 响应包含 `retry_after`；错误 message 不说明具体命中范围。持续攻击应优先在 Cloudflare WAF/rate limiting 层拦截，数据库限流保证 IP 与账户规则在所有 Worker 实例间一致。
 
 ## 输入与内容安全
 
@@ -126,7 +105,7 @@ Session 使用至少 256 bits Web Crypto 随机 opaque bearer token：
 - URL 只接受绝对 HTTPS URL；后端不主动 fetch 提案 URL，避免 SSRF。
 - 文本统一 Unicode NFC；拒绝 NUL 与不允许控制字符。
 - SQL 始终由 Drizzle 或参数化查询产生，禁止拼接输入。
-- 错误响应不包含 SQL、stack、SMTP reply、数据库主机或 Cloudflare binding ID。
+- 错误响应不包含 SQL、stack、OIDC token/provider payload、数据库主机或 Cloudflare binding ID。
 
 默认长度：
 
@@ -176,31 +155,31 @@ MVP 使用 cache-disabled Hyperdrive 配置，保留连接池，不使用 query 
 ## Secrets 与配置
 
 - `wrangler.jsonc` 只保存 non-secret vars、binding names 和 resource IDs。
-- Workers secrets 保存 SMTP credential、HMAC/pepper 和 bootstrap token。
+- Workers secrets 保存 OIDC transaction encryption key、token pepper、sync key 和 bootstrap token。
 - 临时 Migration Worker 的一次性 token 通过权限为 `0600` 的临时 secrets file 注入，结束后随 Worker 和本地临时目录删除；不能复用生产 API secret。
 - 本地 `.dev.vars`/`.env`、课程 CSV、数据库 dump、证书私钥和备份配置全部 gitignore。
 - 绑定类型由 `wrangler types` 生成，config/binding 改动后必须重新生成并提交类型 diff。
 - VPS secrets 使用 root-readable secret file 或专用 secret manager，不能出现在 shell history、systemd unit 明文或仓库。
-- 日志对邮箱使用不可逆短 hash 关联，不记录完整地址。
+- 日志不记录 OIDC subject、email、state、authorization code、exchange code 或 ID Token。
 
 ## Observability
 
 Worker 开启 Workers Logs 与 traces，使用结构化 JSON。每个请求生成或接受可信格式 request ID，并关联：
 
 - method、规范化 route、status、duration。
-- authenticated user 的不可逆内部 diagnostic ID，不记录邮箱。
+- authenticated user 的不可逆内部 diagnostic ID，不记录 OIDC subject 或 email。
 - sync batch 的 operation 数、applied/rejected/replayed 数和 event 数。
 - operation ID、import ID、audit ID 与数据库错误类别。
-- SMTP 投递类别和 provider latency，不记录验证码或完整 recipient。
+- OIDC discovery/token exchange 的脱敏结果类别和 latency，不记录 code、token、subject 或完整 email。
 
-严禁记录 bearer token、registration token、OTP、私人正文、评论正文、举报正文或 raw CSV 行。
+严禁记录 bearer token、OIDC state/authorization code/exchange code/ID Token、私人正文、评论正文、举报正文或 raw CSV 行。
 
 健康检查：
 
 - `/api/health/live` 只证明 Worker handler 可运行，不查数据库。
 - `/api/health/ready` 用 fresh Hyperdrive 执行轻量 `SELECT 1` 和 schema version 检查，只返回通用 ready/not-ready，不暴露依赖信息。
 
-初始告警至少覆盖 5xx rate、P95/P99 latency、数据库连接失败、SMTP 失败率、验证码异常量、sync rejection spike、Tunnel disconnected 和备份失败。
+初始告警至少覆盖 5xx rate、P95/P99 latency、数据库连接失败、OIDC discovery/token exchange 失败率、登录异常量、sync rejection spike、Tunnel disconnected 和备份失败。
 
 ## 本地、remote dev 与发布
 
@@ -210,7 +189,7 @@ Worker 开启 Workers Logs 与 traces，使用结构化 JSON。每个请求生�
 
 - `workerd`/Miniflare 运行 Worker。
 - 临时真实 PostgreSQL 执行全部写入、事务、并发和 migration 测试。
-- fake SMTP 接收验证码。
+- fake OIDC provider 覆盖 authorization、token exchange 与 claim verification。
 - 真实课程数据不进入 fixture。
 
 ### Remote dev
@@ -219,7 +198,7 @@ Worker 开启 Workers Logs 与 traces，使用结构化 JSON。每个请求生�
 
 - 验证真实 Hyperdrive/VPC/Tunnel 链路与 `SELECT 1`。
 - 验证 schema version 和 runtime database permissions。
-- 向维护者 allowlist 邮箱发送一封验证码 smoke 邮件。
+- 使用维护者测试账户完成一次受控 OIDC 登录；不把 session token 写入日志。
 - 默认不执行持久化业务写入；remote session 使用完即停。
 
 ### Preview 与发布
@@ -229,7 +208,7 @@ Worker 开启 Workers Logs 与 traces，使用结构化 JSON。每个请求生�
 3. 在本地临时 PostgreSQL 使用与生产相同的 generated bundle 和 migration executor 应用待发布 migrations。
 4. 执行 `pnpm db:migrate:prod`，由临时 Migration Worker 通过独立 migration Hyperdrive 应用已审查 migration；不可事务化操作必须有单独 rollback/runbook。
 5. `wrangler versions upload` 生成 Preview URL，限制为维护者访问。
-6. 对 preview 运行 live、ready、auth parameter、OpenAPI、read-only API 与 SMTP smoke。
+6. 对 preview 运行 live、ready、OIDC 参数、OpenAPI、read-only API 与受控登录 smoke。
 7. 部署已验证 version；发布后重复 smoke，并监控错误率。
 
 Worker rollback 使用上一 version。数据库 migration 优先 forward-fix；破坏性 schema 变更必须使用 expand → migrate → contract，保证旧 Worker 在切流期间仍兼容。
@@ -251,8 +230,7 @@ VPS 使用 pgBackRest 将加密备份与 WAL 持续归档到独立 R2 bucket：
 
 | 数据 | 保留规则 |
 |---|---|
-| OTP challenge | 消费或过期后最多 24 小时 |
-| registration token | 短期过期后最多 24 小时 |
+| OIDC login transaction | consumed、failed 或过期后最多 24 小时 |
 | revoked/expired session | 30 天诊断窗口后清理，保留必要审计引用 |
 | operation receipts | 180 天 |
 | sync events | 至少 180 天 |
@@ -269,8 +247,7 @@ VPS 使用 pgBackRest 将加密备份与 WAL 持续归档到独立 R2 bucket：
 ## 安全事件最低 runbook
 
 - Session 泄露：撤销单 session/全部 sessions，轮换 pepper 需要全体重新登录。
-- SMTP credential 泄露：立即吊销飞书 credential、替换 secret、remote smoke、检查投递日志。
 - Database credential 泄露：撤销 role credential、更新 Hyperdrive/VPC config、验证最小权限和审计。
-- HMAC key 泄露：轮换后使所有未使用 OTP/registration token 失效。
+- OIDC transaction secret 泄露：立即轮换，使所有未完成 transaction/exchange code 失效，并审查异常 callback 与 token exchange 记录。
 - 数据损坏：停止写入、保留证据、从时间点备份恢复到隔离数据库，比较后再切换。
 - Tunnel 故障：检查 connector health、VPC service route、origin reachability 与 TLS，不能通过临时开放公网 5432 绕过。

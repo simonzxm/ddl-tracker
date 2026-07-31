@@ -10,7 +10,7 @@
         ▼
 Cloudflare Worker（Hono HTTP shell）
         │
-        ├── 认证与账户 modules ── MailDelivery interface ── 飞书 SMTP
+        ├── 认证与账户 modules ── OidcProvider interface ── auth.nju.at
         ├── 课程目录与维护者 modules
         ├── 共享任务、私人任务、评论与审核 modules
         └── 同步 module
@@ -37,7 +37,7 @@ PostgreSQL 是唯一在线业务权威存储。R2 只存放 PostgreSQL 备份，
 - Drizzle ORM + `pg`：默认数据库访问方式；复杂事务、锁和 PostgreSQL 特性可使用参数化显式 SQL。
 - Cloudflare Workers + Hyperdrive，启用 `nodejs_compat`。
 - VPS PostgreSQL，通过 Workers VPC + remotely managed Cloudflare Tunnel 私网连接。
-- 飞书企业邮箱 SMTP，必须使用 TLS 端口；Workers 不允许出站 SMTP port 25。
+- `jose` + OIDC discovery：authorization code、PKCE S256、RS256 ID Token 校验。
 - Vitest、`@cloudflare/vitest-pool-workers` 和真实临时 PostgreSQL。
 
 版本锁定应由 lockfile 完成。实现开始时必须按当天官方文档确认最低兼容版本，不能从本文复制未来可能过时的 package version。
@@ -62,8 +62,8 @@ docs/
 | Module | 对外 interface | 隐藏的复杂度 |
 |---|---|---|
 | HTTP shell | 已校验 request → module command | Hono、CORS、认证 middleware、错误映射、request ID |
-| Email OTP authentication | request challenge、verify challenge | 域名校验、HMAC、冷却、尝试次数、SMTP 状态机 |
-| Account and session | verified identity → account/session | 注册、opaque token、哈希、撤销、暂停、删除 |
+| OIDC authentication | start、callback、exchange | discovery、state、nonce、PKCE、ID Token 校验、一次性 exchange code |
+| Account and session | verified OIDC identity → account/session | 自动建号、opaque token、哈希、撤销、暂停、删除 |
 | Course catalog | 查询、导入计划、应用导入 | CSV 映射、外部键、停用、审计、raw source |
 | Shared tasks | 创建任务/提案、投票、合并 | 不变式、聚合计数、指纹、权限、同步事件 |
 | Personal tasks | CRUD、合并、发布、状态 | 私密性、revision、转换、无数据丢失 |
@@ -73,10 +73,10 @@ docs/
 
 认证 module 有两个关键 seam：
 
-1. `MailDelivery`：飞书 SMTP adapter 与测试 fake adapter。
-2. `VerifiedInstitutionalIdentity`：Email OTP、未来 CAS/OAuth 各自完成交互后产出相同结果；账户与 session 不知道验证协议细节。
+1. `OidcProvider`：隐藏 discovery、authorization URL、token exchange 与 ID Token 校验；测试使用 fake provider。
+2. `VerifiedOidcIdentity`：只把已验证的 `(issuer, subject)` 与可选 profile claims 交给账户 module；账户与 session 不处理 OIDC 协议细节。
 
-不要建立带大量 `provider_type` 分支的万能 login flow。未来 provider 可以有自己的 routes，只在已验证身份结果处汇合。
+登录使用 public OIDC client + PKCE。Provider callback 只落到固定 API callback；API 再把短期、单用途 exchange code 重定向给严格 allowlist 中的客户端 callback。浏览器 URL 不携带本地 bearer session token。
 
 ## HTTP 表面
 
@@ -88,9 +88,9 @@ docs/
 GET    /api/health/live
 GET    /api/health/ready
 
-POST   /api/v1/auth/email/challenges
-POST   /api/v1/auth/email/verifications
-POST   /api/v1/accounts/registrations
+POST   /api/v1/auth/oidc/start
+GET    /api/v1/auth/oidc/callback
+POST   /api/v1/auth/oidc/exchange
 GET    /api/v1/sessions
 DELETE /api/v1/sessions/:session_id
 DELETE /api/v1/sessions
@@ -134,8 +134,8 @@ Bearer API 不使用 cookie。为第三方客户端支持 CORS 时不得启用 c
 |---|---|
 | `users` | UUIDv7；`username_key` 唯一；公开资料；`active/suspended/deleted` |
 | `user_roles` | `(user_id, role)` 唯一；至少保留一名 maintainer |
-| `institutional_identities` | `(provider, normalized_subject)` 唯一；私有；删除账户时删除 |
-| `auth_challenges` | HMAC、过期、尝试数、发送状态；同 subject 一个 current challenge |
+| `oidc_identities` | `(issuer, subject)` 唯一；私有；记录可选 email 与最后登录时间；删除账户时删除 |
+| `oidc_login_transactions` | state HMAC、加密 nonce/PKCE verifier、严格 redirect、一次性 exchange code、过期与状态机 |
 | `sessions` | 随机 token 哈希、设备 metadata、last seen、idle/absolute expiry、revoked_at |
 | `academic_terms` | 外部学期代码唯一；名称、日期、状态 override、source metadata |
 | `courses` | `(term_id, external_course_code)` 唯一；课程名称、学分 |
@@ -188,7 +188,7 @@ Bearer API 不使用 cookie。为第三方客户端支持 CORS 时不得启用 c
 
 同步批次按数组顺序处理，使用 savepoint 隔离每条操作。某条业务校验失败回滚到该 savepoint；后续独立操作继续，依赖失败操作的条目返回 `dependency_failed`。数据库连接、序列化或提交级故障必须回滚整个批次，不能返回虚假部分成功。
 
-不要在数据库事务中等待 SMTP 或其他外部网络 I/O。验证码 module 使用 pending → send → activate 的明确状态机，新邮件发送成功后才替换旧 challenge。
+不要在数据库事务中等待 OIDC token endpoint 或其他外部网络 I/O。Callback 先原子把 transaction 从 `pending` 变为 `exchanging`，再执行外部 code exchange；成功后写入已验证 identity 与一次性 exchange code，失败则标记 `failed`。
 
 ## 数据库访问
 
@@ -224,7 +224,7 @@ Bearer API 不使用 cookie。为第三方客户端支持 CORS 时不得启用 c
 ```
 
 - 绑定类型必须由 `wrangler types` 生成，禁止手写 Env。
-- non-secret config 放在 `vars`；SMTP 凭据、HMAC key 和 bootstrap token 使用 Workers secrets。
+- non-secret OIDC issuer、client ID、固定 callback 与客户端 callback allowlist 放在 `vars`；transaction encryption key、token pepper、sync key 和 bootstrap token 使用 Workers secrets。
 - 每个 Promise 必须 await、return 或交给 `ctx.waitUntil()`；lint 开启 no-floating-promises。
 - 同步 JSON 有应用级大小上限；先检查可信格式的 `Content-Length`，读取时仍按实际 bytes 强制上限，不能只信 header，也不能缓冲无界输入。
 - 不使用 module global 保存当前用户、数据库 client 或请求缓存。

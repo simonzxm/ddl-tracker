@@ -6,16 +6,16 @@ MVP 包含 Cloudflare Worker API、PostgreSQL 数据模型与迁移、离线同�
 
 ## 已实现能力
 
-- 校内邮箱验证码认证、opaque bearer session、账户资料与删除。
+- OIDC authorization code + PKCE 登录、自动建号、opaque bearer session、账户资料与删除。
 - 学期、课程、教学班查询，以及专用 `.csv.gz` 上传、可审阅 plan、原子 apply 和可续传兼容导入。
 - 账户快照、教学班快照、增量 push/pull、幂等 receipt 与 cursor retention。
 - 共享任务、不可变提案、准确性判断、评论修订与举报。
 - 私人待办、私人任务详情、个人任务状态与显式发布。
 - 维护者 bootstrap、角色、账户处置、内容审核、任务合并与审计。
 - OpenAPI 3.1、Wilson score 参考实现和语言无关测试向量。
-- Cloudflare Workers + Hyperdrive 生产入口、SMTP 验证码投递和定时数据清理。
+- Cloudflare Workers + Hyperdrive 生产入口、OIDC Provider 集成和定时数据清理。
 
-明确不做：任何客户端 UI、多学校、学生创建课程、提醒或推送、日历订阅、任务类型枚举、服务端排名、全文任务搜索、CAS/OAuth、管理后台。
+明确不做：任何客户端 UI、多学校、学生创建课程、提醒或推送、日历订阅、任务类型枚举、服务端排名、全文任务搜索、多 Provider 账户绑定、管理后台。
 
 ## 环境要求
 

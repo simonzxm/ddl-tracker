@@ -10,7 +10,6 @@ import {
 } from './schema.js';
 import { parseUsername } from './validation.js';
 
-const emailSchema = z.string().trim().min(3).max(320);
 const usernameSchema = z.string().transform((value, context) => {
   try {
     return parseUsername(value);
@@ -23,6 +22,19 @@ const usernameSchema = z.string().transform((value, context) => {
   }
 });
 const deviceMetadataSchema = z.record(z.string(), z.unknown());
+const redirectUriSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(2048)
+  .refine((value) => {
+    try {
+      const url = new URL(value);
+      return url.username === '' && url.password === '';
+    } catch {
+      return false;
+    }
+  }, 'Redirect URI must be an absolute URL without credentials.');
 
 export const publicUserSchema = z
   .object({
@@ -42,32 +54,22 @@ export const currentUserSchema = publicUserSchema
   })
   .strict();
 
-export const emailChallengeRequestSchema = z
-  .object({ email: emailSchema })
+export const oidcAuthorizationRequestSchema = z
+  .object({ redirect_uri: redirectUriSchema })
   .strict();
 
-export const emailChallengeResponseSchema = z
+export const oidcAuthorizationResponseSchema = z
   .object({
-    challenge_id: uuidV7Schema,
+    authorization_url: z.url(),
     expires_at: rfc3339TimestampSchema,
   })
   .strict();
 
-export const emailVerificationRequestSchema = z
+export const oidcExchangeRequestSchema = z
   .object({
-    challenge_id: uuidV7Schema,
-    email: emailSchema,
-    code: z.string().regex(/^\d{6}$/u),
+    code: opaqueTokenSchema,
     device_name: z.union([normalizedTextSchema(1, 100), z.null()]).default(null),
     device_metadata: deviceMetadataSchema.default({}),
-  })
-  .strict();
-
-export const registrationVerificationResponseSchema = z
-  .object({
-    kind: z.literal('registration'),
-    registration_token: opaqueTokenSchema,
-    expires_at: rfc3339TimestampSchema,
   })
   .strict();
 
@@ -78,21 +80,6 @@ export const sessionVerificationResponseSchema = z
     token_type: z.literal('Bearer'),
     expires_at: rfc3339TimestampSchema,
     user: currentUserSchema,
-  })
-  .strict();
-
-export const verificationResponseSchema = z.discriminatedUnion('kind', [
-  registrationVerificationResponseSchema,
-  sessionVerificationResponseSchema,
-]);
-
-export const accountRegistrationRequestSchema = z
-  .object({
-    registration_token: opaqueTokenSchema,
-    username: usernameSchema,
-    display_name: z.union([normalizedTextSchema(1, 64), z.null()]).default(null),
-    device_name: z.union([normalizedTextSchema(1, 100), z.null()]).default(null),
-    device_metadata: deviceMetadataSchema.default({}),
   })
   .strict();
 
@@ -121,10 +108,7 @@ export const profileUpdateRequestSchema = z
 
 export type PublicUserWire = z.infer<typeof publicUserSchema>;
 export type CurrentUserWire = z.infer<typeof currentUserSchema>;
-export type EmailChallengeRequest = z.infer<typeof emailChallengeRequestSchema>;
-export type EmailVerificationRequest = z.infer<
-  typeof emailVerificationRequestSchema
+export type OidcAuthorizationRequest = z.infer<
+  typeof oidcAuthorizationRequestSchema
 >;
-export type AccountRegistrationRequest = z.infer<
-  typeof accountRegistrationRequestSchema
->;
+export type OidcExchangeRequest = z.infer<typeof oidcExchangeRequestSchema>;

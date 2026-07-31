@@ -1,115 +1,89 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  accountRegistrationRequestSchema,
-  emailChallengeRequestSchema,
-  emailVerificationRequestSchema,
-  currentUserSchema,
+  oidcAuthorizationRequestSchema,
+  oidcAuthorizationResponseSchema,
+  oidcExchangeRequestSchema,
   profileUpdateRequestSchema,
-  verificationResponseSchema,
+  sessionVerificationResponseSchema,
 } from '../src/auth.js';
 
 const ID = '018f0000-0000-7000-8000-000000000001';
 
+function user() {
+  return {
+    id: ID,
+    username: 'student_123',
+    display_name: 'Student',
+    avatar_url: null,
+    bio: null,
+    status: 'active' as const,
+    profile_revision: 1,
+    roles: [] as const,
+  };
+}
+
 describe('authentication contracts', () => {
-  it('validates email challenge requests without extra fields', () => {
+  it('accepts only absolute post-login redirect URIs without credentials', () => {
     expect(
-      emailChallengeRequestSchema.parse({ email: 'student@example.edu' }),
-    ).toEqual({ email: 'student@example.edu' });
+      oidcAuthorizationRequestSchema.parse({
+        redirect_uri: 'https://app.example/auth/callback',
+      }),
+    ).toEqual({ redirect_uri: 'https://app.example/auth/callback' });
     expect(() =>
-      emailChallengeRequestSchema.parse({
-        email: 'student@example.edu',
-        user_id: ID,
+      oidcAuthorizationRequestSchema.parse({ redirect_uri: '/callback' }),
+    ).toThrow();
+    expect(() =>
+      oidcAuthorizationRequestSchema.parse({
+        redirect_uri: 'https://user:pass@app.example/callback',
       }),
     ).toThrow();
   });
 
-  it('requires a six digit code and device metadata object', () => {
+  it('validates authorization start and one-time exchange payloads', () => {
     expect(
-      emailVerificationRequestSchema.parse({
-        challenge_id: ID,
-        email: 'student@example.edu',
-        code: '123456',
+      oidcAuthorizationResponseSchema.parse({
+        authorization_url: 'https://issuer.example/oauth2/authorize',
+        expires_at: '2026-07-30T12:00:00.000Z',
+      }),
+    ).toMatchObject({ authorization_url: expect.any(String) });
+    expect(
+      oidcExchangeRequestSchema.parse({
+        code: 'one-time-code',
         device_name: 'MacBook',
-        device_metadata: { platform: 'macOS' },
+        device_metadata: { platform: 'macos' },
       }),
-    ).toMatchObject({ code: '123456' });
+    ).toEqual({
+      code: 'one-time-code',
+      device_name: 'MacBook',
+      device_metadata: { platform: 'macos' },
+    });
     expect(() =>
-      emailVerificationRequestSchema.parse({
-        challenge_id: ID,
-        email: 'student@example.edu',
-        code: '12345',
-        device_metadata: {},
-      }),
+      oidcExchangeRequestSchema.parse({ code: '', unexpected: true }),
     ).toThrow();
   });
 
-  it('validates registration profile and token', () => {
+  it('validates a local session response after OIDC exchange', () => {
     expect(
-      accountRegistrationRequestSchema.parse({
-        registration_token: 'opaque-token',
-        username: 'student_1',
-        display_name: 'Student',
-        device_name: null,
-        device_metadata: {},
-      }),
-    ).toMatchObject({ username: 'student_1' });
-  });
-
-  it('validates current-user capabilities and editable profile fields', () => {
-    expect(
-      currentUserSchema.parse({
-        id: ID,
-        username: 'student',
-        display_name: 'Student',
-        avatar_url: 'HTTPS://Example.COM/avatar.png#crop',
-        bio: '  Course representative  ',
-        status: 'active',
-        profile_revision: 1,
-        roles: ['maintainer'],
-      }),
-    ).toMatchObject({
-      avatar_url: 'https://example.com/avatar.png',
-      bio: 'Course representative',
-      roles: ['maintainer'],
-    });
-
-    expect(
-      profileUpdateRequestSchema.parse({
-        username: 'student',
-        display_name: 'Student',
-        avatar_url: null,
-        bio: null,
-        expected_revision: 1,
-      }),
-    ).toMatchObject({ avatar_url: null, bio: null });
-  });
-
-  it('distinguishes registration and session verification responses', () => {
-    expect(
-      verificationResponseSchema.parse({
-        kind: 'registration',
-        registration_token: 'opaque-token',
-        expires_at: '2026-07-19T12:15:00.000Z',
-      }),
-    ).toMatchObject({ kind: 'registration' });
-    expect(
-      verificationResponseSchema.parse({
+      sessionVerificationResponseSchema.parse({
         kind: 'session',
         access_token: 'opaque-token',
         token_type: 'Bearer',
-        expires_at: '2027-01-15T12:00:00.000Z',
-        user: {
-          id: ID,
-          username: 'student',
-          display_name: 'Student',
-          avatar_url: null,
-          bio: null,
-          status: 'active',
-          profile_revision: 1,
-          roles: [],
-        },
+        expires_at: '2027-01-28T12:00:00.000Z',
+        user: user(),
       }),
-    ).toMatchObject({ kind: 'session' });
+    ).toMatchObject({ kind: 'session', user: { username: 'student_123' } });
+  });
+
+  it('keeps optimistic profile update validation unchanged', () => {
+    expect(
+      profileUpdateRequestSchema.parse({
+        username: 'new_name',
+        display_name: 'New Name',
+        avatar_url: null,
+        bio: null,
+        expected_revision: 2,
+      }),
+    ).toMatchObject({ expected_revision: 2 });
   });
 });

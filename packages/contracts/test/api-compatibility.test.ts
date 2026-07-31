@@ -9,7 +9,7 @@ import {
 
 const rawMatrix: unknown = JSON.parse(
   readFileSync(
-    new URL('../vectors/api-compatibility-v2.0.json', import.meta.url),
+    new URL('../vectors/api-compatibility-v3.0.json', import.meta.url),
     'utf8',
   ),
 );
@@ -33,12 +33,19 @@ describe('API compatibility matrix', () => {
       '1.0.0->1.0.0',
       '1.0.0->1.1.0',
       '1.0.0->2.0.0',
+      '1.0.0->3.0.0',
       '1.1.0->1.0.0',
       '1.1.0->1.1.0',
       '1.1.0->2.0.0',
+      '1.1.0->3.0.0',
       '2.0.0->1.0.0',
       '2.0.0->1.1.0',
       '2.0.0->2.0.0',
+      '2.0.0->3.0.0',
+      '3.0.0->1.0.0',
+      '3.0.0->1.1.0',
+      '3.0.0->2.0.0',
+      '3.0.0->3.0.0',
     ]);
   });
 
@@ -74,7 +81,13 @@ describe('API compatibility matrix', () => {
     expect(
       matrix.matrix.find(
         ({ client_version: client, server_version: server }) =>
-          client === '2.0.0' && server === '2.0.0',
+          client === '2.0.0' && server === '3.0.0',
+      ),
+    ).toMatchObject({ compatibility: 'incompatible', requirements: [] });
+    expect(
+      matrix.matrix.find(
+        ({ client_version: client, server_version: server }) =>
+          client === '3.0.0' && server === '3.0.0',
       ),
     ).toMatchObject({ compatibility: 'full', requirements: [] });
   });

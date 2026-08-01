@@ -137,6 +137,18 @@ pnpm db:migrate:prod
 
 破坏性变更必须采用 expand → migrate → contract。数据库回滚默认使用 forward-fix；不能在无法证明安全时反向执行 destructive migration。
 
+### 一次性完整重置例外
+
+仅当产品负责人明确授权丢弃全部数据，并且生产业务表已验证为空或该授权覆盖现有全部数据时，才允许在维护窗口内完整重建应用 schema。该流程不是普通 migration，也不能作为后续发布先例：
+
+1. 记录授权范围、当前 Worker version、数据库 journal、核心表行数和运行时权限。
+2. 在本地与独立 R2 pgBackRest repo 各创建一份新备份，并确认两份备份均为 `error=false`。
+3. 停止切流与写入；在事务内再次检查核心表行数，条件不满足时立即拒绝重置。
+4. 终止 runtime/migration 活跃连接，重建 `public` 与 `drizzle` schema，并恢复 migration owner、runtime schema usage、默认 DML/sequence 和 journal 只读权限。
+5. 从空库使用仓库当前不可变 bundle 重放全部 migrations；不得伪造、回填或改写 journal hash。
+6. 验证 journal 数量与最新 hash、runtime 最小权限、`/api/health/ready`、OIDC start、OpenAPI 和旧接口 404，再部署新 Worker。
+7. 完成后禁止直接回滚到依赖旧认证表的 Worker；故障优先 forward-fix 或从已验证备份恢复。
+
 `/api/health/ready` 验证当前 Worker 所需的 migration 已出现在 journal 中；它允许数据库继续向前迁移，但不承诺旧 Worker 与任意后续 contract migration 兼容。执行 contract 前必须确认新 Worker 已完成切流和 smoke；执行后若旧版本依赖已删除的 schema，禁止直接回滚旧 Worker。
 
 ## Remote dev smoke
@@ -196,6 +208,24 @@ pnpm exec wrangler versions deploy VERSION_ID@100% \
 - Tunnel health。
 - retention cron 最近一次结果。
 - retention 结果中的 `catalog_imports` 数量；正常情况下应接近 0，持续增长表示维护者生成 plan 后未处理。
+
+### OIDC 切换后的旧 secret 清理
+
+只有新 OIDC Worker 已完成 production smoke，且 OIDC start 与 Provider 授权页均可达后，才删除旧邮箱认证 secrets：
+
+```bash
+cd apps/api
+pnpm exec wrangler secret delete OTP_HMAC_SECRET \
+  --config wrangler.production.jsonc
+pnpm exec wrangler secret delete SMTP_USERNAME \
+  --config wrangler.production.jsonc
+pnpm exec wrangler secret delete SMTP_PASSWORD \
+  --config wrangler.production.jsonc
+pnpm exec wrangler secret list \
+  --config wrangler.production.jsonc
+```
+
+最终列表不得再包含 OTP/SMTP secrets。随后再次运行 live、ready、OIDC start 和 OpenAPI smoke；删除旧 secret 不应改变新 Worker 行为。
 
 ## Worker 回滚
 

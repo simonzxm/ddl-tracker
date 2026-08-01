@@ -39,8 +39,8 @@
 - `/auth/oidc/start` 只接受严格 allowlist 中的客户端 callback。
 - 服务端生成随机 state、nonce 与 PKCE verifier；数据库只保存 state HMAC，并用 `OIDC_TRANSACTION_SECRET` 通过 AES-GCM 加密 nonce/verifier。
 - Provider callback 必须校验 state，原子 claim transaction，再向 token endpoint 兑换 code。
-- ID Token 必须验证 RS256 signature、issuer、audience、expiry 与 nonce；账户身份只使用 `(issuer, subject)`。
-- Provider callback 不把本地 bearer token放入 URL，只重定向一个 10 分钟内有效、单用途的 exchange code。
+- ID Token 必须验证 RS256 signature、issuer、audience、nonce，并强制存在有效的 `exp`、`iat` 与 `sub` claims；账户身份只使用 `(issuer, subject)`。
+- Provider callback 不把本地 bearer token 放入 URL，只重定向一个从 callback 成功完成时开始计算、10 分钟内有效且单用途的 exchange code。
 - transaction 状态为 `pending → exchanging → completed → consumed`，失败进入 `failed`；过期或完成记录最多保留 24 小时。
 - discovery、token endpoint 与 JWKS 必须是 HTTPS，错误响应不得泄露 Provider payload、token 或内部 endpoint 细节。
 
@@ -155,7 +155,7 @@ MVP 使用 cache-disabled Hyperdrive 配置，保留连接池，不使用 query 
 ## Secrets 与配置
 
 - `wrangler.jsonc` 只保存 non-secret vars、binding names 和 resource IDs。
-- Workers secrets 保存 OIDC transaction encryption key、token pepper、sync key 和 bootstrap token。
+- Workers secrets 保存 OIDC transaction encryption key、token pepper、sync key 和 bootstrap token；从旧邮箱认证切换并完成生产 smoke 后，必须删除 `OTP_HMAC_SECRET`、`SMTP_USERNAME` 与 `SMTP_PASSWORD`。
 - 临时 Migration Worker 的一次性 token 通过权限为 `0600` 的临时 secrets file 注入，结束后随 Worker 和本地临时目录删除；不能复用生产 API secret。
 - 本地 `.dev.vars`/`.env`、课程 CSV、数据库 dump、证书私钥和备份配置全部 gitignore。
 - 绑定类型由 `wrangler types` 生成，config/binding 改动后必须重新生成并提交类型 diff。
@@ -211,7 +211,7 @@ Worker 开启 Workers Logs 与 traces，使用结构化 JSON。每个请求生�
 6. 对 preview 运行 live、ready、OIDC 参数、OpenAPI、read-only API 与受控登录 smoke。
 7. 部署已验证 version；发布后重复 smoke，并监控错误率。
 
-Worker rollback 使用上一 version。数据库 migration 优先 forward-fix；破坏性 schema 变更必须使用 expand → migrate → contract，保证旧 Worker 在切流期间仍兼容。
+Worker rollback 使用上一 version。数据库 migration 优先 forward-fix；破坏性 schema 变更必须使用 expand → migrate → contract，保证旧 Worker 在切流期间仍兼容。只有数据已被明确声明可丢弃、发布进入维护窗口、双仓库备份已验证且有专用 runbook 时，才允许执行一次性完整 schema 重建；该例外不能作为后续 migration 的先例。
 
 ## 备份与恢复
 

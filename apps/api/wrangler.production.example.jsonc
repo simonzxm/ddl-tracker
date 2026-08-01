@@ -41,5 +41,12 @@
       "binding": "AUTH_SERVER",
       "service": "authserver"
     }
+  ],
+  "workers_dev": false,
+  "routes": [
+    {
+      "pattern": "ddl.nju.at/api/*",
+      "zone_name": "210023.xyz"
+    }
   ]
 }

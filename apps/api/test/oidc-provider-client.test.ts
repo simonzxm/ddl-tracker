@@ -28,6 +28,30 @@ afterEach(() => {
 });
 
 describe('OidcProviderClient', () => {
+  it('preserves the global fetch receiver when no fetcher is supplied', async () => {
+    const fetcher = vi.fn(function (
+      this: unknown,
+      _input: string | URL | Request,
+    ) {
+      expect(this).toBe(globalThis);
+      return Promise.resolve(Response.json(discovery()));
+    });
+    vi.stubGlobal('fetch', fetcher);
+    const client = new OidcProviderClient({
+      issuer: ISSUER,
+      clientId: CLIENT_ID,
+      redirectUri: REDIRECT_URI,
+    });
+
+    await expect(
+      client.createAuthorizationUrl({
+        state: 'state',
+        nonce: 'nonce',
+        codeChallenge: 'challenge',
+      }),
+    ).resolves.toContain('/oauth2/authorize');
+  });
+
   it('discovers the provider and creates an authorization-code PKCE URL', async () => {
     const fetcher = vi.fn(async () => Response.json(discovery()));
     const client = new OidcProviderClient({
@@ -95,7 +119,9 @@ describe('OidcProviderClient', () => {
       }
       return new Response(null, { status: 404 });
     });
-    vi.stubGlobal('fetch', fetcher);
+    vi.stubGlobal('fetch', vi.fn(() => {
+      throw new Error('global fetch must not be used');
+    }));
     const client = new OidcProviderClient({
       issuer: ISSUER,
       clientId: CLIENT_ID,

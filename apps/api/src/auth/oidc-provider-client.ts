@@ -1,4 +1,4 @@
-import { createRemoteJWKSet, jwtVerify } from 'jose';
+import { createRemoteJWKSet, customFetch, jwtVerify } from 'jose';
 
 export interface VerifiedOidcIdentity {
   issuer: string;
@@ -48,7 +48,9 @@ export class OidcProviderClient implements OidcProvider {
     this.#issuer = normalizeIssuer(options.issuer);
     this.#clientId = requiredValue('OIDC client ID', options.clientId);
     this.#redirectUri = requireHttpsUrl('OIDC redirect URI', options.redirectUri);
-    this.#fetch = options.fetcher ?? fetch;
+    this.#fetch =
+      options.fetcher ??
+      ((input, init) => globalThis.fetch(input, init));
   }
 
   async createAuthorizationUrl(input: {
@@ -92,7 +94,9 @@ export class OidcProviderClient implements OidcProvider {
       throw new Error('OIDC token exchange failed.');
     }
 
-    this.#jwks ??= createRemoteJWKSet(new URL(metadata.jwks_uri));
+    this.#jwks ??= createRemoteJWKSet(new URL(metadata.jwks_uri), {
+      [customFetch]: (url, init) => this.#fetch(url, init),
+    });
     const verified = await jwtVerify(body.id_token, this.#jwks, {
       issuer: this.#issuer,
       audience: this.#clientId,

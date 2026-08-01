@@ -1,4 +1,5 @@
 import { createRemoteJWKSet, customFetch, jwtVerify } from 'jose';
+import { z } from 'zod';
 
 export interface VerifiedOidcIdentity {
   issuer: string;
@@ -21,15 +22,23 @@ export interface OidcProvider {
   }): Promise<VerifiedOidcIdentity>;
 }
 
-interface DiscoveryDocument {
-  issuer: string;
-  authorization_endpoint: string;
-  token_endpoint: string;
-  jwks_uri: string;
-  response_types_supported: string[];
-  code_challenge_methods_supported: string[];
-  id_token_signing_alg_values_supported: string[];
-}
+const discoveryDocumentSchema = z
+  .object({
+    issuer: z.string().trim().min(1),
+    authorization_endpoint: z.string().trim().min(1),
+    token_endpoint: z.string().trim().min(1),
+    jwks_uri: z.string().trim().min(1),
+    response_types_supported: z.array(z.string()),
+    code_challenge_methods_supported: z.array(z.string()),
+    id_token_signing_alg_values_supported: z.array(z.string()),
+  })
+  .passthrough();
+
+const tokenResponseSchema = z
+  .object({ id_token: z.string().min(1) })
+  .passthrough();
+
+type DiscoveryDocument = z.infer<typeof discoveryDocumentSchema>;
 
 export class OidcProviderClient implements OidcProvider {
   readonly #issuer: string;
@@ -89,15 +98,15 @@ export class OidcProviderClient implements OidcProvider {
       }),
       signal: AbortSignal.timeout(15_000),
     });
-    const body = await readJsonObject(response);
-    if (!response.ok || typeof body.id_token !== 'string') {
+    const body = tokenResponseSchema.safeParse(await readJson(response));
+    if (!response.ok || !body.success) {
       throw new Error('OIDC token exchange failed.');
     }
 
     this.#jwks ??= createRemoteJWKSet(new URL(metadata.jwks_uri), {
       [customFetch]: (url, init) => this.#fetch(url, init),
     });
-    const verified = await jwtVerify(body.id_token, this.#jwks, {
+    const verified = await jwtVerify(body.data.id_token, this.#jwks, {
       issuer: this.#issuer,
       audience: this.#clientId,
       algorithms: ['RS256'],
@@ -132,21 +141,11 @@ export class OidcProviderClient implements OidcProvider {
       headers: { accept: 'application/json' },
       signal: AbortSignal.timeout(10_000),
     });
-    const value = await readJsonObject(response);
-    if (!response.ok) throw new Error('OIDC discovery failed.');
-    const metadata: DiscoveryDocument = {
-      issuer: stringField(value, 'issuer'),
-      authorization_endpoint: stringField(value, 'authorization_endpoint'),
-      token_endpoint: stringField(value, 'token_endpoint'),
-      jwks_uri: stringField(value, 'jwks_uri'),
-      response_types_supported: stringArray(value.response_types_supported),
-      code_challenge_methods_supported: stringArray(
-        value.code_challenge_methods_supported,
-      ),
-      id_token_signing_alg_values_supported: stringArray(
-        value.id_token_signing_alg_values_supported,
-      ),
-    };
+    const parsed = discoveryDocumentSchema.safeParse(await readJson(response));
+    if (!response.ok || !parsed.success) {
+      throw new Error('OIDC discovery failed.');
+    }
+    const metadata: DiscoveryDocument = parsed.data;
     if (normalizeIssuer(metadata.issuer) !== this.#issuer) {
       throw new Error('OIDC discovery issuer mismatch.');
     }
@@ -168,32 +167,16 @@ export class OidcProviderClient implements OidcProvider {
   }
 }
 
-async function readJsonObject(response: Response): Promise<Record<string, unknown>> {
+async function readJson(response: Response): Promise<unknown> {
   try {
-    const value = await response.json<unknown>();
-    return typeof value === 'object' && value !== null && !Array.isArray(value)
-      ? (value as Record<string, unknown>)
-      : {};
+    return await response.json<unknown>();
   } catch {
-    return {};
+    return null;
   }
 }
 
 function optionalString(value: unknown): string | null {
   return typeof value === 'string' && value.trim() !== '' ? value.trim() : null;
-}
-
-function stringField(value: Record<string, unknown>, key: string): string {
-  const field = optionalString(value[key]);
-  if (field === null) throw new Error(`OIDC discovery is missing ${key}.`);
-  return field;
-}
-
-function stringArray(value: unknown): string[] {
-  if (!Array.isArray(value) || !value.every((entry) => typeof entry === 'string')) {
-    throw new Error('OIDC discovery string array is invalid.');
-  }
-  return value;
 }
 
 function validPicture(value: string | null): string | null {

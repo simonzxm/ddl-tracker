@@ -22,8 +22,7 @@ export interface OidcProvider {
   }): Promise<VerifiedOidcIdentity>;
 }
 
-const discoveryDocumentSchema = z
-  .object({
+const discoveryDocumentSchema = z.looseObject({
     issuer: z.string().trim().min(1),
     authorization_endpoint: z.string().trim().min(1),
     token_endpoint: z.string().trim().min(1),
@@ -31,12 +30,11 @@ const discoveryDocumentSchema = z
     response_types_supported: z.array(z.string()),
     code_challenge_methods_supported: z.array(z.string()),
     id_token_signing_alg_values_supported: z.array(z.string()),
-  })
-  .passthrough();
+});
 
-const tokenResponseSchema = z
-  .object({ id_token: z.string().min(1) })
-  .passthrough();
+const tokenResponseSchema = z.looseObject({
+  id_token: z.string().min(1),
+});
 
 type DiscoveryDocument = z.infer<typeof discoveryDocumentSchema>;
 

@@ -48,9 +48,12 @@ if (
     'OIDC_REDIRECT_URI must use https://ddl.nju.at/api/v1/auth/oidc/callback',
   );
 }
-if (vars.OIDC_POST_LOGIN_REDIRECT_URIS !== 'https://ddl.nju.at/auth/callback') {
+if (
+  vars.OIDC_POST_LOGIN_REDIRECT_URIS !==
+  'https://ddl.nju.at/auth/callback/web,https://ddl.nju.at/auth/callback/native'
+) {
   errors.push(
-    'OIDC_POST_LOGIN_REDIRECT_URIS must be the approved ddl.nju.at client callback',
+    'OIDC_POST_LOGIN_REDIRECT_URIS must contain the approved web and native callbacks',
   );
 }
 for (const removedName of [

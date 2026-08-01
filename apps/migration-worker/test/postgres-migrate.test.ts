@@ -1,5 +1,5 @@
 import { Client } from 'pg';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { migrationBundle } from '../src/generated-migrations.js';
 import {
@@ -34,6 +34,12 @@ describePostgres('production migration executor', () => {
     await Promise.all(clients.map(async (client) => client.end()));
   });
 
+  beforeEach(async () => {
+    await clients[0].query(
+      'drop schema if exists drizzle cascade; drop schema if exists public cascade; create schema public',
+    );
+  });
+
   it('serializes concurrent runs, replays the bundle, and is idempotent', async () => {
     const concurrent = await Promise.all(
       databases.map(async (database) =>
@@ -46,21 +52,13 @@ describePostgres('production migration executor', () => {
       ),
     );
 
-    if (process.env['MIGRATION_REPLAY_EXPECT_EMPTY'] === '1') {
-      expect(concurrent.map(({ status }) => status).sort()).toEqual([
-        'already_current',
-        'applied',
-      ]);
-      const applied = concurrent.find(({ status }) => status === 'applied');
-      expect(applied?.previousMigration).toBeNull();
-      expect(applied?.applied).toEqual(
-        migrationBundle.map(({ tag }) => tag),
-      );
-    } else {
-      expect(
-        concurrent.every(({ status }) => status === 'already_current'),
-      ).toBe(true);
-    }
+    expect(concurrent.map(({ status }) => status).sort()).toEqual([
+      'already_current',
+      'applied',
+    ]);
+    const applied = concurrent.find(({ status }) => status === 'applied');
+    expect(applied?.previousMigration).toBeNull();
+    expect(applied?.applied).toEqual(migrationBundle.map(({ tag }) => tag));
 
     const repeated = await runMigrations({
       database: databases[0],
@@ -79,6 +77,51 @@ describePostgres('production migration executor', () => {
       'select count(*)::text as count from drizzle.__drizzle_migrations',
     );
     expect(journal.rows[0]?.count).toBe(String(migrationBundle.length));
+  });
+
+  it('applies the OIDC migration on top of the previous release', async () => {
+    const previousBundle = migrationBundle.slice(0, -1);
+    const previousMigration = previousBundle.at(-1);
+    const oidcMigration = migrationBundle.at(-1);
+    if (previousMigration === undefined || oidcMigration === undefined) {
+      throw new Error('Expected both previous and OIDC migrations.');
+    }
+    await runMigrations({
+      database: databases[0],
+      migrations: previousBundle,
+      expectedDatabase,
+      expectedRole,
+    });
+
+    const result = await runMigrations({
+      database: databases[0],
+      migrations: migrationBundle,
+      expectedDatabase,
+      expectedRole,
+    });
+
+    expect(result).toMatchObject({
+      status: 'applied',
+      previousMigration: previousMigration.tag,
+      applied: [oidcMigration.tag],
+      latestMigration: oidcMigration.tag,
+      latestHash: oidcMigration.hash,
+    });
+    const schema = await clients[0].query<{
+      oidc_identities: boolean;
+      oidc_transactions: boolean;
+      old_challenges_removed: boolean;
+    }>(
+      `select
+         to_regclass('public.oidc_identities') is not null as oidc_identities,
+         to_regclass('public.oidc_login_transactions') is not null as oidc_transactions,
+         to_regclass('public.auth_challenges') is null as old_challenges_removed`,
+    );
+    expect(schema.rows[0]).toEqual({
+      oidc_identities: true,
+      oidc_transactions: true,
+      old_challenges_removed: true,
+    });
   });
 });
 

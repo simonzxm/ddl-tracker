@@ -136,6 +136,7 @@ function createService(options: {
 } = {}) {
   const repository = options.repository ?? new FakeRepository();
   const oidcProvider = options.oidcProvider ?? provider();
+  const testNow = options.now;
   const limiter = options.limiter ?? rateLimiter();
   const secrets = [
     ...(options.secrets ?? [
@@ -156,9 +157,9 @@ function createService(options: {
       transactionSecret: SECRET,
       rateLimiter: limiter,
       now:
-        typeof options.now === 'function'
-          ? options.now
-          : () => options.now ?? NOW,
+        typeof testNow === 'function'
+          ? testNow
+          : () => testNow ?? NOW,
       createId: () => TRANSACTION_ID,
       createSecret: () => {
         const value = secrets.shift();

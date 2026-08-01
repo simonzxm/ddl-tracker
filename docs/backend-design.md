@@ -10,7 +10,10 @@
         ▼
 Cloudflare Worker（Hono HTTP shell）
         │
-        ├── 认证与账户 modules ── OidcProvider interface ── auth.nju.at
+        ├── 认证与账户 modules ── OidcProvider interface
+        │                         │ AUTH_SERVER Service Binding
+        │                         ▼
+        │                    authserver Worker（issuer: auth.nju.at）
         ├── 课程目录与维护者 modules
         ├── 共享任务、私人任务、评论与审核 modules
         └── 同步 module
@@ -215,6 +218,9 @@ Bearer API 不使用 cookie。为第三方客户端支持 CORS 时不得启用 c
   "hyperdrive": [
     { "binding": "HYPERDRIVE", "id": "<cache-disabled-hyperdrive-id>" }
   ],
+  "services": [
+    { "binding": "AUTH_SERVER", "service": "authserver" }
+  ],
   "observability": {
     "enabled": true,
     "logs": { "head_sampling_rate": 1 },
@@ -225,6 +231,7 @@ Bearer API 不使用 cookie。为第三方客户端支持 CORS 时不得启用 c
 
 - 绑定类型必须由 `wrangler types` 生成，禁止手写 Env。
 - non-secret OIDC issuer、client ID、固定 callback 与客户端 callback allowlist 放在 `vars`；transaction encryption key、token pepper、sync key 和 bootstrap token 使用 Workers secrets。
+- 生产 OIDC discovery、token exchange 与 JWKS 读取统一通过 `AUTH_SERVER` Service Binding 调用 `authserver` Worker；binding 只替代网络传输，adapter 仍必须校验 discovery issuer、HTTPS endpoint、ID Token signature/audience/nonce。
 - 每个 Promise 必须 await、return 或交给 `ctx.waitUntil()`；lint 开启 no-floating-promises。
 - 同步 JSON 有应用级大小上限；先检查可信格式的 `Content-Length`，读取时仍按实际 bytes 强制上限，不能只信 header，也不能缓冲无界输入。
 - 不使用 module global 保存当前用户、数据库 client 或请求缓存。

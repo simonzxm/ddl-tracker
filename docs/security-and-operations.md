@@ -34,7 +34,7 @@
 
 ## OIDC 认证
 
-生产只信任配置中的 `OIDC_ISSUER` 与已注册 public client。登录使用 authorization code + PKCE S256：
+生产只信任配置中的 `OIDC_ISSUER` 与已注册 public client。DDL Tracker Worker 使用固定的 `AUTH_SERVER` Service Binding 调用同一 Cloudflare 账户中的 `authserver` Worker，承载 discovery、token exchange 与 JWKS 读取；不得在运行时根据请求选择其他 service。Service Binding 只解决 Worker 间传输，不降低下列协议校验。登录使用 authorization code + PKCE S256：
 
 - `/auth/oidc/start` 只接受严格 allowlist 中的客户端 callback。
 - 服务端生成随机 state、nonce 与 PKCE verifier；数据库只保存 state HMAC，并用 `OIDC_TRANSACTION_SECRET` 通过 AES-GCM 加密 nonce/verifier。

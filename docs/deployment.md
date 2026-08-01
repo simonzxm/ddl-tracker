@@ -9,6 +9,7 @@
 - PostgreSQL TLS 使用 `verify_full`，证书 hostname 与连接目标匹配。
 - pgBackRest 最近一次完整/增量备份成功，且最近一次隔离恢复演练仍在运维允许窗口内。
 - `auth.nju.at` 已注册 DDL Tracker public OIDC client，固定 callback 为 `https://ddl.nju.at/api/v1/auth/oidc/callback`，强制 authorization code + PKCE S256。
+- Cloudflare 账户中存在名为 `authserver` 的 Worker；生产 API 通过 `AUTH_SERVER` Service Binding 访问其 discovery、token 与 JWKS endpoint。
 - 应用内 PostgreSQL 限流已为 `POST /api/v1/auth/oidc/start` 配置源 IP 限制：20/hour、50/day。源 IP 必须来自 Cloudflare `CF-Connecting-IP`，数据库只保存带用途前缀的 HMAC。权限允许时再配置等价的 Cloudflare WAF/Rate Limiting 作为额外边缘防线。
 - 发布者已通过 `pnpm verify` 或 CI 的 `pnpm verify:ci`。
 
@@ -34,6 +35,7 @@ cp apps/api/wrangler.production.example.jsonc \
 - `APP_ENVIRONMENT = production`。
 - `nodejs_compat`。
 - `routes` 只包含 `ddl.nju.at/api/*`；不得重新加入已退役的 `api.210023.xyz` custom domain。
+- `services` 只包含 `AUTH_SERVER -> authserver`；本地配置可设置 `remote: true`，生产配置不得改绑到动态或非预期 Worker。
 - 当前 Workers Free plan 不配置 `limits.cpu_ms`；专用目录上传限制 multipart 5 MiB、gzip 4 MiB、解压 CSV 10 MiB，并将规范化数据分为每类最多 100 条的存储 batch。升级到付费 Standard plan 后才可显式配置 CPU budget。
 - retention cleanup cron。
 - Workers logs 与 traces 开启。

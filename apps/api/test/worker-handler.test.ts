@@ -9,6 +9,9 @@ function environment(): Env {
     HYPERDRIVE: {
       connectionString: 'postgresql://hyperdrive.invalid/database',
     } as Hyperdrive,
+    AUTH_SERVER: {
+      fetch: vi.fn(async () => new Response(null, { status: 404 })),
+    } as unknown as Fetcher,
     APP_ENVIRONMENT: 'development',
     OIDC_ISSUER: 'https://issuer.example',
     OIDC_CLIENT_ID: 'client-id',

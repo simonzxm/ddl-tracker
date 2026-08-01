@@ -94,6 +94,7 @@ export function createRuntimeApp(
         issuer: env.OIDC_ISSUER,
         clientId: env.OIDC_CLIENT_ID,
         redirectUri: env.OIDC_REDIRECT_URI,
+        fetcher: (input, init) => env.AUTH_SERVER.fetch(input, init),
       }),
     allowedRedirectUris: parseAllowedRedirectUris(
       env.OIDC_POST_LOGIN_REDIRECT_URIS,

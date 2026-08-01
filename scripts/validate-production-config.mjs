@@ -22,6 +22,7 @@ const vars = config.vars ?? {};
 const hyperdrive = Array.isArray(config.hyperdrive) ? config.hyperdrive : [];
 const hyperdriveId = hyperdrive[0]?.id;
 const routes = Array.isArray(config.routes) ? config.routes : [];
+const services = Array.isArray(config.services) ? config.services : [];
 
 if (config.main !== 'src/index.ts') errors.push('main must be src/index.ts');
 if (!config.compatibility_flags?.includes('nodejs_compat')) {
@@ -70,6 +71,13 @@ if (
 }
 if (JSON.stringify(config).includes('api.210023.xyz')) {
   errors.push('retired api.210023.xyz domain must not appear in production config');
+}
+if (
+  services.length !== 1 ||
+  services[0]?.binding !== 'AUTH_SERVER' ||
+  services[0]?.service !== 'authserver'
+) {
+  errors.push('AUTH_SERVER must bind directly to the authserver Worker');
 }
 if (
   typeof hyperdriveId !== 'string' ||

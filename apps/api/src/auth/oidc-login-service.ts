@@ -19,6 +19,7 @@ import type {
 } from './oidc-provider-client.js';
 
 const TRANSACTION_TTL_MS = 10 * 60 * 1000;
+const EXCHANGE_CODE_TTL_MS = 10 * 60 * 1000;
 const START_RATE_LIMIT_RULES = [
   { scope: 'auth_oidc_ip_hour', limit: 20, windowSeconds: 60 * 60 },
   { scope: 'auth_oidc_ip_day', limit: 50, windowSeconds: 24 * 60 * 60 },
@@ -57,6 +58,7 @@ export interface OidcLoginRepository {
   complete(input: {
     id: string;
     now: Date;
+    expiresAt: Date;
     identity: VerifiedOidcIdentity;
     exchangeCodeHash: string;
   }): Promise<boolean>;
@@ -234,10 +236,12 @@ export class OidcLoginService {
       };
     }
 
+    const completedAt = this.#now();
     const exchangeCode = `${transaction.id}.${this.#createSecret()}`;
     const completed = await this.#repository.complete({
       id: transaction.id,
-      now,
+      now: completedAt,
+      expiresAt: new Date(completedAt.getTime() + EXCHANGE_CODE_TTL_MS),
       identity,
       exchangeCodeHash: await hmacSha256(
         this.#transactionSecret,

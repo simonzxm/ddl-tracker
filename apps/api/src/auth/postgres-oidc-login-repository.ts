@@ -77,8 +77,9 @@ export class PostgresOidcLoginRepository implements OidcLoginRepository {
       `update oidc_login_transactions
        set status = 'completed', secrets_ciphertext = null,
            issuer = $3, subject = $4, email = $5, display_name = $6,
-           avatar_url = $7, exchange_code_hash = $8, completed_at = $2
-       where id = $1 and status = 'exchanging' and expires_at > $2`,
+           avatar_url = $7, exchange_code_hash = $8, completed_at = $2,
+           expires_at = $9
+       where id = $1 and status = 'exchanging'`,
       [
         input.id,
         input.now,
@@ -88,6 +89,7 @@ export class PostgresOidcLoginRepository implements OidcLoginRepository {
         input.identity.displayName,
         input.identity.avatarUrl,
         input.exchangeCodeHash,
+        input.expiresAt,
       ],
     );
     return result.rowCount === 1;

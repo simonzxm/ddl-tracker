@@ -65,6 +65,7 @@ class FakeRepository implements OidcLoginRepository {
       displayName: input.identity.displayName,
       avatarUrl: input.identity.avatarUrl,
       exchangeCodeHash: input.exchangeCodeHash,
+      expiresAt: input.expiresAt,
       completedAt: input.now,
     };
     return true;
@@ -131,7 +132,7 @@ function createService(options: {
   oidcProvider?: ReturnType<typeof provider>;
   limiter?: ReturnType<typeof rateLimiter>;
   secrets?: string[];
-  now?: Date;
+  now?: Date | (() => Date);
 } = {}) {
   const repository = options.repository ?? new FakeRepository();
   const oidcProvider = options.oidcProvider ?? provider();
@@ -154,7 +155,10 @@ function createService(options: {
       allowedRedirectUris: ['https://app.example/auth/callback'],
       transactionSecret: SECRET,
       rateLimiter: limiter,
-      now: () => options.now ?? NOW,
+      now:
+        typeof options.now === 'function'
+          ? options.now
+          : () => options.now ?? NOW,
       createId: () => TRANSACTION_ID,
       createSecret: () => {
         const value = secrets.shift();
@@ -271,6 +275,23 @@ describe('OidcLoginService', () => {
         `${TRANSACTION_ID}.exchange-secret`,
       ),
     });
+  });
+
+  it('gives the exchange code a full lifetime from callback completion', async () => {
+    let currentTime = NOW;
+    const fixture = createService({ now: () => currentTime });
+    const { state } = await begin(fixture);
+    currentTime = new Date('2026-07-30T12:09:00.000Z');
+
+    await fixture.service.completeAuthorization({
+      state,
+      code: 'provider-code',
+      providerError: null,
+    });
+
+    expect(fixture.repository.transaction?.expiresAt).toEqual(
+      new Date('2026-07-30T12:19:00.000Z'),
+    );
   });
 
   it('rejects tampered state without calling the provider', async () => {

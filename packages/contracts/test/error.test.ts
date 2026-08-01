@@ -24,6 +24,25 @@ describe('API error envelope', () => {
     });
   });
 
+  it('rejects retired email-authentication error codes', () => {
+    for (const code of [
+      'challenge_expired',
+      'challenge_locked',
+      'registration_required',
+      'registration_token_invalid',
+    ]) {
+      expect(() =>
+        apiErrorSchema.parse({
+          code,
+          details: {},
+          message: 'Retired.',
+          retryable: false,
+          request_id: REQUEST_ID,
+        }),
+      ).toThrow();
+    }
+  });
+
   it('rejects unknown codes, invalid request IDs, and extra fields', () => {
     expect(() =>
       apiErrorSchema.parse({

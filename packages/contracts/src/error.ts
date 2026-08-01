@@ -4,8 +4,6 @@ import { uuidV7Schema } from './schema.js';
 
 export const apiErrorCodeSchema = z.enum([
   'account_suspended',
-  'challenge_expired',
-  'challenge_locked',
   'conflict',
   'content_hidden',
   'cursor_expired',
@@ -21,8 +19,6 @@ export const apiErrorCodeSchema = z.enum([
   'payload_too_large',
   'protocol_version_unsupported',
   'rate_limited',
-  'registration_required',
-  'registration_token_invalid',
   'revision_conflict',
   'temporarily_unavailable',
   'unauthenticated',

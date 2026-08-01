@@ -31,9 +31,10 @@ describe('OidcProviderClient', () => {
   it('preserves the global fetch receiver when no fetcher is supplied', async () => {
     const fetcher = vi.fn(function (
       this: unknown,
-      _input: string | URL | Request,
+      input: string | URL | Request,
     ) {
       expect(this).toBe(globalThis);
+      expect(String(input)).toBe(`${ISSUER}/.well-known/openid-configuration`);
       return Promise.resolve(Response.json(discovery()));
     });
     vi.stubGlobal('fetch', fetcher);

@@ -101,6 +101,7 @@ export class OidcProviderClient implements OidcProvider {
       issuer: this.#issuer,
       audience: this.#clientId,
       algorithms: ['RS256'],
+      requiredClaims: ['exp', 'iat', 'sub'],
       clockTolerance: 30,
     });
     const claims = verified.payload;

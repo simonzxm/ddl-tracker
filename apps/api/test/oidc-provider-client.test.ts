@@ -145,6 +145,43 @@ describe('OidcProviderClient', () => {
     });
   });
 
+  it('rejects a signed ID token without an expiry claim', async () => {
+    const { publicKey, privateKey } = await generateKeyPair('RS256');
+    const jwk = await exportJWK(publicKey);
+    const idToken = await new SignJWT({ nonce: 'expected-nonce' })
+      .setProtectedHeader({ alg: 'RS256', kid: 'test-key' })
+      .setIssuer(ISSUER)
+      .setAudience(CLIENT_ID)
+      .setSubject('student-123')
+      .setIssuedAt()
+      .sign(privateKey);
+    const fetcher = vi.fn(async (input: string | URL | Request) => {
+      const url = String(input);
+      if (url.endsWith('/.well-known/openid-configuration')) {
+        return Response.json(discovery());
+      }
+      if (url.endsWith('/oauth2/token')) return Response.json({ id_token: idToken });
+      if (url.endsWith('/oauth2/jwks')) {
+        return Response.json({ keys: [{ ...jwk, kid: 'test-key', use: 'sig' }] });
+      }
+      return new Response(null, { status: 404 });
+    });
+    const client = new OidcProviderClient({
+      issuer: ISSUER,
+      clientId: CLIENT_ID,
+      redirectUri: REDIRECT_URI,
+      fetcher: fetcher as typeof fetch,
+    });
+
+    await expect(
+      client.exchangeAuthorizationCode({
+        code: 'provider-code',
+        codeVerifier: 'verifier',
+        nonce: 'expected-nonce',
+      }),
+    ).rejects.toThrow();
+  });
+
   it('rejects a signed ID token with the wrong nonce', async () => {
     const { publicKey, privateKey } = await generateKeyPair('RS256');
     const jwk = await exportJWK(publicKey);

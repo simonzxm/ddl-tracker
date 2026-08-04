@@ -50,10 +50,10 @@ if (
 }
 if (
   vars.OIDC_POST_LOGIN_REDIRECT_URIS !==
-  'https://ddl.nju.at/auth/callback/web,https://ddl.nju.at/auth/callback/native'
+  'https://ddl.nju.at/auth/callback/web,https://ddl.nju.at/auth/callback/native,ddltracker.mac://auth/callback'
 ) {
   errors.push(
-    'OIDC_POST_LOGIN_REDIRECT_URIS must contain the approved web and native callbacks',
+    'OIDC_POST_LOGIN_REDIRECT_URIS must contain the approved web, universal-link, and macOS callbacks',
   );
 }
 for (const removedName of [

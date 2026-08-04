@@ -34,7 +34,7 @@
     "OIDC_ISSUER": "https://auth.nju.at",
     "OIDC_CLIENT_ID": "6VdLQ24XWMDAr-ckY_A9JlmTXk0JchLo",
     "OIDC_REDIRECT_URI": "https://ddl.nju.at/api/v1/auth/oidc/callback",
-    "OIDC_POST_LOGIN_REDIRECT_URIS": "https://ddl.nju.at/auth/callback/web,https://ddl.nju.at/auth/callback/native"
+    "OIDC_POST_LOGIN_REDIRECT_URIS": "https://ddl.nju.at/auth/callback/web,https://ddl.nju.at/auth/callback/native,ddltracker.mac://auth/callback"
   },
   "services": [
     {

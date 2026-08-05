@@ -3,7 +3,10 @@ import {
   classSectionSnapshotResponseSchema,
   snapshotRecordSchema,
   SYNC_PROTOCOL_VERSION,
+  type AccountSnapshotResponse,
+  type ClassSectionSnapshotResponse,
   type SyncRequest,
+  type SyncResponse,
 } from '@ddl-tracker/contracts';
 
 import { HttpError } from '../http/errors.js';
@@ -131,7 +134,7 @@ export class SyncService {
     maintainer: boolean;
     requestId: string;
     request: SyncRequest;
-  }): Promise<unknown> {
+  }): Promise<SyncResponse> {
     switch (input.request.mode) {
       case 'incremental':
         return this.#incremental.execute({
@@ -155,7 +158,7 @@ export class SyncService {
     userId: string,
     requestId: string,
     request: AccountSnapshotRequest,
-  ): Promise<unknown> {
+  ): Promise<AccountSnapshotResponse> {
     const snapshot = await this.#resolveSnapshot({
       userId,
       request,
@@ -190,7 +193,7 @@ export class SyncService {
     userId: string,
     requestId: string,
     request: ClassSectionSnapshotRequest,
-  ): Promise<unknown> {
+  ): Promise<ClassSectionSnapshotResponse> {
     try {
       await this.#cursorCodec.decode(request.cursor, userId);
     } catch (error) {

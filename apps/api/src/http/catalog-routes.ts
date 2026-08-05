@@ -1,5 +1,8 @@
 import {
+  classSectionsResponseSchema,
+  coursesResponseSchema,
   parseUuidV7,
+  termsResponseSchema,
   type ClassSectionWire,
   type CourseWire,
   type TermWire,
@@ -47,20 +50,28 @@ export function registerCatalogRoutes(
 ): void {
   app.get('/v1/terms', async (context) => {
     await requirePrincipal(context.req.header('authorization'), dependencies);
-    return context.json({ terms: await dependencies.listTerms() });
+    return context.json(
+      termsResponseSchema.parse({ terms: await dependencies.listTerms() }),
+    );
   });
 
   app.get('/v1/terms/:term_id/courses', async (context) => {
     await requirePrincipal(context.req.header('authorization'), dependencies);
     const termId = parsePathId(context.req.param('term_id'), 'Term ID');
-    return context.json({ courses: await dependencies.listCourses(termId) });
+    return context.json(
+      coursesResponseSchema.parse({
+        courses: await dependencies.listCourses(termId),
+      }),
+    );
   });
 
   app.get('/v1/courses/:course_id/class-sections', async (context) => {
     await requirePrincipal(context.req.header('authorization'), dependencies);
     const courseId = parsePathId(context.req.param('course_id'), 'Course ID');
-    return context.json({
-      class_sections: await dependencies.listClassSections(courseId),
-    });
+    return context.json(
+      classSectionsResponseSchema.parse({
+        class_sections: await dependencies.listClassSections(courseId),
+      }),
+    );
   });
 }

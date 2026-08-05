@@ -1,6 +1,8 @@
 import {
   syncRequestSchema,
+  syncResponseSchema,
   type SyncRequest,
+  type SyncResponse,
 } from '@ddl-tracker/contracts';
 import type { Hono } from 'hono';
 
@@ -19,7 +21,7 @@ export interface SyncRouteDependencies {
     maintainer: boolean;
     requestId: string;
     request: SyncRequest;
-  }): Promise<unknown>;
+  }): Promise<SyncResponse>;
 }
 
 export function registerSyncRoutes(
@@ -38,12 +40,14 @@ export function registerSyncRoutes(
       SYNC_BODY_LIMIT,
     );
     return context.json(
-      await dependencies.handle({
-        userId: principal.user.id,
-        maintainer: principal.roles.includes('maintainer'),
-        requestId: context.get('requestId'),
-        request,
-      }),
+      syncResponseSchema.parse(
+        await dependencies.handle({
+          userId: principal.user.id,
+          maintainer: principal.roles.includes('maintainer'),
+          requestId: context.get('requestId'),
+          request,
+        }),
+      ),
     );
   });
 }

@@ -171,11 +171,21 @@ describe('OIDC authentication routes', () => {
       }),
     });
     expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toMatchObject({
+    await expect(response.json()).resolves.toEqual({
       kind: 'session',
       access_token: 'session-token',
       token_type: 'Bearer',
-      user: { id: USER_ID, roles: [] },
+      expires_at: '2027-01-26T12:00:00.000Z',
+      user: {
+        id: USER_ID,
+        username: 'student_123',
+        display_name: 'Student',
+        avatar_url: null,
+        bio: null,
+        status: 'active',
+        profile_revision: 1,
+        roles: [],
+      },
     });
     expect(auth.exchangeOidcAuthorization).toHaveBeenCalledWith({
       code: 'one-time-code',

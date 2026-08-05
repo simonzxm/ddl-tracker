@@ -1,10 +1,16 @@
 import {
+  currentUserSchema,
   oidcAuthorizationRequestSchema,
+  oidcAuthorizationResponseSchema,
   oidcExchangeRequestSchema,
   parseUuidV7,
   profileUpdateRequestSchema,
+  sessionListResponseSchema,
+  sessionVerificationResponseSchema,
   type CurrentUserWire,
+  type OidcAuthorizationResponse,
   type PublicUserWire,
+  type SessionWire,
 } from '@ddl-tracker/contracts';
 import type { Hono } from 'hono';
 
@@ -26,7 +32,7 @@ export interface AuthRouteDependencies {
   beginOidcAuthorization(input: {
     redirectUri: string;
     sourceIp: string;
-  }): Promise<{ authorization_url: string; expires_at: string }>;
+  }): Promise<OidcAuthorizationResponse>;
   completeOidcAuthorization(input: {
     state: string | null;
     code: string | null;
@@ -85,7 +91,7 @@ function toCurrentUser(
   return { ...toPublicUser(user), roles };
 }
 
-function toSession(session: SessionRecord) {
+function toSession(session: SessionRecord): SessionWire {
   return {
     id: session.id,
     device_name: session.deviceName,
@@ -109,12 +115,14 @@ export function registerAuthRoutes(
       AUTH_BODY_LIMIT,
     );
     return context.json(
-      await dependencies.beginOidcAuthorization({
-        redirectUri: body.redirect_uri,
-        sourceIp: normalizedConnectingIp(
-          context.req.header('cf-connecting-ip'),
-        ),
-      }),
+      oidcAuthorizationResponseSchema.parse(
+        await dependencies.beginOidcAuthorization({
+          redirectUri: body.redirect_uri,
+          sourceIp: normalizedConnectingIp(
+            context.req.header('cf-connecting-ip'),
+          ),
+        }),
+      ),
     );
   });
 
@@ -144,10 +152,15 @@ export function registerAuthRoutes(
       deviceName: body.device_name,
       deviceMetadata: body.device_metadata,
     });
-    return context.json({
-      ...result,
-      user: toCurrentUser(result.user, result.roles),
-    });
+    return context.json(
+      sessionVerificationResponseSchema.parse({
+        kind: result.kind,
+        access_token: result.access_token,
+        token_type: result.token_type,
+        expires_at: result.expires_at,
+        user: toCurrentUser(result.user, result.roles),
+      }),
+    );
   });
 
   app.get('/v1/me', async (context) => {
@@ -155,7 +168,9 @@ export function registerAuthRoutes(
       context.req.header('authorization'),
       dependencies,
     );
-    return context.json(toCurrentUser(principal.user, principal.roles));
+    return context.json(
+      currentUserSchema.parse(toCurrentUser(principal.user, principal.roles)),
+    );
   });
 
   app.patch('/v1/me/profile', async (context) => {
@@ -175,7 +190,9 @@ export function registerAuthRoutes(
       bio: body.bio,
       expectedRevision: body.expected_revision,
     });
-    return context.json(toCurrentUser(updated, principal.roles));
+    return context.json(
+      currentUserSchema.parse(toCurrentUser(updated, principal.roles)),
+    );
   });
 
   app.delete('/v1/me', async (context) => {
@@ -193,7 +210,9 @@ export function registerAuthRoutes(
       dependencies,
     );
     const sessions = await dependencies.listSessions(principal.user.id);
-    return context.json({ sessions: sessions.map(toSession) });
+    return context.json(
+      sessionListResponseSchema.parse({ sessions: sessions.map(toSession) }),
+    );
   });
 
   app.delete('/v1/sessions/:session_id', async (context) => {

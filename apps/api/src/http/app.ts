@@ -1,4 +1,8 @@
-import { createUuidV7 } from '@ddl-tracker/contracts';
+import {
+  apiErrorSchema,
+  createUuidV7,
+  healthResponseSchema,
+} from '@ddl-tracker/contracts';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { routePath } from 'hono/route';
@@ -101,7 +105,9 @@ export function createApp(dependencies: AppDependencies): Hono<{
     }),
   );
 
-  app.get('/health/live', (context) => context.json({ status: 'live' }));
+  app.get('/health/live', (context) =>
+    context.json(healthResponseSchema.parse({ status: 'live' })),
+  );
   app.get('/openapi.json', (context) => context.json(openApiDocument));
 
   app.get('/health/ready', async (context) => {
@@ -116,7 +122,7 @@ export function createApp(dependencies: AppDependencies): Hono<{
       });
     }
 
-    return context.json({ status: 'ready' });
+    return context.json(healthResponseSchema.parse({ status: 'ready' }));
   });
 
   if (dependencies.auth !== undefined) {
@@ -140,22 +146,25 @@ export function createApp(dependencies: AppDependencies): Hono<{
   }
 
   app.notFound((context) => {
-    const requestId = context.get('requestId');
+    const requestId = context.get('requestId') ?? createRequestId();
+    context.header('x-request-id', requestId);
     return context.json(
-      toApiError(
-        new HttpError({
-          code: 'not_found',
-          message: 'Route not found.',
-          status: 404,
-        }),
-        requestId,
+      apiErrorSchema.parse(
+        toApiError(
+          new HttpError({
+            code: 'not_found',
+            message: 'Route not found.',
+            status: 404,
+          }),
+          requestId,
+        ),
       ),
       404,
     );
   });
 
   app.onError((error, context) => {
-    const requestId = context.get('requestId');
+    const requestId = context.get('requestId') ?? createRequestId();
     const httpError =
       error instanceof HttpError
         ? error
@@ -170,7 +179,10 @@ export function createApp(dependencies: AppDependencies): Hono<{
       context.header('retry-after', String(httpError.retryAfter));
     }
     context.header('x-request-id', requestId);
-    return context.json(toApiError(httpError, requestId), status);
+    return context.json(
+      apiErrorSchema.parse(toApiError(httpError, requestId)),
+      status,
+    );
   });
 
   return app;

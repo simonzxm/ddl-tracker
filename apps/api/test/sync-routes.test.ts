@@ -46,6 +46,7 @@ function dependencies(): SyncRouteDependencies & {
     rateLimit: vi.fn(async () => undefined),
     handle: vi.fn(async () => ({
       protocol_version: 2,
+      mode: 'incremental' as const,
       request_id: REQUEST_ID,
       operation_results: [],
       events: [],

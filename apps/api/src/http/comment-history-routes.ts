@@ -1,4 +1,8 @@
-import { parseUuidV7, type CommentRevisionPage } from '@ddl-tracker/contracts';
+import {
+  commentRevisionPageSchema,
+  parseUuidV7,
+  type CommentRevisionPage,
+} from '@ddl-tracker/contracts';
 import type { Hono } from 'hono';
 
 import type { AuthenticatedPrincipal } from '../auth/account-service.js';
@@ -67,16 +71,18 @@ export function registerCommentHistoryRoutes(
     );
     await dependencies.rateLimit(principal.user.id);
     return context.json(
-      await dependencies.list({
-        commentId: pathId(context.req.param('comment_id')),
-        userId: principal.user.id,
-        maintainer: principal.roles.includes('maintainer'),
-        afterRevision: nonnegativeInteger(
-          context.req.query('after_revision'),
-          0,
-        ),
-        limit: limit(context.req.query('limit')),
-      }),
+      commentRevisionPageSchema.parse(
+        await dependencies.list({
+          commentId: pathId(context.req.param('comment_id')),
+          userId: principal.user.id,
+          maintainer: principal.roles.includes('maintainer'),
+          afterRevision: nonnegativeInteger(
+            context.req.query('after_revision'),
+            0,
+          ),
+          limit: limit(context.req.query('limit')),
+        }),
+      ),
     );
   });
 }

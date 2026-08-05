@@ -1,3 +1,4 @@
+import { adminTaskMergeResponseSchema } from '@ddl-tracker/contracts';
 import { Client } from 'pg';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
@@ -143,15 +144,16 @@ describePostgres('PostgresTaskMergeRepository public graph', () => {
   });
 
   it('merges proposals, votes, comments, redirects, events, and audit atomically', async () => {
-    await expect(
-      repository.merge({
+    const merge = adminTaskMergeResponseSchema.parse(
+      await repository.merge({
         actorId: ACTOR_ID,
         sourceTaskId: SOURCE_TASK,
         targetTaskId: TARGET_TASK,
         reason: 'Confirmed duplicate.',
         requestId: REQUEST_ID,
       }),
-    ).resolves.toMatchObject({
+    );
+    expect(merge).toMatchObject({
       source_task_id: SOURCE_TASK,
       target_task_id: TARGET_TASK,
       redirected_proposals: 1,

@@ -663,7 +663,11 @@ describe('HTTP response contract coverage', () => {
     );
 
     const limitedDependencies = dependencies();
-    limitedDependencies.catalog!.rateLimit = vi.fn(async () => {
+    const limitedCatalog = limitedDependencies.catalog;
+    if (limitedCatalog === undefined) {
+      throw new Error('Catalog dependencies are required by this fixture.');
+    }
+    limitedCatalog.rateLimit = vi.fn(async () => {
       throw new HttpError({
         code: 'rate_limited',
         message: 'Too many requests.',
@@ -682,7 +686,11 @@ describe('HTTP response contract coverage', () => {
     });
 
     const failingDependencies = dependencies();
-    failingDependencies.auth!.authenticate = vi.fn(async () => {
+    const failingAuth = failingDependencies.auth;
+    if (failingAuth === undefined) {
+      throw new Error('Authentication dependencies are required by this fixture.');
+    }
+    failingAuth.authenticate = vi.fn(async () => {
       throw new Error('private database detail');
     });
     const failed = await createApp(failingDependencies).request('/api/v1/me', {

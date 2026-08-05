@@ -51,6 +51,13 @@ export interface AppDependencies {
   sync?: SyncRouteDependencies;
 }
 
+function responseRequestId(
+  value: unknown,
+  createRequestId: () => string,
+): string {
+  return typeof value === 'string' ? value : createRequestId();
+}
+
 export function createApp(dependencies: AppDependencies): Hono<{
   Variables: AppVariables;
 }> {
@@ -146,7 +153,10 @@ export function createApp(dependencies: AppDependencies): Hono<{
   }
 
   app.notFound((context) => {
-    const requestId = context.get('requestId') ?? createRequestId();
+    const requestId = responseRequestId(
+      context.get('requestId'),
+      createRequestId,
+    );
     context.header('x-request-id', requestId);
     return context.json(
       apiErrorSchema.parse(
@@ -164,7 +174,10 @@ export function createApp(dependencies: AppDependencies): Hono<{
   });
 
   app.onError((error, context) => {
-    const requestId = context.get('requestId') ?? createRequestId();
+    const requestId = responseRequestId(
+      context.get('requestId'),
+      createRequestId,
+    );
     const httpError =
       error instanceof HttpError
         ? error

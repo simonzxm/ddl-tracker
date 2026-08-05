@@ -451,7 +451,7 @@ function strictObjectMutations(
       mutations.push({
         label: `${[...path, key].join('.')} is required`,
         value: mutateAtPath(value, path, (target) => {
-          delete target[key];
+          Reflect.deleteProperty(target, key);
         }),
       });
       if (!openMapKeys.has(key)) visit(child, [...path, key]);
@@ -474,7 +474,7 @@ describe('public HTTP response contracts', () => {
       ).toBe(false);
 
       const missing = { ...contract.value };
-      delete missing[contract.requiredKey];
+      Reflect.deleteProperty(missing, contract.requiredKey);
       expect(contract.schema.safeParse(missing).success).toBe(false);
     });
 

@@ -8,6 +8,7 @@
   "include": [
     "apps/**/test/**/*.ts",
     "packages/**/test/**/*.ts",
+    "scripts/**/*.d.mts",
     "vitest.config.ts",
     "vitest.worker.config.mts",
     "apps/api/worker-configuration.d.ts"

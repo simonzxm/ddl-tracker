@@ -2,11 +2,19 @@ import { spawnSync } from 'node:child_process';
 import { resolve } from 'node:path';
 import process from 'node:process';
 
+import { assertDisposableTestDatabaseUrl } from './test-database-url.mjs';
+
 const root = resolve(import.meta.dirname, '..');
-const connectionString = process.env.TEST_DATABASE_URL;
-if (connectionString === undefined || connectionString.length === 0) {
+const configuredConnectionString = process.env.TEST_DATABASE_URL;
+if (
+  configuredConnectionString === undefined ||
+  configuredConnectionString.length === 0
+) {
   throw new Error('TEST_DATABASE_URL is required.');
 }
+const connectionString = assertDisposableTestDatabaseUrl(
+  configuredConnectionString,
+);
 
 function run(command, args, extraEnv = {}) {
   const result = spawnSync(command, args, {

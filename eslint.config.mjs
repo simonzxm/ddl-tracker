@@ -10,6 +10,7 @@ export default tseslint.config(
       '.wrangler/**',
       'apps/api/worker-configuration.d.ts',
       'apps/migration-worker/worker-configuration.d.ts',
+      'scripts/**/*.d.mts',
     ],
   },
   eslint.configs.recommended,

@@ -19,10 +19,15 @@ import {
 import { Client } from 'pg';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { assertDisposableTestDatabaseUrl } from '../../../scripts/test-database-url.mjs';
 import type { OidcProvider } from '../src/auth/oidc-provider-client.js';
 import { createRuntimeApp } from '../src/runtime-app.js';
 
-const databaseUrl = process.env['TEST_DATABASE_URL'];
+const configuredDatabaseUrl = process.env['TEST_DATABASE_URL'];
+const databaseUrl =
+  configuredDatabaseUrl === undefined
+    ? undefined
+    : assertDisposableTestDatabaseUrl(configuredDatabaseUrl);
 const describePostgres = databaseUrl === undefined ? describe.skip : describe;
 const NOW = new Date('2026-08-05T07:00:00.000Z');
 const TARGET_USER_ID = '018f0000-0000-7000-8000-000000009101';
@@ -32,8 +37,10 @@ const SECTION_ID = '018f0000-0000-7000-8000-000000009104';
 const TASK_ID = '018f0000-0000-7000-8000-000000009105';
 const COMMENT_ID = '018f0000-0000-7000-8000-000000009106';
 const REPORT_ID = '018f0000-0000-7000-8000-000000009107';
-const AUDIT_ID = '018f0000-0000-7000-8000-000000009108';
+const HISTORICAL_REPORT_ID = '018f0000-0000-7000-8000-000000009108';
+const AUDIT_ID = '018f0000-0000-7000-8000-000000009109';
 const LEGACY_REQUEST_ID = '550e8400-e29b-41d4-a716-446655440000';
+const LEGACY_TARGET_ID = '550e8400-e29b-41d4-a716-446655440001';
 
 function environment(): Env {
   return {
@@ -114,14 +121,24 @@ async function signIn(app: ReturnType<typeof createRuntimeApp>): Promise<{
     }),
   });
   expect(exchange.status).toBe(200);
-  const session = sessionVerificationResponseSchema.parse(await exchange.json());
-  expect(Object.keys(session).sort()).toEqual([
+  const rawSession: unknown = await exchange.json();
+  expect(rawSession).toEqual(
+    expect.objectContaining({
+      kind: 'session',
+      access_token: expect.any(String),
+      token_type: 'Bearer',
+      expires_at: expect.any(String),
+      user: expect.any(Object),
+    }),
+  );
+  expect(Object.keys(rawSession as Record<string, unknown>).sort()).toEqual([
     'access_token',
     'expires_at',
     'kind',
     'token_type',
     'user',
   ]);
+  const session = sessionVerificationResponseSchema.parse(rawSession);
   return { accessToken: session.access_token, userId: session.user.id };
 }
 
@@ -176,12 +193,33 @@ async function seedVisibleContent(
     [REPORT_ID, userId, COMMENT_ID, 'D'.repeat(1_001)],
   );
   await client.query(
+    `insert into content_reports (
+       id, reporter_id, target_type, target_id, reason, details, status,
+       resolution, resolved_by, resolved_at
+     ) values ($1, $2, 'comment', $3, 'privacy', $4, 'resolved', $5, $2, $6)`,
+    [
+      HISTORICAL_REPORT_ID,
+      userId,
+      COMMENT_ID,
+      'D'.repeat(1_001),
+      'R'.repeat(1_001),
+      NOW,
+    ],
+  );
+  await client.query(
     `insert into audit_log (
        id, actor_id, action, target_type, target_id, reason, result,
        request_id, created_at
      ) values ($1, $2, 'Legacy action v1', 'Imported object', $3, $4,
        '{"state":"visible"}'::jsonb, $5, $6)`,
-    [AUDIT_ID, userId, COMMENT_ID, 'R'.repeat(1_001), LEGACY_REQUEST_ID, NOW],
+    [
+      AUDIT_ID,
+      userId,
+      LEGACY_TARGET_ID,
+      'R'.repeat(1_001),
+      LEGACY_REQUEST_ID,
+      NOW,
+    ],
   );
 }
 
@@ -195,8 +233,26 @@ describePostgres('runtime HTTP response contracts with PostgreSQL', () => {
 
   beforeEach(async () => {
     await client.query(`
-      truncate table rate_limit_counters, oidc_login_transactions,
-        academic_terms, users restart identity cascade
+      truncate table
+        rate_limit_counters,
+        oidc_login_transactions,
+        sync_events,
+        sync_event_retention,
+        operation_receipts,
+        audit_log,
+        moderation_actions,
+        content_reports,
+        comment_revisions,
+        task_comments,
+        course_tasks,
+        class_sections,
+        courses,
+        academic_terms,
+        sessions,
+        oidc_identities,
+        user_roles,
+        users
+      restart identity cascade
     `);
   });
 
@@ -266,8 +322,25 @@ describePostgres('runtime HTTP response contracts with PostgreSQL', () => {
       }),
     });
     expect(snapshot.status).toBe(200);
-    expect(syncResponseSchema.parse(await snapshot.json()).mode).toBe(
-      'account_snapshot',
+    const snapshotBody = syncResponseSchema.parse(await snapshot.json());
+    expect(snapshotBody.mode).toBe('account_snapshot');
+    if (snapshotBody.mode !== 'account_snapshot') {
+      throw new Error('Expected an account snapshot response.');
+    }
+    const historicalReport = snapshotBody.records.find(
+      (record) =>
+        record.record_type === 'reporter_content_report' &&
+        record.payload.report_id === HISTORICAL_REPORT_ID,
+    );
+    expect(historicalReport).toEqual(
+      expect.objectContaining({
+        record_type: 'reporter_content_report',
+        payload: expect.objectContaining({
+          details: 'D'.repeat(1_001),
+          resolution: 'R'.repeat(1_001),
+          status: 'resolved',
+        }),
+      }),
     );
 
     const bootstrap = await app.request('/api/v1/admin/bootstrap', {
@@ -302,6 +375,7 @@ describePostgres('runtime HTTP response contracts with PostgreSQL', () => {
       expect.arrayContaining([
         expect.objectContaining({
           action: 'Legacy action v1',
+          target_id: LEGACY_TARGET_ID,
           request_id: LEGACY_REQUEST_ID,
         }),
       ]),

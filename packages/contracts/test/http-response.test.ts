@@ -370,8 +370,8 @@ const responseContracts: ResponseContractCase[] = [
         {
           id: ID,
           actor_id: OTHER_ID,
-          action: 'comment_hidden',
-          target_type: 'comment',
+          action: 'Legacy action v1',
+          target_type: 'Imported object',
           target_id: ID,
           reason: 'Reviewed.',
           result: { state: 'hidden' },

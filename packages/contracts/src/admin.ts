@@ -12,7 +12,6 @@ import {
 } from './sync/discussion-operation.js';
 
 const adminReasonSchema = normalizedTextSchema(1, 1000);
-const adminIdentifierSchema = z.string().regex(/^[a-z][a-z0-9_]{0,99}$/u);
 
 export const adminBootstrapRequestSchema = z
   .object({
@@ -136,8 +135,8 @@ export const adminAuditEntrySchema = z
   .object({
     id: uuidV7Schema,
     actor_id: uuidV7Schema.nullable(),
-    action: adminIdentifierSchema,
-    target_type: adminIdentifierSchema,
+    action: z.string(),
+    target_type: z.string(),
     target_id: uuidV7Schema.nullable(),
     reason: nullableNormalizedTextSchema(1000),
     result: z.record(z.string(), z.unknown()),

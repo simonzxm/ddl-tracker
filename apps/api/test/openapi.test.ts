@@ -93,6 +93,62 @@ describe('OpenAPI document', () => {
     }
   });
 
+  it('binds every JSON success response to a strict named component', () => {
+    const schemas = openApiDocument.components.schemas as Record<
+      string,
+      Record<string, unknown>
+    >;
+    expect(schemas).not.toHaveProperty('GenericResult');
+    expect(schemas).not.toHaveProperty('GenericPage');
+    expect(JSON.stringify(schemas)).not.toContain(
+      '"additionalProperties":true',
+    );
+
+    for (const [path, pathItem] of Object.entries(openApiDocument.paths)) {
+      for (const [method, operation] of Object.entries(pathItem)) {
+        if (
+          typeof operation !== 'object' ||
+          operation === null ||
+          !('responses' in operation)
+        ) {
+          continue;
+        }
+        const responses = operation.responses as Record<
+          string,
+          { content?: Record<string, { schema?: { $ref?: string } }> }
+        >;
+        for (const [status, response] of Object.entries(responses)) {
+          if (!status.startsWith('2')) continue;
+          const json = response.content?.['application/json'];
+          if (json === undefined) {
+            expect(['204', '302'], `${method.toUpperCase()} ${path}`).toContain(
+              status,
+            );
+            continue;
+          }
+          const reference = json.schema?.$ref;
+          expect(reference, `${method.toUpperCase()} ${path}`).toMatch(
+            /^#\/components\/schemas\/[A-Za-z0-9]+$/u,
+          );
+          const name = reference?.split('/').at(-1) ?? '';
+          const schema = schemas[name];
+          expect(schema, `${method.toUpperCase()} ${path}`).toBeDefined();
+          if ('oneOf' in (schema ?? {})) {
+            for (const option of schema?.oneOf as { $ref: string }[]) {
+              const optionName = option.$ref.split('/').at(-1) ?? '';
+              expect(schemas[optionName]?.additionalProperties).toBe(false);
+            }
+          } else {
+            expect(
+              schema?.additionalProperties,
+              `${method.toUpperCase()} ${path} -> ${name}`,
+            ).toBe(false);
+          }
+        }
+      }
+    }
+  });
+
   it('includes fixed upload and cancellation examples', () => {
     expect(
       openApiDocument.paths['/v1/admin/catalog/imports/upload'].post.responses[

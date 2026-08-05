@@ -3,12 +3,20 @@ import { z, type ZodType } from 'zod';
 import {
   API_CONTRACT_VERSION,
   accountSnapshotResponseSchema,
+  adminAuditPageSchema,
   adminBootstrapRequestSchema,
+  adminBootstrapResponseSchema,
   adminContentActionRequestSchema,
+  adminContentActionResponseSchema,
+  adminReportPageSchema,
   adminReportResolutionRequestSchema,
+  adminReportResolutionResponseSchema,
   adminRoleRequestSchema,
+  adminRoleResponseSchema,
   adminTaskMergeRequestSchema,
+  adminTaskMergeResponseSchema,
   adminUserActionRequestSchema,
+  adminUserActionResponseSchema,
   apiErrorSchema,
   catalogApplyAllRequestSchema,
   catalogApplyResponseSchema,
@@ -23,12 +31,14 @@ import {
   commentRevisionPageSchema,
   coursesResponseSchema,
   currentUserSchema,
+  healthResponseSchema,
   incrementalSyncResponseSchema,
   oidcAuthorizationRequestSchema,
   oidcAuthorizationResponseSchema,
   oidcExchangeRequestSchema,
   profileUpdateRequestSchema,
   publicUserSchema,
+  sessionListResponseSchema,
   sessionSchema,
   sessionVerificationResponseSchema,
   snapshotRecordSchema,
@@ -423,7 +433,7 @@ export const openApiDocument = addRateLimitResponses({
         security: bearer,
         requestBody: requestBody('AdminBootstrapRequest'),
         responses: {
-          '200': response('Maintainer bootstrapped.', 'GenericResult'),
+          '200': response('Maintainer bootstrapped.', 'AdminBootstrapResponse'),
           '403': response('Bootstrap token rejected.', 'ApiError'),
           '409': response('Bootstrap already closed.', 'ApiError'),
         },
@@ -576,7 +586,7 @@ export const openApiDocument = addRateLimitResponses({
           },
           ...paginationParameters,
         ],
-        responses: { '200': response('Private report page.', 'GenericPage') },
+        responses: { '200': response('Private report page.', 'AdminReportPage') },
       },
     },
     '/v1/admin/reports/{report_id}/resolve': {
@@ -586,7 +596,12 @@ export const openApiDocument = addRateLimitResponses({
         security: bearer,
         parameters: [uuidParameter('report_id', 'Report UUIDv7.')],
         requestBody: requestBody('AdminReportResolutionRequest'),
-        responses: { '200': response('Report disposition.', 'GenericResult') },
+        responses: {
+          '200': response(
+            'Report disposition.',
+            'AdminReportResolutionResponse',
+          ),
+        },
       },
     },
     '/v1/admin/content/{content_id}/hide': adminContentOperation(
@@ -604,7 +619,7 @@ export const openApiDocument = addRateLimitResponses({
         security: bearer,
         parameters: [uuidParameter('user_id', 'User UUIDv7.')],
         requestBody: requestBody('AdminRoleRequest'),
-        responses: { '200': response('Role result.', 'GenericResult') },
+        responses: { '200': response('Role result.', 'AdminRoleResponse') },
       },
     },
     '/v1/admin/tasks/{source_task_id}/merge': {
@@ -615,7 +630,7 @@ export const openApiDocument = addRateLimitResponses({
         parameters: [uuidParameter('source_task_id', 'Source task UUIDv7.')],
         requestBody: requestBody('AdminTaskMergeRequest'),
         responses: {
-          '200': response('Task merge result.', 'GenericResult'),
+          '200': response('Task merge result.', 'AdminTaskMergeResponse'),
           '409': response('Merge invariant rejected.', 'ApiError'),
         },
       },
@@ -626,7 +641,7 @@ export const openApiDocument = addRateLimitResponses({
         summary: 'List append-only management audit entries',
         security: bearer,
         parameters: paginationParameters,
-        responses: { '200': response('Audit page.', 'GenericPage') },
+        responses: { '200': response('Audit page.', 'AdminAuditPage') },
       },
     },
   },
@@ -646,14 +661,11 @@ export const openApiDocument = addRateLimitResponses({
       CurrentUser: component(currentUserSchema),
       ProfileUpdateRequest: component(profileUpdateRequestSchema),
       Session: component(sessionSchema),
-      SessionList: {
-        type: 'object',
-        required: ['sessions'],
-        properties: {
-          sessions: { type: 'array', items: { $ref: '#/components/schemas/Session' } },
-        },
-        additionalProperties: false,
-      },
+      SessionList: withArrayItemReference(
+        sessionListResponseSchema,
+        'sessions',
+        'Session',
+      ),
       TermsResponse: component(termsResponseSchema),
       CoursesResponse: component(coursesResponseSchema),
       ClassSectionsResponse: component(classSectionsResponseSchema),
@@ -713,14 +725,17 @@ export const openApiDocument = addRateLimitResponses({
       AdminUserActionRequest: component(adminUserActionRequestSchema),
       AdminRoleRequest: component(adminRoleRequestSchema),
       AdminTaskMergeRequest: component(adminTaskMergeRequestSchema),
-      Health: {
-        type: 'object',
-        required: ['status'],
-        properties: { status: { type: 'string', enum: ['live', 'ready'] } },
-        additionalProperties: false,
-      },
-      GenericResult: { type: 'object', additionalProperties: true },
-      GenericPage: { type: 'object', additionalProperties: true },
+      Health: component(healthResponseSchema),
+      AdminBootstrapResponse: component(adminBootstrapResponseSchema),
+      AdminContentActionResponse: component(adminContentActionResponseSchema),
+      AdminReportPage: component(adminReportPageSchema),
+      AdminReportResolutionResponse: component(
+        adminReportResolutionResponseSchema,
+      ),
+      AdminUserActionResponse: component(adminUserActionResponseSchema),
+      AdminRoleResponse: component(adminRoleResponseSchema),
+      AdminTaskMergeResponse: component(adminTaskMergeResponseSchema),
+      AdminAuditPage: component(adminAuditPageSchema),
     },
   },
 });
@@ -765,7 +780,9 @@ function adminContentOperation(summary: string) {
       security: bearer,
       parameters: [uuidParameter('content_id', 'Content UUIDv7.')],
       requestBody: requestBody('AdminContentActionRequest'),
-      responses: { '200': response('Moderation result.', 'GenericResult') },
+      responses: {
+        '200': response('Moderation result.', 'AdminContentActionResponse'),
+      },
     },
   };
 }
@@ -778,7 +795,9 @@ function adminUserOperation(summary: string) {
       security: bearer,
       parameters: [uuidParameter('user_id', 'User UUIDv7.')],
       requestBody: requestBody('AdminUserActionRequest'),
-      responses: { '200': response('User status result.', 'GenericResult') },
+      responses: {
+        '200': response('User status result.', 'AdminUserActionResponse'),
+      },
     },
   };
 }

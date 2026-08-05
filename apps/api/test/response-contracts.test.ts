@@ -662,28 +662,50 @@ describe('HTTP response contract coverage', () => {
       'unauthenticated',
     );
 
-    const limitedDependencies = dependencies();
-    const limitedCatalog = limitedDependencies.catalog;
-    if (limitedCatalog === undefined) {
-      throw new Error('Catalog dependencies are required by this fixture.');
-    }
-    limitedCatalog.rateLimit = vi.fn(async () => {
-      throw new HttpError({
-        code: 'rate_limited',
-        message: 'Too many requests.',
-        retryable: true,
-        retryAfter: 5,
-        status: 429,
+    for (const errorCase of [
+      { status: 403, code: 'forbidden' as const },
+      { status: 409, code: 'conflict' as const },
+      { status: 429, code: 'rate_limited' as const, retryAfter: 5 },
+      { status: 503, code: 'temporarily_unavailable' as const },
+    ]) {
+      const errorDependencies = dependencies();
+      const errorCatalog = errorDependencies.catalog;
+      if (errorCatalog === undefined) {
+        throw new Error('Catalog dependencies are required by this fixture.');
+      }
+      errorCatalog.rateLimit = vi.fn(async () => {
+        throw new HttpError({
+          code: errorCase.code,
+          message: 'Request rejected.',
+          retryable: errorCase.status >= 429,
+          ...(errorCase.retryAfter === undefined
+            ? {}
+            : { retryAfter: errorCase.retryAfter }),
+          status: errorCase.status,
+        });
       });
+      const response = await createApp(errorDependencies).request(
+        '/api/v1/terms',
+        { headers: AUTHORIZATION },
+      );
+      expect(response.status).toBe(errorCase.status);
+      expect(apiErrorSchema.parse(await response.json())).toMatchObject({
+        code: errorCase.code,
+        ...(errorCase.retryAfter === undefined
+          ? {}
+          : { retry_after: errorCase.retryAfter }),
+      });
+    }
+
+    const unsupported = await createApp(dependencies()).request('/api/v1/sync', {
+      method: 'POST',
+      headers: { ...AUTHORIZATION, 'content-type': 'text/plain' },
+      body: 'not json',
     });
-    const limited = await createApp(limitedDependencies).request('/api/v1/terms', {
-      headers: AUTHORIZATION,
-    });
-    expect(limited.status).toBe(429);
-    expect(apiErrorSchema.parse(await limited.json())).toMatchObject({
-      code: 'rate_limited',
-      retry_after: 5,
-    });
+    expect(unsupported.status).toBe(415);
+    expect(apiErrorSchema.parse(await unsupported.json()).code).toBe(
+      'unsupported_media_type',
+    );
 
     const failingDependencies = dependencies();
     const failingAuth = failingDependencies.auth;
@@ -705,5 +727,60 @@ describe('HTTP response contract coverage', () => {
     const missing = await createApp(dependencies()).request('/outside-api');
     expect(missing.status).toBe(404);
     expect(apiErrorSchema.parse(await missing.json()).code).toBe('not_found');
+  });
+
+  it('fails closed when a dependency adds or omits response fields', async () => {
+    const extraDependencies = dependencies();
+    const extraAuth = extraDependencies.auth;
+    if (extraAuth === undefined) {
+      throw new Error('Authentication dependencies are required by this fixture.');
+    }
+    extraAuth.beginOidcAuthorization = vi.fn(async () => ({
+      authorization_url: 'https://issuer.example/authorize',
+      expires_at: TIMESTAMP,
+      internal_only: true,
+    }));
+    const extra = await createApp(extraDependencies).request(
+      '/api/v1/auth/oidc/start',
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          redirect_uri: 'ddltracker.mac://auth/callback',
+        }),
+      },
+    );
+    expect(extra.status).toBe(500);
+    expect(apiErrorSchema.parse(await extra.json())).toEqual({
+      code: 'internal_error',
+      details: {},
+      message: 'An internal error occurred.',
+      retryable: true,
+      request_id: REQUEST_ID,
+    });
+
+    const missingDependencies = dependencies();
+    const missingCatalog = missingDependencies.catalog;
+    if (missingCatalog === undefined) {
+      throw new Error('Catalog dependencies are required by this fixture.');
+    }
+    const incompleteTerm = {
+      id: TERM_ID,
+      external_code: '2026-2027-1',
+      name: 'Term',
+      starts_on: '2026-08-31',
+      ends_on: '2027-01-17',
+      status: 'upcoming' as const,
+    };
+    Reflect.deleteProperty(incompleteTerm, 'status');
+    missingCatalog.listTerms = vi.fn(async () => [incompleteTerm]);
+    const omitted = await createApp(missingDependencies).request('/api/v1/terms', {
+      headers: AUTHORIZATION,
+    });
+    expect(omitted.status).toBe(500);
+    expect(apiErrorSchema.parse(await omitted.json())).toMatchObject({
+      code: 'internal_error',
+      message: 'An internal error occurred.',
+    });
   });
 });

@@ -1,3 +1,7 @@
+import type {
+  AdminAuditPage,
+  AdminReportPage,
+} from '@ddl-tracker/contracts';
 import type { Client } from 'pg';
 
 import { HttpError } from '../http/errors.js';
@@ -114,10 +118,7 @@ export class PostgresModerationRepository {
     limit: number;
     afterCreatedAt?: Date;
     afterId?: string;
-  }): Promise<{
-    reports: Record<string, unknown>[];
-    next: { created_at: string; id: string } | null;
-  }> {
+  }): Promise<AdminReportPage> {
     this.#validateLimit(input.limit);
     if ((input.afterCreatedAt === undefined) !== (input.afterId === undefined)) {
       throw invalidPagination();
@@ -139,9 +140,9 @@ export class PostgresModerationRepository {
     const result = await this.#client.query<{
       id: string;
       reporter_id: string;
-      target_type: string;
+      target_type: 'course_task' | 'proposal' | 'comment' | 'user';
       target_id: string;
-      reason: string;
+      reason: 'inaccurate' | 'spam' | 'abuse' | 'privacy' | 'other';
       details: string | null;
       status: ReportStatus;
       resolution: string | null;
@@ -271,10 +272,7 @@ export class PostgresModerationRepository {
     limit: number;
     afterCreatedAt?: Date;
     afterId?: string;
-  }): Promise<{
-    entries: Record<string, unknown>[];
-    next: { created_at: string; id: string } | null;
-  }> {
+  }): Promise<AdminAuditPage> {
     this.#validateLimit(input.limit);
     if ((input.afterCreatedAt === undefined) !== (input.afterId === undefined)) {
       throw invalidPagination();
@@ -293,7 +291,7 @@ export class PostgresModerationRepository {
       target_type: string;
       target_id: string | null;
       reason: string | null;
-      result: unknown;
+      result: Record<string, unknown>;
       request_id: string;
       created_at: Date;
     }>(

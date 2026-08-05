@@ -1,11 +1,27 @@
 import {
+  adminAuditPageSchema,
   adminBootstrapRequestSchema,
+  adminBootstrapResponseSchema,
   adminContentActionRequestSchema,
+  adminContentActionResponseSchema,
+  adminReportPageSchema,
   adminReportResolutionRequestSchema,
+  adminReportResolutionResponseSchema,
   adminRoleRequestSchema,
+  adminRoleResponseSchema,
   adminTaskMergeRequestSchema,
+  adminTaskMergeResponseSchema,
   adminUserActionRequestSchema,
+  adminUserActionResponseSchema,
   parseUuidV7,
+  type AdminAuditPage,
+  type AdminBootstrapResponse,
+  type AdminContentActionResponse,
+  type AdminReportPage,
+  type AdminReportResolutionResponse,
+  type AdminRoleResponse,
+  type AdminTaskMergeResponse,
+  type AdminUserActionResponse,
 } from '@ddl-tracker/contracts';
 import type { Hono } from 'hono';
 
@@ -28,7 +44,7 @@ export interface AdminRouteDependencies {
     actorId: string;
     requestId: string;
     bootstrapToken: string;
-  }): Promise<{ maintainer: true }>;
+  }): Promise<AdminBootstrapResponse>;
   setContentHidden(input: {
     actorId: string;
     targetType: ContentTargetType;
@@ -36,46 +52,46 @@ export interface AdminRouteDependencies {
     hidden: boolean;
     reason: string;
     requestId: string;
-  }): Promise<{ state: 'visible' | 'hidden'; revision: number; changed: boolean }>;
+  }): Promise<AdminContentActionResponse>;
   listReports(input: {
     status?: ReportStatus;
     limit: number;
     afterCreatedAt?: Date;
     afterId?: string;
-  }): Promise<unknown>;
+  }): Promise<AdminReportPage>;
   resolveReport(input: {
     actorId: string;
     reportId: string;
     status: 'resolved' | 'dismissed';
     resolution: string;
     requestId: string;
-  }): Promise<unknown>;
+  }): Promise<AdminReportResolutionResponse>;
   setUserSuspended(input: {
     actorId: string;
     targetUserId: string;
     suspended: boolean;
     reason: string;
     requestId: string;
-  }): Promise<unknown>;
+  }): Promise<AdminUserActionResponse>;
   setMaintainerRole(input: {
     actorId: string;
     targetUserId: string;
     maintainer: boolean;
     reason: string;
     requestId: string;
-  }): Promise<unknown>;
+  }): Promise<AdminRoleResponse>;
   listAudit(input: {
     limit: number;
     afterCreatedAt?: Date;
     afterId?: string;
-  }): Promise<unknown>;
+  }): Promise<AdminAuditPage>;
   mergeTask(input: {
     actorId: string;
     sourceTaskId: string;
     targetTaskId: string;
     reason: string;
     requestId: string;
-  }): Promise<unknown>;
+  }): Promise<AdminTaskMergeResponse>;
 }
 
 async function principal(
@@ -194,11 +210,13 @@ export function registerAdminRoutes(
       ADMIN_BODY_LIMIT,
     );
     return context.json(
-      await dependencies.bootstrap({
-        actorId: actor.user.id,
-        requestId: context.get('requestId'),
-        bootstrapToken: body.bootstrap_token,
-      }),
+      adminBootstrapResponseSchema.parse(
+        await dependencies.bootstrap({
+          actorId: actor.user.id,
+          requestId: context.get('requestId'),
+          bootstrapToken: body.bootstrap_token,
+        }),
+      ),
     );
   });
 
@@ -210,10 +228,12 @@ export function registerAdminRoutes(
     );
     const status = reportStatus(context.req.query('status'));
     return context.json(
-      await dependencies.listReports({
-        ...pagination(context.req),
-        ...(status === undefined ? {} : { status }),
-      }),
+      adminReportPageSchema.parse(
+        await dependencies.listReports({
+          ...pagination(context.req),
+          ...(status === undefined ? {} : { status }),
+        }),
+      ),
     );
   });
 
@@ -229,13 +249,15 @@ export function registerAdminRoutes(
       ADMIN_BODY_LIMIT,
     );
     return context.json(
-      await dependencies.resolveReport({
-        actorId: actor.user.id,
-        reportId: pathId(context.req.param('report_id'), 'Report ID'),
-        status: body.status,
-        resolution: body.resolution,
-        requestId: context.get('requestId'),
-      }),
+      adminReportResolutionResponseSchema.parse(
+        await dependencies.resolveReport({
+          actorId: actor.user.id,
+          reportId: pathId(context.req.param('report_id'), 'Report ID'),
+          status: body.status,
+          resolution: body.resolution,
+          requestId: context.get('requestId'),
+        }),
+      ),
     );
   });
 
@@ -253,14 +275,16 @@ export function registerAdminRoutes(
         ADMIN_BODY_LIMIT,
       );
       return context.json(
-        await dependencies.setContentHidden({
-          actorId: actor.user.id,
-          targetType: body.target_type,
-          targetId: pathId(context.req.param('content_id'), 'Content ID'),
-          hidden,
-          reason: body.reason,
-          requestId: context.get('requestId'),
-        }),
+        adminContentActionResponseSchema.parse(
+          await dependencies.setContentHidden({
+            actorId: actor.user.id,
+            targetType: body.target_type,
+            targetId: pathId(context.req.param('content_id'), 'Content ID'),
+            hidden,
+            reason: body.reason,
+            requestId: context.get('requestId'),
+          }),
+        ),
       );
     });
   }
@@ -279,13 +303,15 @@ export function registerAdminRoutes(
         ADMIN_BODY_LIMIT,
       );
       return context.json(
-        await dependencies.setUserSuspended({
-          actorId: actor.user.id,
-          targetUserId: pathId(context.req.param('user_id'), 'User ID'),
-          suspended,
-          reason: body.reason,
-          requestId: context.get('requestId'),
-        }),
+        adminUserActionResponseSchema.parse(
+          await dependencies.setUserSuspended({
+            actorId: actor.user.id,
+            targetUserId: pathId(context.req.param('user_id'), 'User ID'),
+            suspended,
+            reason: body.reason,
+            requestId: context.get('requestId'),
+          }),
+        ),
       );
     });
   }
@@ -302,13 +328,15 @@ export function registerAdminRoutes(
       ADMIN_BODY_LIMIT,
     );
     return context.json(
-      await dependencies.setMaintainerRole({
-        actorId: actor.user.id,
-        targetUserId: pathId(context.req.param('user_id'), 'User ID'),
-        maintainer: body.maintainer,
-        reason: body.reason,
-        requestId: context.get('requestId'),
-      }),
+      adminRoleResponseSchema.parse(
+        await dependencies.setMaintainerRole({
+          actorId: actor.user.id,
+          targetUserId: pathId(context.req.param('user_id'), 'User ID'),
+          maintainer: body.maintainer,
+          reason: body.reason,
+          requestId: context.get('requestId'),
+        }),
+      ),
     );
   });
 
@@ -324,16 +352,18 @@ export function registerAdminRoutes(
       ADMIN_BODY_LIMIT,
     );
     return context.json(
-      await dependencies.mergeTask({
-        actorId: actor.user.id,
-        sourceTaskId: pathId(
-          context.req.param('source_task_id'),
-          'Source task ID',
-        ),
-        targetTaskId: body.target_task_id,
-        reason: body.reason,
-        requestId: context.get('requestId'),
-      }),
+      adminTaskMergeResponseSchema.parse(
+        await dependencies.mergeTask({
+          actorId: actor.user.id,
+          sourceTaskId: pathId(
+            context.req.param('source_task_id'),
+            'Source task ID',
+          ),
+          targetTaskId: body.target_task_id,
+          reason: body.reason,
+          requestId: context.get('requestId'),
+        }),
+      ),
     );
   });
 
@@ -343,6 +373,10 @@ export function registerAdminRoutes(
       dependencies,
       'read',
     );
-    return context.json(await dependencies.listAudit(pagination(context.req)));
+    return context.json(
+      adminAuditPageSchema.parse(
+        await dependencies.listAudit(pagination(context.req)),
+      ),
+    );
   });
 }

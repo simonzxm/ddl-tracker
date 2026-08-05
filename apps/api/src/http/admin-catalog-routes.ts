@@ -1,14 +1,20 @@
 import {
   catalogApplyAllRequestSchema,
+  catalogApplyResponseSchema,
   catalogCancelRequestSchema,
+  catalogCancelResponseSchema,
+  catalogImportStatusSchema,
   catalogPlanBatchRequestSchema,
+  catalogPlanBatchResponseSchema,
+  catalogUploadResponseSchema,
   parseUuidV7,
   type CatalogApplyAllRequest,
+  type CatalogApplyResponse,
   type CatalogCancelRequest,
   type CatalogCancelResponse,
-  type CatalogImportDiff,
-  type CatalogImportStatusValue,
+  type CatalogImportStatus,
   type CatalogPlanBatchRequest,
+  type CatalogPlanBatchResponse,
   type CatalogUploadResponse,
 } from '@ddl-tracker/contracts';
 import type { CatalogUploadSource } from '@ddl-tracker/catalog-import';
@@ -31,15 +37,7 @@ export interface AdminCatalogRouteDependencies {
   planBatch(
     actorId: string,
     request: CatalogPlanBatchRequest,
-  ): Promise<{
-    import_id: string;
-    batch_index: number;
-    accepted: boolean;
-    received_batches: number;
-    total_batches: number;
-    plan_complete: boolean;
-    diff: CatalogImportDiff | null;
-  }>;
+  ): Promise<CatalogPlanBatchResponse>;
   upload(
     actorId: string,
     requestId: string,
@@ -50,28 +48,14 @@ export interface AdminCatalogRouteDependencies {
     importId: string,
     requestId: string,
     request: CatalogApplyAllRequest,
-  ): Promise<{
-    import_id: string;
-    replayed: boolean;
-    applied_batches: number;
-    total_batches: number;
-    complete: boolean;
-  }>;
+  ): Promise<CatalogApplyResponse>;
   cancel(
     actorId: string,
     importId: string,
     requestId: string,
     request: CatalogCancelRequest,
   ): Promise<CatalogCancelResponse>;
-  getStatus(importId: string): Promise<{
-    import_id: string;
-    status: CatalogImportStatusValue;
-    received_batches: number;
-    applied_batches: number;
-    total_batches: number;
-    diff: CatalogImportDiff | null;
-    failure_message: string | null;
-  }>;
+  getStatus(importId: string): Promise<CatalogImportStatus>;
 }
 
 async function requireMaintainer(
@@ -131,7 +115,11 @@ export function registerAdminCatalogRoutes(
         status: 409,
       });
     }
-    return context.json(await dependencies.planBatch(principal.user.id, body));
+    return context.json(
+      catalogPlanBatchResponseSchema.parse(
+        await dependencies.planBatch(principal.user.id, body),
+      ),
+    );
   });
 
   app.post('/v1/admin/catalog/imports/upload', async (context) => {
@@ -142,10 +130,12 @@ export function registerAdminCatalogRoutes(
     );
     const body = await readCatalogUpload(context.req.raw);
     return context.json(
-      await dependencies.upload(
-        principal.user.id,
-        context.get('requestId'),
-        body,
+      catalogUploadResponseSchema.parse(
+        await dependencies.upload(
+          principal.user.id,
+          context.get('requestId'),
+          body,
+        ),
       ),
     );
   });
@@ -163,11 +153,13 @@ export function registerAdminCatalogRoutes(
       ADMIN_BODY_LIMIT,
     );
     return context.json(
-      await dependencies.applyAll(
-        principal.user.id,
-        importId,
-        context.get('requestId'),
-        body,
+      catalogApplyResponseSchema.parse(
+        await dependencies.applyAll(
+          principal.user.id,
+          importId,
+          context.get('requestId'),
+          body,
+        ),
       ),
     );
   });
@@ -185,11 +177,13 @@ export function registerAdminCatalogRoutes(
       ADMIN_BODY_LIMIT,
     );
     return context.json(
-      await dependencies.cancel(
-        principal.user.id,
-        importId,
-        context.get('requestId'),
-        body,
+      catalogCancelResponseSchema.parse(
+        await dependencies.cancel(
+          principal.user.id,
+          importId,
+          context.get('requestId'),
+          body,
+        ),
       ),
     );
   });
@@ -201,6 +195,8 @@ export function registerAdminCatalogRoutes(
       'read',
     );
     const importId = parseImportId(context.req.param('import_id'));
-    return context.json(await dependencies.getStatus(importId));
+    return context.json(
+      catalogImportStatusSchema.parse(await dependencies.getStatus(importId)),
+    );
   });
 }

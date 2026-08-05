@@ -156,7 +156,7 @@ function dependencies(): AppDependencies {
         token_type: 'Bearer' as const,
         expires_at: TIMESTAMP,
         user,
-        roles: ['maintainer'] as const,
+        roles: ['maintainer'] as 'maintainer'[],
       })),
       authenticate: vi.fn(async () => principal),
       rateLimit: vi.fn(async () => undefined),

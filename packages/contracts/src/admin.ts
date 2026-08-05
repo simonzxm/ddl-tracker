@@ -136,7 +136,7 @@ export const adminAuditEntrySchema = z
     actor_id: uuidV7Schema.nullable(),
     action: z.string(),
     target_type: z.string(),
-    target_id: uuidV7Schema.nullable(),
+    target_id: z.uuid().nullable(),
     reason: z.string().nullable(),
     result: z.record(z.string(), z.unknown()),
     request_id: z.uuid(),

@@ -24,7 +24,7 @@ describe('maintainer sync events v2', () => {
           reason: 'inaccurate',
           details: 'D'.repeat(1_001),
           status: 'resolved',
-          resolution: 'Reviewed and corrected.',
+          resolution: 'R'.repeat(1_001),
           created_at: NOW,
           resolved_at: NOW,
         },

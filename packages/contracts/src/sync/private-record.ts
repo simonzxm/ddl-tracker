@@ -104,7 +104,7 @@ export const reporterContentReportRecordSchema = z.discriminatedUnion('status', 
     .object({
       ...reporterContentReportIdentity,
       status: z.literal('resolved'),
-      resolution: z.string().min(1),
+      resolution: z.string(),
       resolved_at: rfc3339TimestampSchema,
     })
     .strict(),
@@ -112,7 +112,7 @@ export const reporterContentReportRecordSchema = z.discriminatedUnion('status', 
     .object({
       ...reporterContentReportIdentity,
       status: z.literal('dismissed'),
-      resolution: z.string().min(1),
+      resolution: z.string(),
       resolved_at: rfc3339TimestampSchema,
     })
     .strict(),

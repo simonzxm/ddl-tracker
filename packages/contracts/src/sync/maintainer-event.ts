@@ -1,10 +1,6 @@
 import { z } from 'zod';
 
-import {
-  normalizedTextSchema,
-  rfc3339TimestampSchema,
-  uuidV7Schema,
-} from '../schema.js';
+import { rfc3339TimestampSchema, uuidV7Schema } from '../schema.js';
 import {
   reportReasonSchema,
   reportTargetTypeSchema,
@@ -32,7 +28,7 @@ const resolvedMaintainerReportSchema = z
   .object({
     ...reportIdentityFields,
     status: z.literal('resolved'),
-    resolution: normalizedTextSchema(1, 1000),
+    resolution: z.string(),
     resolved_at: rfc3339TimestampSchema,
   })
   .strict();
@@ -40,7 +36,7 @@ const dismissedMaintainerReportSchema = z
   .object({
     ...reportIdentityFields,
     status: z.literal('dismissed'),
-    resolution: normalizedTextSchema(1, 1000),
+    resolution: z.string(),
     resolved_at: rfc3339TimestampSchema,
   })
   .strict();

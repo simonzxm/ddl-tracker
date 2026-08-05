@@ -372,7 +372,7 @@ const responseContracts: ResponseContractCase[] = [
           actor_id: OTHER_ID,
           action: 'Legacy action v1',
           target_type: 'Imported object',
-          target_id: ID,
+          target_id: '550e8400-e29b-41d4-a716-446655440001',
           reason: 'R'.repeat(1_001),
           result: { state: 'hidden' },
           request_id: '550e8400-e29b-41d4-a716-446655440000',

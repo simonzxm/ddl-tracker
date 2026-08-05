@@ -22,7 +22,7 @@ describe('maintainer sync events v2', () => {
           target_type: 'course_task',
           target_id: TARGET_ID,
           reason: 'inaccurate',
-          details: null,
+          details: 'D'.repeat(1_001),
           status: 'resolved',
           resolution: 'Reviewed and corrected.',
           created_at: NOW,

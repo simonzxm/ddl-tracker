@@ -2,7 +2,6 @@ import { z } from 'zod';
 
 import {
   normalizedTextSchema,
-  nullableNormalizedTextSchema,
   rfc3339TimestampSchema,
   uuidV7Schema,
 } from './schema.js';
@@ -85,9 +84,9 @@ export const adminReportSchema = z
     target_type: reportTargetTypeSchema,
     target_id: uuidV7Schema,
     reason: reportReasonSchema,
-    details: nullableNormalizedTextSchema(1000),
+    details: z.string().nullable(),
     status: adminReportStatusSchema,
-    resolution: nullableNormalizedTextSchema(1000),
+    resolution: z.string().nullable(),
     resolved_by: uuidV7Schema.nullable(),
     created_at: rfc3339TimestampSchema,
     resolved_at: rfc3339TimestampSchema.nullable(),
@@ -138,9 +137,9 @@ export const adminAuditEntrySchema = z
     action: z.string(),
     target_type: z.string(),
     target_id: uuidV7Schema.nullable(),
-    reason: nullableNormalizedTextSchema(1000),
+    reason: z.string().nullable(),
     result: z.record(z.string(), z.unknown()),
-    request_id: uuidV7Schema,
+    request_id: z.uuid(),
     created_at: rfc3339TimestampSchema,
   })
   .strict();

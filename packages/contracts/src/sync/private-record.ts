@@ -87,7 +87,7 @@ const reporterContentReportIdentity = {
   target_type: reportTargetTypeSchema,
   target_id: uuidV7Schema,
   reason: reportReasonSchema,
-  details: nullableNormalizedTextSchema(1000),
+  details: z.string().nullable(),
   created_at: rfc3339TimestampSchema,
 };
 
@@ -104,7 +104,7 @@ export const reporterContentReportRecordSchema = z.discriminatedUnion('status', 
     .object({
       ...reporterContentReportIdentity,
       status: z.literal('resolved'),
-      resolution: normalizedTextSchema(1, 1000),
+      resolution: z.string().min(1),
       resolved_at: rfc3339TimestampSchema,
     })
     .strict(),
@@ -112,7 +112,7 @@ export const reporterContentReportRecordSchema = z.discriminatedUnion('status', 
     .object({
       ...reporterContentReportIdentity,
       status: z.literal('dismissed'),
-      resolution: normalizedTextSchema(1, 1000),
+      resolution: z.string().min(1),
       resolved_at: rfc3339TimestampSchema,
     })
     .strict(),

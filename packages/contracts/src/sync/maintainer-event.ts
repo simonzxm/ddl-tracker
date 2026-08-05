@@ -2,7 +2,6 @@ import { z } from 'zod';
 
 import {
   normalizedTextSchema,
-  nullableNormalizedTextSchema,
   rfc3339TimestampSchema,
   uuidV7Schema,
 } from '../schema.js';
@@ -17,7 +16,7 @@ const reportIdentityFields = {
   target_type: reportTargetTypeSchema,
   target_id: uuidV7Schema,
   reason: reportReasonSchema,
-  details: nullableNormalizedTextSchema(1000),
+  details: z.string().nullable(),
   created_at: rfc3339TimestampSchema,
 };
 

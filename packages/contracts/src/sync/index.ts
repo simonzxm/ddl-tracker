@@ -2,6 +2,7 @@ export * from './contribution-operation.js';
 export * from './discussion-operation.js';
 export * from './event.js';
 export * from './event-v2.js';
+export * from './http-response.js';
 export * from './limits.js';
 export * from './maintainer-event.js';
 export * from './private-event.js';

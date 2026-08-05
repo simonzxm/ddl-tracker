@@ -5,6 +5,7 @@ export * from './auth.js';
 export * from './catalog.js';
 export * from './comment.js';
 export * from './error.js';
+export * from './health.js';
 export * from './proposal.js';
 export * from './ranking.js';
 export * from './schema.js';

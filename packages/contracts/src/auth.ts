@@ -96,6 +96,12 @@ export const sessionSchema = z
   })
   .strict();
 
+export const sessionListResponseSchema = z
+  .object({
+    sessions: z.array(sessionSchema),
+  })
+  .strict();
+
 export const profileUpdateRequestSchema = z
   .object({
     username: usernameSchema,
@@ -108,6 +114,14 @@ export const profileUpdateRequestSchema = z
 
 export type PublicUserWire = z.infer<typeof publicUserSchema>;
 export type CurrentUserWire = z.infer<typeof currentUserSchema>;
+export type OidcAuthorizationResponse = z.infer<
+  typeof oidcAuthorizationResponseSchema
+>;
+export type SessionVerificationResponse = z.infer<
+  typeof sessionVerificationResponseSchema
+>;
+export type SessionWire = z.infer<typeof sessionSchema>;
+export type SessionListResponse = z.infer<typeof sessionListResponseSchema>;
 export type OidcAuthorizationRequest = z.infer<
   typeof oidcAuthorizationRequestSchema
 >;

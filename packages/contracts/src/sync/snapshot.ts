@@ -114,4 +114,10 @@ export const classSectionSnapshotResponseSchema = z
     );
   });
 
+export type AccountSnapshotResponse = z.infer<
+  typeof accountSnapshotResponseSchema
+>;
+export type ClassSectionSnapshotResponse = z.infer<
+  typeof classSectionSnapshotResponseSchema
+>;
 export type SnapshotRecord = SnapshotRecordV2;

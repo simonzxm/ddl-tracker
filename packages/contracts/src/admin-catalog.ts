@@ -113,34 +113,44 @@ const diffCountsSchema = z
   })
   .strict();
 
+const deactivatedCourseSchema = z
+  .object({
+    id: uuidV7Schema,
+    external_course_code: z.string().trim().min(1).max(100),
+  })
+  .strict();
+const deactivatedClassSectionSchema = z
+  .object({
+    id: uuidV7Schema,
+    external_section_id: z.string().trim().min(1).max(200),
+  })
+  .strict();
+
+const catalogImportDiffFields = {
+  terms: diffCountsSchema,
+  courses: diffCountsSchema,
+  class_sections: diffCountsSchema,
+  field_changes: z.record(z.string(), z.number().int().nonnegative()),
+  deactivated_courses: z.array(deactivatedCourseSchema),
+  deactivated_class_sections: z.array(deactivatedClassSectionSchema),
+  deactivated_class_section_ids: z.array(uuidV7Schema),
+  checksum_previously_applied: z.boolean(),
+};
+
+export const catalogImportDiffResponseSchema = z
+  .object(catalogImportDiffFields)
+  .strict();
+
+// Stored plans created before reviewable deactivation details were added omit
+// these two arrays. Internal readers may normalize those legacy records, but
+// public HTTP responses always use catalogImportDiffResponseSchema instead.
 export const catalogImportDiffSchema = z
   .object({
-    terms: diffCountsSchema,
-    courses: diffCountsSchema,
-    class_sections: diffCountsSchema,
-    field_changes: z.record(z.string(), z.number().int().nonnegative()),
-    deactivated_courses: z
-      .array(
-        z
-          .object({
-            id: uuidV7Schema,
-            external_course_code: z.string().trim().min(1).max(100),
-          })
-          .strict(),
-      )
-      .default([]),
+    ...catalogImportDiffFields,
+    deactivated_courses: z.array(deactivatedCourseSchema).default([]),
     deactivated_class_sections: z
-      .array(
-        z
-          .object({
-            id: uuidV7Schema,
-            external_section_id: z.string().trim().min(1).max(200),
-          })
-          .strict(),
-      )
+      .array(deactivatedClassSectionSchema)
       .default([]),
-    deactivated_class_section_ids: z.array(uuidV7Schema),
-    checksum_previously_applied: z.boolean(),
   })
   .strict();
 
@@ -152,7 +162,7 @@ export const catalogPlanBatchResponseSchema = z
     received_batches: z.number().int().nonnegative(),
     total_batches: z.number().int().positive(),
     plan_complete: z.boolean(),
-    diff: catalogImportDiffSchema.nullable(),
+    diff: catalogImportDiffResponseSchema.nullable(),
   })
   .strict();
 
@@ -168,7 +178,7 @@ export const catalogUploadResponseSchema = z
     class_section_count: z.number().int().nonnegative(),
     total_batches: z.number().int().positive(),
     warnings: z.array(z.string().max(500)).max(100),
-    diff: catalogImportDiffSchema,
+    diff: catalogImportDiffResponseSchema,
   })
   .strict();
 
@@ -217,7 +227,7 @@ export const catalogImportStatusSchema = z
     received_batches: z.number().int().nonnegative(),
     applied_batches: z.number().int().nonnegative(),
     total_batches: z.number().int().positive(),
-    diff: catalogImportDiffSchema.nullable(),
+    diff: catalogImportDiffResponseSchema.nullable(),
     failure_message: z.string().nullable(),
   })
   .strict();
@@ -226,14 +236,24 @@ export type CatalogPlanBatchRequest = z.infer<
   typeof catalogPlanBatchRequestSchema
 >;
 export type CatalogImportDiff = z.infer<typeof catalogImportDiffSchema>;
+export type CatalogImportDiffResponse = z.infer<
+  typeof catalogImportDiffResponseSchema
+>;
+export type CatalogPlanBatchResponse = z.infer<
+  typeof catalogPlanBatchResponseSchema
+>;
 export type CatalogApplyAllRequest = z.infer<
   typeof catalogApplyAllRequestSchema
 >;
 export type CatalogUploadResponse = z.infer<
   typeof catalogUploadResponseSchema
 >;
+export type CatalogApplyResponse = z.infer<
+  typeof catalogApplyResponseSchema
+>;
 export type CatalogCancelRequest = z.infer<typeof catalogCancelRequestSchema>;
 export type CatalogCancelResponse = z.infer<typeof catalogCancelResponseSchema>;
 export type CatalogImportStatusValue = z.infer<
   typeof catalogImportStatusValueSchema
 >;
+export type CatalogImportStatus = z.infer<typeof catalogImportStatusSchema>;

@@ -142,18 +142,22 @@ export function buildCatalogDiff(
         baseline.term.name,
         desired.term.display_name,
       ),
-      compareField(
-        fieldChanges,
-        'terms.starts_on',
-        baseline.term.startsOn,
-        desired.term.starts_on,
-      ),
-      compareField(
-        fieldChanges,
-        'terms.ends_on',
-        baseline.term.endsOn,
-        desired.term.ends_on,
-      ),
+      desired.term.starts_on === null
+        ? false
+        : compareField(
+            fieldChanges,
+            'terms.starts_on',
+            baseline.term.startsOn,
+            desired.term.starts_on,
+          ),
+      desired.term.ends_on === null
+        ? false
+        : compareField(
+            fieldChanges,
+            'terms.ends_on',
+            baseline.term.endsOn,
+            desired.term.ends_on,
+          ),
     ].some(Boolean);
     termCounts[changed ? 'updated' : 'unchanged'] += 1;
   }

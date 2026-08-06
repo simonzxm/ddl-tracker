@@ -263,5 +263,28 @@ export const migrationBundle = [
       "\nCREATE INDEX \"oidc_login_transactions_expiry_idx\" ON \"oidc_login_transactions\" USING btree (\"expires_at\");",
       "\nDROP TYPE \"public\".\"auth_challenge_status\";"
     ]
+  },
+  {
+    "tag": "0013_useful_the_watchers",
+    "folderMillis": 1786004388467,
+    "hash": "b1099a411202b3719780164c4a1577d2c4fc00aa60f3ea19e5ecfcf69339033b",
+    "statements": [
+      "CREATE TABLE \"catalog_sync_runs\" (\n\t\"id\" uuid PRIMARY KEY NOT NULL,\n\t\"repository\" text NOT NULL,\n\t\"commit_sha\" text NOT NULL,\n\t\"term_code\" text NOT NULL,\n\t\"source_path\" text NOT NULL,\n\t\"blob_sha\" text NOT NULL,\n\t\"source_checksum\" text,\n\t\"row_count\" integer,\n\t\"course_count\" integer,\n\t\"class_section_count\" integer,\n\t\"changed\" boolean,\n\t\"diff\" jsonb DEFAULT 'null'::jsonb,\n\t\"status\" text NOT NULL,\n\t\"error_message\" text,\n\t\"started_at\" timestamp with time zone NOT NULL,\n\t\"completed_at\" timestamp with time zone NOT NULL,\n\tCONSTRAINT \"catalog_sync_runs_status_valid\" CHECK (\"catalog_sync_runs\".\"status\" in ('succeeded', 'failed')),\n\tCONSTRAINT \"catalog_sync_runs_counts_nonnegative\" CHECK ((\"catalog_sync_runs\".\"row_count\" is null or \"catalog_sync_runs\".\"row_count\" >= 0)\n        and (\"catalog_sync_runs\".\"course_count\" is null or \"catalog_sync_runs\".\"course_count\" >= 0)\n        and (\"catalog_sync_runs\".\"class_section_count\" is null or \"catalog_sync_runs\".\"class_section_count\" >= 0)),\n\tCONSTRAINT \"catalog_sync_runs_time_order\" CHECK (\"catalog_sync_runs\".\"started_at\" <= \"catalog_sync_runs\".\"completed_at\")\n);\n",
+      "\nCREATE TABLE \"catalog_sync_state\" (\n\t\"repository\" text NOT NULL,\n\t\"term_code\" text NOT NULL,\n\t\"commit_sha\" text NOT NULL,\n\t\"blob_sha\" text NOT NULL,\n\t\"source_checksum\" text NOT NULL,\n\t\"synced_at\" timestamp with time zone NOT NULL,\n\t\"run_id\" uuid NOT NULL,\n\tCONSTRAINT \"catalog_sync_state_repository_term_code_pk\" PRIMARY KEY(\"repository\",\"term_code\")\n);\n",
+      "\nALTER TABLE \"catalog_sync_state\" ADD CONSTRAINT \"catalog_sync_state_run_id_catalog_sync_runs_id_fk\" FOREIGN KEY (\"run_id\") REFERENCES \"public\".\"catalog_sync_runs\"(\"id\") ON DELETE restrict ON UPDATE no action;",
+      "\nCREATE INDEX \"catalog_sync_runs_term_completed_idx\" ON \"catalog_sync_runs\" USING btree (\"repository\",\"term_code\",\"completed_at\");",
+      "\nCREATE INDEX \"catalog_sync_runs_status_completed_idx\" ON \"catalog_sync_runs\" USING btree (\"status\",\"completed_at\");",
+      "\nCREATE INDEX \"catalog_sync_state_synced_idx\" ON \"catalog_sync_state\" USING btree (\"synced_at\");"
+    ]
+  },
+  {
+    "tag": "0014_redundant_shaman",
+    "folderMillis": 1786004415377,
+    "hash": "fe972ba9c302d0533608d67a40f66f9a51778cb170c06d32bdcc7d1d0fa4327d",
+    "statements": [
+      "DROP TABLE \"catalog_import_batches\" CASCADE;",
+      "\nDROP TABLE \"catalog_imports\" CASCADE;",
+      "\nDROP TYPE \"public\".\"catalog_import_status\";"
+    ]
   }
 ] as const satisfies readonly MigrationDefinition[];

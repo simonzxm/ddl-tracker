@@ -1,6 +1,6 @@
 export * from './auth.js';
 export * from './catalog.js';
-export * from './catalog-import.js';
+export * from './catalog-sync.js';
 export * from './discussion.js';
 export * from './moderation.js';
 export * from './private.js';

@@ -5,7 +5,7 @@ import type {
   BaselineCourse,
   BaselineTerm,
   CatalogBaseline,
-} from './import-diff.js';
+} from './catalog-diff.js';
 
 interface TermRow {
   id: string;

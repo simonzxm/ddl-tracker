@@ -1,14 +1,14 @@
 import { z } from 'zod';
 
-import { rfc3339TimestampSchema, uuidV7Schema } from '../schema.js';
+import {
+  rfc3339TimestampSchema,
+  storedTextSchema,
+  uuidV7Schema,
+} from '../schema.js';
 import {
   reportReasonSchema,
   reportTargetTypeSchema,
 } from './discussion-operation.js';
-
-// These event payloads are storage-backed. Historical rows may contain empty
-// or over-limit text even though current mutation requests require 1...1000.
-const storedModerationTextSchema = z.string();
 
 const reportIdentityFields = {
   report_id: uuidV7Schema,
@@ -16,7 +16,7 @@ const reportIdentityFields = {
   target_type: reportTargetTypeSchema,
   target_id: uuidV7Schema,
   reason: reportReasonSchema,
-  details: z.string().nullable(),
+  details: storedTextSchema.nullable(),
   created_at: rfc3339TimestampSchema,
 };
 
@@ -32,7 +32,7 @@ const resolvedMaintainerReportSchema = z
   .object({
     ...reportIdentityFields,
     status: z.literal('resolved'),
-    resolution: storedModerationTextSchema,
+    resolution: storedTextSchema,
     resolved_at: rfc3339TimestampSchema,
   })
   .strict();
@@ -40,7 +40,7 @@ const dismissedMaintainerReportSchema = z
   .object({
     ...reportIdentityFields,
     status: z.literal('dismissed'),
-    resolution: storedModerationTextSchema,
+    resolution: storedTextSchema,
     resolved_at: rfc3339TimestampSchema,
   })
   .strict();

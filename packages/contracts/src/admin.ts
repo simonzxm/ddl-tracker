@@ -3,6 +3,7 @@ import { z } from 'zod';
 import {
   normalizedTextSchema,
   rfc3339TimestampSchema,
+  storedTextSchema,
   uuidV7Schema,
 } from './schema.js';
 import {
@@ -84,9 +85,9 @@ export const adminReportSchema = z
     target_type: reportTargetTypeSchema,
     target_id: uuidV7Schema,
     reason: reportReasonSchema,
-    details: z.string().nullable(),
+    details: storedTextSchema.nullable(),
     status: adminReportStatusSchema,
-    resolution: z.string().nullable(),
+    resolution: storedTextSchema.nullable(),
     resolved_by: uuidV7Schema.nullable(),
     created_at: rfc3339TimestampSchema,
     resolved_at: rfc3339TimestampSchema.nullable(),
@@ -134,12 +135,12 @@ export const adminAuditEntrySchema = z
   .object({
     id: uuidV7Schema,
     actor_id: uuidV7Schema.nullable(),
-    action: z.string(),
-    target_type: z.string(),
+    action: storedTextSchema,
+    target_type: storedTextSchema,
     // audit_log.target_id is a generic UUID column; historical/imported
     // targets are not guaranteed to use UUIDv7.
     target_id: z.uuid().nullable(),
-    reason: z.string().nullable(),
+    reason: storedTextSchema.nullable(),
     result: z.record(z.string(), z.unknown()),
     request_id: z.uuid(),
     created_at: rfc3339TimestampSchema,

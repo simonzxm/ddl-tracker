@@ -4,6 +4,7 @@ import {
   normalizedTextSchema,
   nullableNormalizedTextSchema,
   rfc3339TimestampSchema,
+  storedTextSchema,
   uuidV7Schema,
 } from '../schema.js';
 import {
@@ -82,16 +83,12 @@ export const personalTaskStateTombstoneSchema = z
   })
   .strict();
 
-// Snapshot records replay stored moderation rows. Historical values may be
-// empty or exceed current request limits, so output validation follows storage.
-const storedModerationTextSchema = z.string();
-
 const reporterContentReportIdentity = {
   report_id: uuidV7Schema,
   target_type: reportTargetTypeSchema,
   target_id: uuidV7Schema,
   reason: reportReasonSchema,
-  details: z.string().nullable(),
+  details: storedTextSchema.nullable(),
   created_at: rfc3339TimestampSchema,
 };
 
@@ -108,7 +105,7 @@ export const reporterContentReportRecordSchema = z.discriminatedUnion('status', 
     .object({
       ...reporterContentReportIdentity,
       status: z.literal('resolved'),
-      resolution: storedModerationTextSchema,
+      resolution: storedTextSchema,
       resolved_at: rfc3339TimestampSchema,
     })
     .strict(),
@@ -116,7 +113,7 @@ export const reporterContentReportRecordSchema = z.discriminatedUnion('status', 
     .object({
       ...reporterContentReportIdentity,
       status: z.literal('dismissed'),
-      resolution: storedModerationTextSchema,
+      resolution: storedTextSchema,
       resolved_at: rfc3339TimestampSchema,
     })
     .strict(),

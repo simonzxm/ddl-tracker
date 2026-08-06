@@ -1,15 +1,15 @@
 import { z } from 'zod';
 
 import {
-  normalizedTextSchema,
   rfc3339TimestampSchema,
+  storedTextSchema,
   uuidV7Schema,
 } from './schema.js';
 
 export const commentRevisionWireSchema = z
   .object({
     revision: z.number().int().positive(),
-    body: normalizedTextSchema(1, 4000),
+    body: storedTextSchema,
     author_id: uuidV7Schema.nullable(),
     created_at: rfc3339TimestampSchema,
   })

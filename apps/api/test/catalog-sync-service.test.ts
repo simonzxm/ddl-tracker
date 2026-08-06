@@ -158,4 +158,39 @@ describe('CatalogSyncService', () => {
       }),
     );
   });
+
+  it('prioritizes recent terms and bounds bootstrap work per cron run', async () => {
+    const catalogs = [
+      { ...CURRENT, termCode: '2024-2025-2', path: 'data/2024-2025-2/courses.csv.gz' },
+      { ...CURRENT, termCode: '2025-2026-1', path: 'data/2025-2026-1/courses.csv.gz' },
+      { ...CURRENT, termCode: '2025-2026-2', path: 'data/2025-2026-2/courses.csv.gz' },
+    ];
+    const source: CatalogSource = {
+      list: vi.fn(async () => ({
+        repository: 'at-nju/courses',
+        commitSha: COMMIT,
+        catalogs,
+      })),
+      download: vi.fn(async (catalog) => csv(catalog.termCode)),
+    };
+    const repo = repository();
+    repo.currentBlobShas.mockResolvedValue(new Map());
+    const service = new CatalogSyncService({
+      source,
+      repository: repo,
+      createId: (() => {
+        let value = 10;
+        return () => `018f0000-0000-7000-8000-${String(value++).padStart(12, '0')}`;
+      })(),
+      maximumCatalogsPerRun: 2,
+    });
+
+    await expect(service.sync()).resolves.toMatchObject({
+      discovered: 3,
+      unchanged: 0,
+      synced: 2,
+      terms: ['2025-2026-2', '2025-2026-1'],
+    });
+    expect(source.download).toHaveBeenCalledTimes(2);
+  });
 });

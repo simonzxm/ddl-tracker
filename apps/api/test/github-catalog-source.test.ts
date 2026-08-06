@@ -67,7 +67,7 @@ describe('GithubCatalogSource', () => {
 
   it('downloads and expands a dataset through the pinned raw URL', async () => {
     const csv = new TextEncoder().encode('XNXQDM\n2026-2027-1\n');
-    const gzip = gzipSync(csv, { mtime: 0 });
+    const gzip = gzipSync(csv);
     const fetcher = vi.fn(async (input: RequestInfo | URL) => {
       expect(String(input)).toBe(
         `https://raw.githubusercontent.com/at-nju/courses/${COMMIT}/data/2026-2027-1/courses.csv.gz`,

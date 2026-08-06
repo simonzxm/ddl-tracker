@@ -29,6 +29,7 @@ describe('deriveTermStatus', () => {
     expect(
       deriveTermStatus(
         {
+          externalCode: '2026-2027-1',
           startsOn: '2026-08-31',
           endsOn: '2027-01-17',
           statusOverride: null,
@@ -42,6 +43,7 @@ describe('deriveTermStatus', () => {
     expect(
       deriveTermStatus(
         {
+          externalCode: '2026-2027-1',
           startsOn: '2026-09-01',
           endsOn: '2027-01-17',
           statusOverride: null,
@@ -55,6 +57,7 @@ describe('deriveTermStatus', () => {
     expect(
       deriveTermStatus(
         {
+          externalCode: '2025-2026-2',
           startsOn: '2026-01-01',
           endsOn: '2026-08-30',
           statusOverride: null,
@@ -65,6 +68,7 @@ describe('deriveTermStatus', () => {
     expect(
       deriveTermStatus(
         {
+          externalCode: '2027-2028-1',
           startsOn: '2027-01-01',
           endsOn: '2027-06-01',
           statusOverride: 'active',
@@ -75,6 +79,7 @@ describe('deriveTermStatus', () => {
     expect(
       deriveTermStatus(
         {
+          externalCode: '2025-2026-1',
           startsOn: null,
           endsOn: null,
           statusOverride: 'archived',
@@ -82,6 +87,25 @@ describe('deriveTermStatus', () => {
         NOW,
       ),
     ).toBe('archived');
+  });
+
+  it('falls back to the upstream term code when calendar dates are unavailable', () => {
+    const now = new Date('2026-08-06T08:00:00.000Z');
+    const base = {
+      startsOn: null,
+      endsOn: null,
+      statusOverride: null,
+    } as const;
+
+    expect(
+      deriveTermStatus({ ...base, externalCode: '2025-2026-2' }, now),
+    ).toBe('archived');
+    expect(
+      deriveTermStatus({ ...base, externalCode: '2025-2026-3' }, now),
+    ).toBe('in_progress');
+    expect(
+      deriveTermStatus({ ...base, externalCode: '2026-2027-1' }, now),
+    ).toBe('upcoming');
   });
 });
 

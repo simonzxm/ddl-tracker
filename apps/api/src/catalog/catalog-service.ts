@@ -41,7 +41,12 @@ export interface CatalogRepository {
   listClassSections(courseId: string): Promise<ClassSectionRecord[]>;
 }
 
-function shanghaiLocalDate(now: Date): string {
+function shanghaiDateParts(now: Date): {
+  date: string;
+  year: number;
+  month: number;
+  day: number;
+} {
   const parts = new Intl.DateTimeFormat('en-US', {
     timeZone: 'Asia/Shanghai',
     year: 'numeric',
@@ -55,11 +60,42 @@ function shanghaiLocalDate(now: Date): string {
   if (year === undefined || month === undefined || day === undefined) {
     throw new Error('Unable to derive Asia/Shanghai local date.');
   }
-  return `${year}-${month}-${day}`;
+  return {
+    date: `${year}-${month}-${day}`,
+    year: Number(year),
+    month: Number(month),
+    day: Number(day),
+  };
+}
+
+function termOrdinal(externalCode: string): number | null {
+  const match = /^(\d{4})-(\d{4})-([123])$/u.exec(externalCode);
+  if (match === null) return null;
+  const firstYear = Number(match[1]);
+  const secondYear = Number(match[2]);
+  const semester = Number(match[3]);
+  if (secondYear !== firstYear + 1) return null;
+  return firstYear * 3 + semester;
+}
+
+function currentTermOrdinal(parts: {
+  year: number;
+  month: number;
+  day: number;
+}): number {
+  if (parts.month <= 2) return (parts.year - 1) * 3 + 1;
+  if (parts.month <= 6) return (parts.year - 1) * 3 + 2;
+  if (parts.month === 7 || (parts.month === 8 && parts.day < 20)) {
+    return (parts.year - 1) * 3 + 3;
+  }
+  return parts.year * 3 + 1;
 }
 
 export function deriveTermStatus(
-  term: Pick<TermRecord, 'startsOn' | 'endsOn' | 'statusOverride'>,
+  term: Pick<
+    TermRecord,
+    'externalCode' | 'startsOn' | 'endsOn' | 'statusOverride'
+  >,
   now: Date,
 ): TermStatus {
   if (term.statusOverride === 'archived') {
@@ -69,12 +105,21 @@ export function deriveTermStatus(
     return 'in_progress';
   }
 
-  const today = shanghaiLocalDate(now);
+  const local = shanghaiDateParts(now);
+  const today = local.date;
   if (term.endsOn !== null && today > term.endsOn) {
     return 'archived';
   }
   if (term.startsOn !== null && today < term.startsOn) {
     return 'upcoming';
+  }
+  if (term.startsOn === null && term.endsOn === null) {
+    const ordinal = termOrdinal(term.externalCode);
+    if (ordinal !== null) {
+      const current = currentTermOrdinal(local);
+      if (ordinal < current) return 'archived';
+      if (ordinal > current) return 'upcoming';
+    }
   }
   return 'in_progress';
 }

@@ -45,25 +45,37 @@ export class CatalogSyncService {
   readonly #repository: CatalogSyncRepository;
   readonly #createId: () => string;
   readonly #now: () => Date;
+  readonly #maximumCatalogsPerRun: number;
 
   constructor(options: {
     source: CatalogSource;
     repository: CatalogSyncRepository;
     createId: () => string;
     now?: () => Date;
+    maximumCatalogsPerRun?: number;
   }) {
     this.#source = options.source;
     this.#repository = options.repository;
     this.#createId = options.createId;
     this.#now = options.now ?? (() => new Date());
+    this.#maximumCatalogsPerRun = options.maximumCatalogsPerRun ?? 4;
+    if (
+      !Number.isInteger(this.#maximumCatalogsPerRun) ||
+      this.#maximumCatalogsPerRun < 1
+    ) {
+      throw new Error('Catalog sync run limit must be a positive integer.');
+    }
   }
 
   async sync(): Promise<CatalogSyncResult> {
     const snapshot = await this.#source.list();
     const current = await this.#repository.currentBlobShas(snapshot.repository);
-    const changed = snapshot.catalogs.filter(
+    const allChanged = snapshot.catalogs.filter(
       (catalog) => current.get(catalog.termCode) !== catalog.blobSha,
     );
+    const changed = [...allChanged]
+      .sort((left, right) => right.termCode.localeCompare(left.termCode))
+      .slice(0, this.#maximumCatalogsPerRun);
     const syncedTerms: string[] = [];
 
     for (const source of changed) {
@@ -103,7 +115,7 @@ export class CatalogSyncService {
       repository: snapshot.repository,
       commit_sha: snapshot.commitSha,
       discovered: snapshot.catalogs.length,
-      unchanged: snapshot.catalogs.length - changed.length,
+      unchanged: snapshot.catalogs.length - allChanged.length,
       synced: syncedTerms.length,
       terms: syncedTerms,
     };

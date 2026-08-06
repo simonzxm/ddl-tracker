@@ -1,3 +1,5 @@
+import { gzipSync } from 'node:zlib';
+
 import {
   adminAuditPageSchema,
   adminBootstrapResponseSchema,
@@ -6,6 +8,10 @@ import {
   adminReportResolutionResponseSchema,
   adminRoleResponseSchema,
   adminUserActionResponseSchema,
+  catalogApplyResponseSchema,
+  catalogImportStatusSchema,
+  catalogPlanBatchResponseSchema,
+  catalogUploadResponseSchema,
   classSectionsResponseSchema,
   commentRevisionPageSchema,
   coursesResponseSchema,
@@ -44,6 +50,101 @@ const LONG_RESOLUTION_EVENT_ID = '018f0000-0000-7000-8000-000000009111';
 const EMPTY_RESOLUTION_EVENT_ID = '018f0000-0000-7000-8000-000000009112';
 const LEGACY_REQUEST_ID = '550e8400-e29b-41d4-a716-446655440000';
 const LEGACY_TARGET_ID = '550e8400-e29b-41d4-a716-446655440001';
+const HASH = 'a'.repeat(64);
+const CATALOG_HEADERS = [
+  'XNXQDM',
+  'XNXQDM_DISPLAY',
+  'KCH',
+  'KCM',
+  'XF',
+  'PKDWDM',
+  'PKDWDM_DISPLAY',
+  'JXBID',
+  'JXBMC',
+  'KXH',
+  'SKJS',
+  'XXXQDM',
+  'XXXQDM_DISPLAY',
+  'XKZRS',
+  'YPSJDD',
+  'SKZC',
+  'SKXQ',
+  'SKJC',
+  'SKJAS',
+  'JXLDM',
+  'JXLDM_DISPLAY',
+];
+
+function catalogManifest() {
+  return {
+    schema_version: 1,
+    source_system: 'runtime-contract-test',
+    term: {
+      external_code: '2026-2027-1',
+      display_name: 'Current term',
+      starts_on: '2026-08-01',
+      ends_on: '2027-01-31',
+      time_zone: 'Asia/Shanghai',
+    },
+  };
+}
+
+function catalogCsv(): string {
+  const row = [
+    '2026-2027-1',
+    'Current term',
+    'COURSE-1',
+    'Contract Course',
+    '3.00',
+    'DEPT-1',
+    'Department',
+    'SECTION-1',
+    'Contract section',
+    '01',
+    'Teacher',
+    'CAMPUS-1',
+    'Campus',
+    '100',
+    'Monday 1-2',
+    '1-16',
+    '1',
+    '1-2',
+    'Room 101',
+    'BUILDING-1',
+    'Building',
+  ];
+  return `${CATALOG_HEADERS.join(',')}\n${row.join(',')}\n`;
+}
+
+function catalogPlanBody() {
+  return {
+    import_id: null,
+    filename: 'runtime-plan.csv',
+    checksum: HASH,
+    header_hash: HASH,
+    manifest_hash: HASH,
+    environment: 'development',
+    manifest: catalogManifest(),
+    term: catalogManifest().term,
+    row_count: 0,
+    batch_index: 0,
+    total_batches: 1,
+    finalize: true,
+    courses: [],
+    class_sections: [],
+  };
+}
+
+function catalogUploadBody(): FormData {
+  const form = new FormData();
+  form.set(
+    'catalog',
+    new Blob([gzipSync(catalogCsv())]),
+    'runtime-catalog.csv.gz',
+  );
+  form.set('manifest', JSON.stringify(catalogManifest()));
+  return form;
+}
 
 function environment(): Env {
   return {
@@ -186,8 +287,8 @@ async function seedVisibleContent(
   await client.query(
     `insert into comment_revisions (
        comment_id, revision, body, author_id, created_at
-     ) values ($1, 1, 'Comment body', $2, $3)`,
-    [COMMENT_ID, userId, NOW],
+     ) values ($1, 1, $2, $3, $4)`,
+    [COMMENT_ID, 'C'.repeat(4_001), userId, NOW],
   );
   await client.query(
     `insert into content_reports (
@@ -294,6 +395,8 @@ describePostgres('runtime HTTP response contracts with PostgreSQL', () => {
       truncate table
         rate_limit_counters,
         oidc_login_transactions,
+        catalog_import_batches,
+        catalog_imports,
         sync_events,
         sync_event_retention,
         operation_receipts,
@@ -363,9 +466,9 @@ describePostgres('runtime HTTP response contracts with PostgreSQL', () => {
       { headers: authorization },
     );
     expect(history.status).toBe(200);
-    expect(
-      commentRevisionPageSchema.parse(await history.json()).revisions,
-    ).toHaveLength(1);
+    const historyBody = commentRevisionPageSchema.parse(await history.json());
+    expect(historyBody.revisions).toHaveLength(1);
+    expect(historyBody.revisions[0]?.body).toHaveLength(4_001);
 
     const snapshot = await app.request('/api/v1/sync', {
       method: 'POST',
@@ -430,6 +533,54 @@ describePostgres('runtime HTTP response contracts with PostgreSQL', () => {
     expect(currentUserSchema.parse(await elevated.json()).roles).toEqual([
       'maintainer',
     ]);
+
+    const plan = await app.request('/api/v1/admin/catalog/imports/plan', {
+      method: 'POST',
+      headers: { ...authorization, 'content-type': 'application/json' },
+      body: JSON.stringify(catalogPlanBody()),
+    });
+    expect(plan.status).toBe(200);
+    const planBody = catalogPlanBatchResponseSchema.parse(await plan.json());
+    expect(planBody.plan_complete).toBe(true);
+
+    const planStatus = await app.request(
+      `/api/v1/admin/catalog/imports/${planBody.import_id}`,
+      { headers: authorization },
+    );
+    expect(planStatus.status).toBe(200);
+    expect(
+      catalogImportStatusSchema.parse(await planStatus.json()).status,
+    ).toBe('planned');
+
+    const upload = await app.request('/api/v1/admin/catalog/imports/upload', {
+      method: 'POST',
+      headers: authorization,
+      body: catalogUploadBody(),
+    });
+    expect(upload.status).toBe(200);
+    const uploadBody = catalogUploadResponseSchema.parse(await upload.json());
+    expect(uploadBody.class_section_count).toBe(1);
+
+    const uploadStatus = await app.request(
+      `/api/v1/admin/catalog/imports/${uploadBody.import_id}`,
+      { headers: authorization },
+    );
+    expect(uploadStatus.status).toBe(200);
+    expect(
+      catalogImportStatusSchema.parse(await uploadStatus.json()).status,
+    ).toBe('planned');
+
+    const apply = await app.request(
+      `/api/v1/admin/catalog/imports/${uploadBody.import_id}/apply-all`,
+      {
+        method: 'POST',
+        headers: { ...authorization, 'content-type': 'application/json' },
+        body: JSON.stringify({ confirm_deactivations: true }),
+      },
+    );
+    expect(apply.status).toBe(200);
+    const applyBody = catalogApplyResponseSchema.parse(await apply.json());
+    expect(applyBody.complete).toBe(true);
 
     await seedHistoricalMaintainerEvents(client, signedIn.userId);
     const incremental = await app.request('/api/v1/sync', {

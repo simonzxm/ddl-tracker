@@ -2,18 +2,18 @@
 
 DDL Tracker 是面向单个学校的课程待办后端。学生关注教学班，在共享课程任务上共同提交截止时间提案、判断准确性和讨论，同时维护只有自己可见的待办、任务详情与完成状态。
 
-MVP 包含 Cloudflare Worker API、PostgreSQL 数据模型与迁移、离线同步协议、维护者 HTTP 接口与课程导入 CLI；不包含 Web、PWA、原生客户端或 TypeScript 客户端内核。
+MVP 包含 Cloudflare Worker API、PostgreSQL 数据模型与迁移、离线同步协议、维护者审核接口，以及从 `at-nju/courses` 自动同步的课程目录；不包含 Web、PWA、原生客户端或 TypeScript 客户端内核。
 
 ## 已实现能力
 
 - OIDC authorization code + PKCE 登录、自动建号、opaque bearer session、账户资料与删除。
-- 学期、课程、教学班查询，以及专用 `.csv.gz` 上传、可审阅 plan、原子 apply 和可续传兼容导入。
+- 学期、课程、教学班查询，以及按固定 GitHub commit 下载、校验并原子应用的每日课程目录同步。
 - 账户快照、教学班快照、增量 push/pull、幂等 receipt 与 cursor retention。
 - 共享任务、不可变提案、准确性判断、评论修订与举报。
 - 私人待办、私人任务详情、个人任务状态与显式发布。
 - 维护者 bootstrap、角色、账户处置、内容审核、任务合并与审计。
 - OpenAPI 3.1、Wilson score 参考实现和语言无关测试向量。
-- Cloudflare Workers + Hyperdrive 生产入口、OIDC Provider 集成和定时数据清理。
+- Cloudflare Workers + Hyperdrive 生产入口、OIDC Provider 集成、课程目录 Cron 和定时数据清理。
 
 明确不做：任何客户端 UI、多学校、学生创建课程、提醒或推送、日历订阅、任务类型枚举、服务端排名、全文任务搜索、多 Provider 账户绑定、管理后台。
 
@@ -75,17 +75,6 @@ pnpm --filter @ddl-tracker/api dev
 
 `/api/health/live` 不访问数据库；`/api/health/ready` 使用 fresh Hyperdrive 连接执行数据库检查。OpenAPI 位于 `/api/openapi.json`。
 
-## 维护者 CLI
-
-构建后执行：
-
-```bash
-pnpm --filter @ddl-tracker/admin-cli build
-node apps/admin-cli/dist/index.js --help
-```
-
-CLI 只调用维护者 HTTP API，不直连 PostgreSQL。课程原始 CSV 默认由 `.gitignore` 排除；仓库只保存假数据 fixture。
-
 ## 生产发布
 
 生产数据库 migration 不要求 SSH、公开 PostgreSQL 或修改 VPS。第一次使用时配置独立 migration Hyperdrive：
@@ -108,7 +97,7 @@ pnpm db:migrate:prod
 2. [产品规范](./docs/product-spec.md) — 用户行为、状态和边界。
 3. [后端设计](./docs/backend-design.md) — modules、数据模型、事务和技术栈。
 4. [同步协议](./docs/sync-protocol.md) — 快照、游标、操作、事件和冲突。
-5. [课程导入](./docs/course-import.md) — CSV 映射、校验和幂等导入。
+5. [课程目录自动同步](./docs/catalog-sync.md) — GitHub 快照发现、CSV 校验和原子写入。
 6. [安全与运维](./docs/security-and-operations.md) — 认证、隐私、部署、备份和观测。
 7. [测试规范](./docs/testing.md) — 验收矩阵与发布门槛。
 8. [架构决策](./docs/adr/) — 难以逆转且需要保留理由的决定。

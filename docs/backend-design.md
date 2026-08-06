@@ -14,7 +14,8 @@ Cloudflare Worker（Hono HTTP shell）
         │                         │ AUTH_SERVER Service Binding
         │                         ▼
         │                    authserver Worker（issuer: auth.nju.at）
-        ├── 课程目录与维护者 modules
+        ├── 课程目录查询与 GitHub 自动同步 modules
+        ├── 维护者审核 modules
         ├── 共享任务、私人任务、评论与审核 modules
         └── 同步 module
                 │ Drizzle / pg
@@ -50,15 +51,15 @@ PostgreSQL 是唯一在线业务权威存储。R2 只存放 PostgreSQL 备份，
 ```text
 apps/
   api/                 # Worker、业务 modules、Drizzle schema、migration
-  admin-cli/           # 只调用维护 HTTP 接口
 packages/
   contracts/           # schema、OpenAPI、同步契约、排名参考与 JSON 向量
+  catalog-sync/        # 无 manifest 的上游 CSV 解析与规范化
 data/
   fixtures/            # 仅假课程数据；真实 CSV 不入库
 docs/
 ```
 
-业务实现不拆成大量浅 package。`apps/api` 内按领域 module 组织，数据库事务与对应规则保持局部性。`admin-cli` 共享 contracts，但不能导入数据库 adapter 或后端 implementation。
+业务实现不拆成大量浅 package。`apps/api` 内按领域 module 组织，数据库事务与对应规则保持局部性。`packages/catalog-sync` 只暴露无网络、无数据库的解析 interface；GitHub adapter、同步编排和 PostgreSQL implementation 位于 `apps/api`。
 
 ## Modules 与 interfaces
 
@@ -67,7 +68,7 @@ docs/
 | HTTP shell | 已校验 request → module command | Hono、CORS、认证 middleware、错误映射、request ID |
 | OIDC authentication | start、callback、exchange | discovery、state、nonce、PKCE、ID Token 校验、一次性 exchange code |
 | Account and session | verified OIDC identity → account/session | 自动建号、opaque token、哈希、撤销、暂停、删除 |
-| Course catalog | 查询、导入计划、应用导入 | CSV 映射、外部键、停用、审计、raw source |
+| Course catalog | 查询、定时同步 | 固定 GitHub commit、gzip/CSV 校验、外部键、diff、停用、run/state、raw source |
 | Shared tasks | 创建任务/提案、投票、合并 | 不变式、聚合计数、指纹、权限、同步事件 |
 | Personal tasks | CRUD、合并、发布、状态 | 私密性、revision、转换、无数据丢失 |
 | Comments | 创建、修订、删除、读取历史 | 不可变修订、可见性、删除占位 |
@@ -109,11 +110,6 @@ GET    /api/v1/comments/:comment_id/revisions
 POST   /api/v1/sync
 
 POST   /api/v1/admin/bootstrap
-POST   /api/v1/admin/catalog/imports/plan
-POST   /api/v1/admin/catalog/imports/upload
-POST   /api/v1/admin/catalog/imports/:import_id/apply-all
-POST   /api/v1/admin/catalog/imports/:import_id/cancel
-GET    /api/v1/admin/catalog/imports/:import_id
 GET    /api/v1/admin/reports
 POST   /api/v1/admin/reports/:report_id/resolve
 POST   /api/v1/admin/tasks/:source_task_id/merge
@@ -159,7 +155,8 @@ Bearer API 不使用 cookie。为第三方客户端支持 CORS 时不得启用 c
 | `moderation_actions` | hide/restore/suspend/restore 等动作及理由 |
 | `operation_receipts` | `(user_id, operation_id)` 唯一；请求摘要与首次稳定结果；保留 180 天 |
 | `sync_events` | 全局单调 sequence、event UUID、scope、type、schema version、严格校验后的 payload；保留至少 180 天 |
-| `catalog_imports` | checksum、manifest、文件名、行数、diff、actor、`planned/applied/failed/cancelled/expired` 状态 |
+| `catalog_sync_runs` | repository、commit/blob SHA、学期、checksum、计数、diff、成功/失败和时间；append-only 运行记录 |
+| `catalog_sync_state` | `(repository, term_code)` 唯一；最近成功 commit/blob SHA、checksum、run ID 与同步时间 |
 | `audit_log` | append-only 管理动作、actor、target、reason、result、request ID |
 
 ### 不变式
@@ -204,6 +201,8 @@ Bearer API 不使用 cookie。为第三方客户端支持 CORS 时不得启用 c
 - migration SQL 必须生成、提交、审查，并在临时真实 PostgreSQL 验证从空库和上一版本升级。
 - migration bundle 由 Drizzle journal 和 SQL 自动生成；executor 要求数据库 journal 是 bundle 的精确前缀，验证 database/role，并在 advisory transaction lock 下原子应用全部 pending migration。
 
+课程目录同步不经过 HTTP。Cron 先从 GitHub API 取得 `main` commit 与该 commit 的 recursive tree，再通过固定 commit raw URL 下载匹配的 gzip。每个学期在一个 `REPEATABLE READ` 事务中获取 advisory lock、读取基线、计算 diff、upsert、停用、追加同步事件并更新 `catalog_sync_runs`/`catalog_sync_state`。外部网络 I/O 必须在数据库事务外完成。
+
 ## Workers 运行规范
 
 新项目使用 `wrangler.jsonc`。示意配置只表达必须字段，真实 ID 与 secrets 不得提交：
@@ -237,7 +236,7 @@ Bearer API 不使用 cookie。为第三方客户端支持 CORS 时不得启用 c
 - 不使用 module global 保存当前用户、数据库 client 或请求缓存。
 - 使用 Web Crypto 生成 token、UUID 和 HMAC；不能使用 `Math.random()`。
 - 错误通过结构化 JSON 映射，禁止 `passThroughOnException()`。
-- 日常课程目录导入由 admin CLI 上传一个有上限的 `.csv.gz` 与 manifest；Worker 独立限制 multipart、压缩 part 和解压后 CSV，完成解析、规范化并原子保存完整 plan。旧 `plan` 路由仍只接收有上限的规范化批次，作为兼容与故障恢复入口。
+- 课程目录由每日 Cron 自动同步。只接受 `at-nju/courses` 中严格匹配的 gzip，压缩内容最大 4 MiB、解压 CSV 最大 10 MiB；同一次运行固定 commit，首次 bootstrap 每次最多处理 4 个最近学期。
 
 ## 排名参考实现
 
@@ -255,6 +254,6 @@ Bearer API 不使用 cookie。为第三方客户端支持 CORS 时不得启用 c
 - 不做 event sourcing；当前状态表是权威数据。
 - 不做服务端排名或页面聚合 read model。
 - 不做多租户或预埋 `school_id`。
-- 不让 admin CLI 直接写数据库。
+- 不提供课程目录人工上传、plan/apply 接口或第二数据来源。
 - 不在 Worker 内调用 Cloudflare REST API访问可用 binding 的资源。
 - 不引入抽象的客户端内核；未来原生客户端独立实现协议。

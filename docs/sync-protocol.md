@@ -237,7 +237,7 @@ Mutable 操作必须携带 `expected_revision`。创建使用 revision `1`；每
 
 所有事件使用全局单调数据库 sequence 排序，但 sequence 不直接暴露；cursor 是带版本的 opaque 表示。事件 ID 是 UUIDv7，用于客户端幂等。
 
-`catalog_revision_changed` 在一次目录导入完整提交时只产生一次；客户端收到更高 revision 后使学期、课程和教学班目录缓存失效并重新获取。account snapshot 同时包含当前 revision，因此 cursor 过期或重装后不会依赖历史失效事件。
+`catalog_revision_changed` 在一个学期的自动目录同步事务完整提交时只产生一次；上游 blob 改变但规范化内容不变时不产生。客户端收到更高 revision 后使学期、课程和教学班目录缓存失效并重新获取。account snapshot 同时包含当前 revision，因此 cursor 过期或重装后不会依赖历史失效事件。
 
 事件 scope：
 

@@ -10,6 +10,7 @@
 - pgBackRest 最近一次完整/增量备份成功，且最近一次隔离恢复演练仍在运维允许窗口内。
 - `auth.nju.at` 已注册 DDL Tracker public OIDC client，固定 callback 为 `https://ddl.nju.at/api/v1/auth/oidc/callback`，强制 authorization code + PKCE S256。
 - Cloudflare 账户中存在名为 `authserver` 的 Worker；生产 API 通过 `AUTH_SERVER` Service Binding 访问其 discovery、token 与 JWKS endpoint。
+- Worker 可访问 `api.github.com` 与 `raw.githubusercontent.com`，用于读取 `at-nju/courses` 的固定 commit 课程快照。
 - 应用内 PostgreSQL 限流已为 `POST /api/v1/auth/oidc/start` 配置源 IP 限制：20/hour、50/day。源 IP 必须来自 Cloudflare `CF-Connecting-IP`，数据库只保存带用途前缀的 HMAC。权限允许时再配置等价的 Cloudflare WAF/Rate Limiting 作为额外边缘防线。
 - 发布者已通过 `pnpm verify` 或 CI 的 `pnpm verify:ci`。
 
@@ -36,8 +37,8 @@ cp apps/api/wrangler.production.example.jsonc \
 - `nodejs_compat`。
 - `routes` 只包含 `ddl.nju.at/api/*`；不得重新加入已退役的 `api.210023.xyz` custom domain。
 - `services` 只包含 `AUTH_SERVER -> authserver`；本地配置可设置 `remote: true`，生产配置不得改绑到动态或非预期 Worker。
-- 当前 Workers Free plan 不配置 `limits.cpu_ms`；专用目录上传限制 multipart 5 MiB、gzip 4 MiB、解压 CSV 10 MiB，并将规范化数据分为每类最多 100 条的存储 batch。升级到付费 Standard plan 后才可显式配置 CPU budget。
-- retention cleanup cron。
+- 当前 Workers Free plan 不配置 `limits.cpu_ms`；课程同步限制 gzip 4 MiB、解压 CSV 10 MiB，首次 bootstrap 每次 Cron 最多处理 4 个最近学期。升级到付费 Standard plan 后才可显式配置 CPU budget。
+- 每日 `03:17 UTC` 的 catalog sync + retention cron。
 - Workers logs 与 traces 开启。
 
 应用内 PostgreSQL 限流覆盖 OIDC start source IP（20/hour、50/day）、sync user（5/10 seconds、30/min）、authenticated read（120/min）和 admin mutation（30/min）。Cloudflare 边缘 IP 规则是额外防线，不能替代应用内计数。
@@ -160,7 +161,7 @@ cd apps/api
 pnpm exec wrangler dev --remote --config wrangler.production.jsonc
 ```
 
-只使用维护者测试账户完成一次受控 OIDC 登录，不执行目录导入、审核、合并或其他持久化业务写入；state、authorization code、exchange code、ID Token 与 session token 均不得进入日志。
+只使用维护者测试账户完成一次受控 OIDC 登录，不执行审核、合并或其他持久化业务写入；state、authorization code、exchange code、ID Token 与 session token 均不得进入日志。Remote dev 期间不要手工触发 scheduled handler，以免对生产上游和测试数据库产生非预期同步。
 
 ## 上传 preview version
 
@@ -206,8 +207,9 @@ pnpm exec wrangler versions deploy VERSION_ID@100% \
 - OIDC discovery/token exchange 失败率。
 - sync rejection spike。
 - Tunnel health。
-- retention cron 最近一次结果。
-- retention 结果中的 `catalog_imports` 数量；正常情况下应接近 0，持续增长表示维护者生成 plan 后未处理。
+- scheduled invocation 最近一次结果。
+- `catalog_sync_runs` 中最近各学期的成功/失败状态、commit/blob SHA 与错误摘要。
+- `catalog_sync_state.synced_at` 是否持续前进；最近学期长期停滞表示 GitHub、解析或数据库同步故障。
 
 ### OIDC 切换后的旧 secret 清理
 

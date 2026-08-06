@@ -22,7 +22,7 @@
 
 - 举报人身份、举报正文和处理备注。
 - 账户处置、角色与完整审计记录。
-- 课程导入 raw source 与差异详情。
+- 课程同步 raw source、source commit/blob metadata 与差异详情。
 
 ### Secrets
 
@@ -94,6 +94,7 @@ Session 使用至少 256 bits Web Crypto 随机 opaque bearer token：
 | 管理 mutation / maintainer | 30/min |
 | sync request body | 512 KiB |
 | sync operations | 100 |
+| catalog gzip / expanded CSV | 4 MiB / 10 MiB |
 
 阈值是配置，不进入客户端逻辑。所有 429 响应包含 `retry_after`；错误 message 不说明具体命中范围。持续攻击应优先在 Cloudflare WAF/rate limiting 层拦截，数据库限流保证 IP 与账户规则在所有 Worker 实例间一致。
 
@@ -103,6 +104,7 @@ Session 使用至少 256 bits Web Crypto 随机 opaque bearer token：
 - 所有不可信 JSON 通过 runtime schema 校验，禁止 `as` 断言替代验证。
 - 纯文本字段只保存文本；客户端必须转义展示，不解释 HTML 或 Markdown。
 - URL 只接受绝对 HTTPS URL；后端不主动 fetch 提案 URL，避免 SSRF。
+- 课程 source adapter 只访问代码固定的 `api.github.com/repos/at-nju/courses/...` 与 `raw.githubusercontent.com/at-nju/courses/<sha>/...`；请求或数据库内容不能覆盖 repository、host 或 raw path。
 - 文本统一 Unicode NFC；拒绝 NUL 与不允许控制字符。
 - SQL 始终由 Drizzle 或参数化查询产生，禁止拼接输入。
 - 错误响应不包含 SQL、stack、OIDC token/provider payload、数据库主机或 Cloudflare binding ID。
@@ -157,7 +159,7 @@ MVP 使用 cache-disabled Hyperdrive 配置，保留连接池，不使用 query 
 - `wrangler.jsonc` 只保存 non-secret vars、binding names 和 resource IDs。
 - Workers secrets 保存 OIDC transaction encryption key、token pepper、sync key 和 bootstrap token；从旧邮箱认证切换并完成生产 smoke 后，必须删除 `OTP_HMAC_SECRET`、`SMTP_USERNAME` 与 `SMTP_PASSWORD`。
 - 临时 Migration Worker 的一次性 token 通过权限为 `0600` 的临时 secrets file 注入，结束后随 Worker 和本地临时目录删除；不能复用生产 API secret。
-- 本地 `.dev.vars`/`.env`、课程 CSV、数据库 dump、证书私钥和备份配置全部 gitignore。
+- 本地 `.dev.vars`/`.env`、临时课程 CSV、数据库 dump、证书私钥和备份配置全部 gitignore。生产同步不需要 GitHub token；若未来因 rate limit 配置 token，必须使用 Workers secret 且只授予公开仓库只读所需权限。
 - 绑定类型由 `wrangler types` 生成，config/binding 改动后必须重新生成并提交类型 diff。
 - VPS secrets 使用 root-readable secret file 或专用 secret manager，不能出现在 shell history、systemd unit 明文或仓库。
 - 日志不记录 OIDC subject、email、state、authorization code、exchange code 或 ID Token。
@@ -169,7 +171,8 @@ Worker 开启 Workers Logs 与 traces，使用结构化 JSON。每个请求生�
 - method、规范化 route、status、duration。
 - authenticated user 的不可逆内部 diagnostic ID，不记录 OIDC subject 或 email。
 - sync batch 的 operation 数、applied/rejected/replayed 数和 event 数。
-- operation ID、import ID、audit ID 与数据库错误类别。
+- operation ID、catalog sync run ID、audit ID 与数据库错误类别。
+- catalog source repository、term code、commit/blob SHA、是否 changed 和失败类别；不记录完整 CSV 或 raw source 行。
 - OIDC discovery/token exchange 的脱敏结果类别和 latency，不记录 code、token、subject 或完整 email。
 
 严禁记录 bearer token、OIDC state/authorization code/exchange code/ID Token、私人正文、评论正文、举报正文或 raw CSV 行。
@@ -236,13 +239,13 @@ VPS 使用 pgBackRest 将加密备份与 WAL 持续归档到独立 R2 bucket：
 | sync events | 至少 180 天 |
 | comment revisions | 评论存在期间保留；软删除后仅作者/维护者可见 |
 | audit log | 长期 append-only，按运维政策归档 |
-| catalog import metadata | 长期保留 checksum、manifest、diff 和结果 |
+| catalog sync runs/state | run 长期保留 source version、checksum、diff 与结果；state 保留每学期最近成功版本 |
 | private account data | 账户删除时删除 |
 | public contributions | 账户删除后匿名保留 |
 
 账户删除必须同步清理属于该用户的 private sync event payload 与 operation receipts，避免 180 天日志窗口继续保存私人正文。公开 event 与贡献改为引用不可关联的 deleted user tombstone，审计只保留非身份化内部引用。
 
-清理任务在没有 Queues/cron 依赖的 MVP 中可由维护者 CLI 定期触发受保护 maintenance endpoint；操作必须有上限、可续跑并记录审计。以后可迁移到 Cron Trigger，但不能在普通请求中无界清理。
+清理任务与课程同步由每日 Cron Trigger 执行。retention 操作必须有上限、可续跑并记录审计；课程同步每次最多处理 4 个变化学期，不能在普通请求中执行无界清理或目录刷新。
 
 ## 安全事件最低 runbook
 

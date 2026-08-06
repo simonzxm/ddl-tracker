@@ -12,7 +12,7 @@
 - OpenAPI 与同步 schema 生成结果已提交且无未审查 diff。
 - 单元、真实 PostgreSQL integration、Workers runtime 和 contract tests。
 - 从空库与上一 release schema 的 migration tests。
-- 课程 importer fixture tests。
+- 课程 source、CSV parser、sync orchestration 与原子 PostgreSQL apply tests。
 - Preview URL smoke tests。
 
 不允许以“本地 Node 测试通过”替代 Workers runtime 测试，也不允许以 SQLite 替代 PostgreSQL integration。
@@ -36,7 +36,7 @@
 
 - OIDC provider/login module + fake discovery、token endpoint 与 repository。
 - Account/session module + test repository。
-- Catalog plan module + 假 CSV。
+- Catalog sync module + fake GitHub source 与 repository adapters。
 - Sync processor + transaction adapter。
 
 测试断言可观察结果，不读取 implementation 私有状态。生产 OIDC adapter 与 fake provider 必须覆盖相同的 authorization、exchange 与 identity contract。
@@ -55,6 +55,7 @@
 - task merge redirect、循环防御和私人详情无损转换。
 - account deletion匿名化且私人数据清除。
 - sync cursor visibility、event retention 和 tombstone ordering。
+- catalog sync state、固定 source version、外部键移动拒绝、停用事件与整个学期事务回滚。
 
 ### Workers runtime
 
@@ -178,22 +179,25 @@ Wilson score 使用 `z = 1.96`，实现输出在比较前不得人为四舍五�
 
 还必须覆盖：同分总票数、同分同票数创建时间、完全相同数据按 UUID；少于 3 票 pending、反对占比恰好 `1/3` disputed、与第二名差恰好 `0.05` 不触发“小于 0.05”条件。
 
-## Importer 测试
+## 课程目录同步测试
 
 fixture 必须包含：
 
 - UTF-8 BOM。
-- 引号中包含逗号的 `SKBJ`。
+- 引号中包含逗号的课程或课表文本。
 - 前导零 KCH/KXH。
 - 空教师和可选数值。
 - 重复 JXBID。
 - 同 `(term, KCH)` 不同 KCM。
-- 缺列、额外列和未知 schema version。
-- 同 checksum replay。
-- 缺失 active section 的 dry-run 与 confirm-deactivations。
-- 中断后按 import ID 续传。
+- 缺列、额外列和上游目录名/CSV 学期不一致。
+- GitHub tree 截断、非法 commit/blob metadata、gzip 损坏和压缩/解压大小超限。
+- 相同 blob SHA 跳过；新 blob 但规范化内容不变时只推进 source state。
+- 首次 bootstrap 按最近学期优先且每次最多 4 个。
+- 缺失 active course/section 时标记 inactive，并生成正确同步事件。
+- JXBID 跨课程移动时整个学期事务回滚。
+- 成功 run/state 与目录写入同事务；失败 run 不改变 current state。
 
-真实 `26fall.csv` 可由维护者在本地手动运行 validation，但不能成为 CI fixture 或提交仓库。
+真实上游 CSV 不能成为 CI fixture 或提交应用仓库。source adapter 测试使用固定响应；端到端网络可达性由 preview/生产 scheduled invocation 观测，不让单元测试依赖 GitHub 在线状态。
 
 ## Security tests
 

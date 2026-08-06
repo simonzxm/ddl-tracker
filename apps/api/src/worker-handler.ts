@@ -3,6 +3,9 @@ import type { Client } from 'pg';
 import { createUuidV7 } from '@ddl-tracker/contracts';
 
 import type { OidcProvider } from './auth/oidc-provider-client.js';
+import { CatalogSyncService } from './catalog/catalog-sync-service.js';
+import { GithubCatalogSource } from './catalog/github-catalog-source.js';
+import { PostgresCatalogSyncRepository } from './catalog/postgres-catalog-sync-repository.js';
 import { createApp, type RequestLogEntry } from './http/app.js';
 import { HttpError, toApiError } from './http/errors.js';
 import { PostgresRetentionService } from './maintenance/postgres-retention-service.js';
@@ -12,9 +15,14 @@ export interface RetentionRunner {
   runBatch(input: { now: Date; limit: number }): Promise<unknown>;
 }
 
+export interface CatalogSyncRunner {
+  sync(): Promise<unknown>;
+}
+
 export interface WorkerHandlerOptions {
   createClient(connectionString: string): Client;
   createRetentionRunner?: (client: Client) => RetentionRunner;
+  createCatalogSyncRunner?: (client: Client) => CatalogSyncRunner;
   oidcProvider?: OidcProvider;
   logRequest?: (entry: RequestLogEntry) => void;
 }
@@ -74,9 +82,19 @@ export function createWorkerHandler(
       try {
         await client.connect();
         connected = true;
+        const catalogSync =
+          options.createCatalogSyncRunner?.(client) ??
+          new CatalogSyncService({
+            source: new GithubCatalogSource(),
+            repository: new PostgresCatalogSyncRepository(client, {
+              createId: createUuidV7,
+            }),
+            createId: createUuidV7,
+          });
         const retention =
           options.createRetentionRunner?.(client) ??
           new PostgresRetentionService(client, { createId: createUuidV7 });
+        await catalogSync.sync();
         await retention.runBatch({
           now: new Date(controller.scheduledTime),
           limit: 1000,

@@ -111,9 +111,11 @@ describe('createWorkerHandler', () => {
   it('runs bounded retention with one client on the scheduled timestamp', async () => {
     const client = fakeClient();
     const retention = { runBatch: vi.fn(async () => undefined) };
+    const catalogSync = { sync: vi.fn(async () => undefined) };
     const handler = createWorkerHandler({
       createClient: () => client as unknown as Client,
       createRetentionRunner: () => retention,
+      createCatalogSyncRunner: () => catalogSync,
       oidcProvider,
     });
     const controller = {
@@ -122,6 +124,7 @@ describe('createWorkerHandler', () => {
       noRetry: vi.fn(),
     } as unknown as ScheduledController;
     await handler.scheduled(controller, environment(), context);
+    expect(catalogSync.sync).toHaveBeenCalledOnce();
     expect(retention.runBatch).toHaveBeenCalledWith({
       now: new Date('2026-07-20T03:17:00.000Z'),
       limit: 1000,

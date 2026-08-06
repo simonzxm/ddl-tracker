@@ -41,7 +41,7 @@ export const opaqueTokenSchema = z.string().min(1).max(4096);
  * Request schemas apply their own normalization and length limits before
  * persistence; response schemas preserve historical stored values.
  */
-export const storedTextSchema = z.string();
+export const storedResponseTextSchema = z.string();
 export const localDateSchema = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/u, 'Date must use YYYY-MM-DD.')

@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 import {
   rfc3339TimestampSchema,
-  storedTextSchema,
+  storedResponseTextSchema,
   uuidV7Schema,
 } from '../schema.js';
 import {
@@ -16,7 +16,7 @@ const reportIdentityFields = {
   target_type: reportTargetTypeSchema,
   target_id: uuidV7Schema,
   reason: reportReasonSchema,
-  details: storedTextSchema.nullable(),
+  details: storedResponseTextSchema.nullable(),
   created_at: rfc3339TimestampSchema,
 };
 
@@ -32,7 +32,7 @@ const resolvedMaintainerReportSchema = z
   .object({
     ...reportIdentityFields,
     status: z.literal('resolved'),
-    resolution: storedTextSchema,
+    resolution: storedResponseTextSchema,
     resolved_at: rfc3339TimestampSchema,
   })
   .strict();
@@ -40,7 +40,7 @@ const dismissedMaintainerReportSchema = z
   .object({
     ...reportIdentityFields,
     status: z.literal('dismissed'),
-    resolution: storedTextSchema,
+    resolution: storedResponseTextSchema,
     resolved_at: rfc3339TimestampSchema,
   })
   .strict();

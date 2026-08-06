@@ -1,10 +1,8 @@
 import { z } from 'zod';
 
 import {
-  normalizedTextSchema,
-  nullableNormalizedTextSchema,
   rfc3339TimestampSchema,
-  storedTextSchema,
+  storedResponseTextSchema,
   uuidV7Schema,
 } from '../schema.js';
 import {
@@ -26,9 +24,9 @@ export const personalTodoRecordSchema = z
   .object({
     id: uuidV7Schema,
     class_section_id: uuidV7Schema.nullable(),
-    title: normalizedTextSchema(1, 200),
+    title: storedResponseTextSchema,
     deadline: rfc3339TimestampSchema.nullable(),
-    note: nullableNormalizedTextSchema(2000),
+    note: storedResponseTextSchema.nullable(),
     state: personalTaskStateSchema,
     revision: revisionSchema,
     deleted_at: z.null(),
@@ -48,9 +46,9 @@ export const personalTodoTombstoneSchema = z
 export const personalTaskDetailsRecordSchema = z
   .object({
     course_task_id: uuidV7Schema,
-    private_title: nullableNormalizedTextSchema(200),
+    private_title: storedResponseTextSchema.nullable(),
     private_deadline: rfc3339TimestampSchema.nullable(),
-    private_note: nullableNormalizedTextSchema(2000),
+    private_note: storedResponseTextSchema.nullable(),
     revision: revisionSchema,
     created_at: rfc3339TimestampSchema,
     updated_at: rfc3339TimestampSchema,
@@ -88,7 +86,7 @@ const reporterContentReportIdentity = {
   target_type: reportTargetTypeSchema,
   target_id: uuidV7Schema,
   reason: reportReasonSchema,
-  details: storedTextSchema.nullable(),
+  details: storedResponseTextSchema.nullable(),
   created_at: rfc3339TimestampSchema,
 };
 
@@ -105,7 +103,7 @@ export const reporterContentReportRecordSchema = z.discriminatedUnion('status', 
     .object({
       ...reporterContentReportIdentity,
       status: z.literal('resolved'),
-      resolution: storedTextSchema,
+      resolution: storedResponseTextSchema,
       resolved_at: rfc3339TimestampSchema,
     })
     .strict(),
@@ -113,7 +111,7 @@ export const reporterContentReportRecordSchema = z.discriminatedUnion('status', 
     .object({
       ...reporterContentReportIdentity,
       status: z.literal('dismissed'),
-      resolution: storedTextSchema,
+      resolution: storedResponseTextSchema,
       resolved_at: rfc3339TimestampSchema,
     })
     .strict(),

@@ -4,6 +4,7 @@ import {
   localDateSchema,
   normalizedTextSchema,
   nullableNormalizedTextSchema,
+  storedResponseTextSchema,
   uuidV7Schema,
 } from './schema.js';
 
@@ -116,13 +117,13 @@ const diffCountsSchema = z
 const deactivatedCourseSchema = z
   .object({
     id: uuidV7Schema,
-    external_course_code: z.string().trim().min(1).max(100),
+    external_course_code: storedResponseTextSchema,
   })
   .strict();
 const deactivatedClassSectionSchema = z
   .object({
     id: uuidV7Schema,
-    external_section_id: z.string().trim().min(1).max(200),
+    external_section_id: storedResponseTextSchema,
   })
   .strict();
 
@@ -228,7 +229,7 @@ export const catalogImportStatusSchema = z
     applied_batches: z.number().int().nonnegative(),
     total_batches: z.number().int().positive(),
     diff: catalogImportDiffResponseSchema.nullable(),
-    failure_message: z.string().nullable(),
+    failure_message: storedResponseTextSchema.nullable(),
   })
   .strict();
 

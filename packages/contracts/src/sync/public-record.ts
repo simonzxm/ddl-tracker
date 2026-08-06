@@ -1,10 +1,8 @@
 import { z } from 'zod';
 
 import {
-  evidenceUrlSchema,
-  normalizedTextSchema,
-  nullableNormalizedTextSchema,
   rfc3339TimestampSchema,
+  storedResponseTextSchema,
   uuidV7Schema,
 } from '../schema.js';
 
@@ -21,14 +19,14 @@ export const classSectionRecordSchema = z
   .object({
     id: uuidV7Schema,
     course_id: uuidV7Schema,
-    external_section_id: z.string().min(1).max(200),
-    section_number: z.string().min(1).max(100),
-    department_code: z.string().min(1).max(100).nullable(),
-    department_name: normalizedTextSchema(1, 300).nullable(),
-    instructors: z.array(normalizedTextSchema(1, 200)).max(100),
-    campus: normalizedTextSchema(1, 300).nullable(),
+    external_section_id: storedResponseTextSchema,
+    section_number: storedResponseTextSchema,
+    department_code: storedResponseTextSchema.nullable(),
+    department_name: storedResponseTextSchema.nullable(),
+    instructors: z.array(storedResponseTextSchema),
+    campus: storedResponseTextSchema.nullable(),
     capacity: z.number().int().nonnegative().nullable(),
-    schedule_text: normalizedTextSchema(1, 2000).nullable(),
+    schedule_text: storedResponseTextSchema.nullable(),
     active: z.boolean(),
     revision: revisionSchema,
     created_at: rfc3339TimestampSchema,
@@ -53,11 +51,11 @@ export const taskProposalRecordSchema = z
     id: uuidV7Schema,
     course_task_id: uuidV7Schema,
     author_id: uuidV7Schema.nullable(),
-    title: normalizedTextSchema(1, 200),
+    title: storedResponseTextSchema,
     deadline: rfc3339TimestampSchema,
-    description: nullableNormalizedTextSchema(2000),
-    evidence_note: nullableNormalizedTextSchema(500),
-    evidence_url: evidenceUrlSchema.nullable(),
+    description: storedResponseTextSchema.nullable(),
+    evidence_note: storedResponseTextSchema.nullable(),
+    evidence_url: storedResponseTextSchema.nullable(),
     content_fingerprint: z.string().regex(/^[0-9a-f]{64}$/u),
     state: z.literal('visible'),
     revision: revisionSchema,
@@ -68,10 +66,10 @@ export const taskProposalRecordSchema = z
 export const publicUserProfileRecordSchema = z
   .object({
     id: uuidV7Schema,
-    username: z.string().regex(/^[a-z0-9_]{3,32}$/u),
-    display_name: normalizedTextSchema(1, 64),
-    avatar_url: z.string().min(1).max(2048).nullable(),
-    bio: nullableNormalizedTextSchema(500),
+    username: storedResponseTextSchema,
+    display_name: storedResponseTextSchema,
+    avatar_url: storedResponseTextSchema.nullable(),
+    bio: storedResponseTextSchema.nullable(),
     status: z.enum(['active', 'suspended']),
     revision: revisionSchema,
     created_at: rfc3339TimestampSchema,
@@ -111,7 +109,7 @@ export const taskMergeRecordSchema = z
   .object({
     source_task_id: uuidV7Schema,
     target_task_id: uuidV7Schema,
-    reason: normalizedTextSchema(1, 1000),
+    reason: storedResponseTextSchema,
     revision: revisionSchema,
     created_at: rfc3339TimestampSchema,
   })
@@ -122,7 +120,7 @@ export const taskCommentRecordSchema = z
     id: uuidV7Schema,
     course_task_id: uuidV7Schema,
     author_id: uuidV7Schema.nullable(),
-    body: normalizedTextSchema(1, 2000),
+    body: storedResponseTextSchema,
     revision: revisionSchema,
     state: z.literal('visible'),
     deleted_at: z.null(),

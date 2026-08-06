@@ -1,6 +1,10 @@
 import { z } from 'zod';
 
-import { opaqueTokenSchema, uuidV7Schema } from '../schema.js';
+import {
+  opaqueTokenSchema,
+  storedResponseTextSchema,
+  uuidV7Schema,
+} from '../schema.js';
 import { syncEventSchema } from './event.js';
 import { studentOperationTypeSchema } from './operation.js';
 import {
@@ -16,7 +20,8 @@ import {
   SYNC_PROTOCOL_VERSION,
 } from './limits.js';
 
-const messageSchema = z.string().min(1).max(500);
+// Operation errors are persisted in receipts and replayed verbatim.
+const messageSchema = storedResponseTextSchema;
 const nonnegativeRevisionSchema = z.number().int().nonnegative();
 const emptyDetailsSchema = z.object({}).strict();
 

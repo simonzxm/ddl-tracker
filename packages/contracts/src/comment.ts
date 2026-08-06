@@ -2,14 +2,14 @@ import { z } from 'zod';
 
 import {
   rfc3339TimestampSchema,
-  storedTextSchema,
+  storedResponseTextSchema,
   uuidV7Schema,
 } from './schema.js';
 
 export const commentRevisionWireSchema = z
   .object({
     revision: z.number().int().positive(),
-    body: storedTextSchema,
+    body: storedResponseTextSchema,
     author_id: uuidV7Schema.nullable(),
     created_at: rfc3339TimestampSchema,
   })

@@ -6,6 +6,7 @@ import {
   nullableNormalizedTextSchema,
   opaqueTokenSchema,
   rfc3339TimestampSchema,
+  storedResponseTextSchema,
   uuidV7Schema,
 } from './schema.js';
 import { parseUsername } from './validation.js';
@@ -39,10 +40,10 @@ const redirectUriSchema = z
 export const publicUserSchema = z
   .object({
     id: uuidV7Schema,
-    username: usernameSchema,
-    display_name: normalizedTextSchema(1, 64),
-    avatar_url: evidenceUrlSchema.nullable(),
-    bio: nullableNormalizedTextSchema(500),
+    username: storedResponseTextSchema,
+    display_name: storedResponseTextSchema,
+    avatar_url: storedResponseTextSchema.nullable(),
+    bio: storedResponseTextSchema.nullable(),
     status: z.enum(['active', 'suspended', 'deleted']),
     profile_revision: z.number().int().positive(),
   })
@@ -86,7 +87,7 @@ export const sessionVerificationResponseSchema = z
 export const sessionSchema = z
   .object({
     id: uuidV7Schema,
-    device_name: z.string().nullable(),
+    device_name: storedResponseTextSchema.nullable(),
     device_metadata: deviceMetadataSchema,
     created_at: rfc3339TimestampSchema,
     last_seen_at: rfc3339TimestampSchema,

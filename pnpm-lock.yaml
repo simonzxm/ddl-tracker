@@ -102,6 +102,18 @@ importers:
         specifier: 4.4.3
         version: 4.4.3
 
+  packages/catalog-sync:
+    dependencies:
+      '@ddl-tracker/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      csv-parse:
+        specifier: 7.0.1
+        version: 7.0.1
+      zod:
+        specifier: 4.4.3
+        version: 4.4.3
+
   packages/contracts:
     dependencies:
       zod:

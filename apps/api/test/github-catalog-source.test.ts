@@ -11,6 +11,43 @@ function json(value: unknown): Response {
 }
 
 describe('GithubCatalogSource', () => {
+  it('preserves the global fetch receiver when no fetcher is injected', async () => {
+    const globalFetcher = vi.fn(async function (
+      this: typeof globalThis,
+      input: RequestInfo | URL,
+    ): Promise<Response> {
+      if (this !== globalThis) throw new TypeError('Illegal invocation');
+      const url = String(input);
+      if (url.endsWith('/commits/main')) return json({ sha: COMMIT });
+      if (url.includes('/git/trees/')) {
+        return json({
+          truncated: false,
+          tree: [
+            {
+              path: 'data/2026-2027-1/courses.csv.gz',
+              type: 'blob',
+              sha: 'a'.repeat(40),
+              size: 1200,
+            },
+          ],
+        });
+      }
+      throw new Error(`Unexpected URL: ${url}`);
+    });
+    vi.stubGlobal('fetch', globalFetcher);
+    try {
+      const source = new GithubCatalogSource();
+
+      await expect(source.list()).resolves.toMatchObject({
+        repository: 'at-nju/courses',
+        commitSha: COMMIT,
+      });
+      expect(globalFetcher).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it('lists deterministic gzip datasets from one pinned upstream commit', async () => {
     const fetcher = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);

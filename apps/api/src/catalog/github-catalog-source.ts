@@ -58,7 +58,9 @@ export class GithubCatalogSource implements CatalogSource {
     maximumCompressedBytes?: number;
     maximumCsvBytes?: number;
   } = {}) {
-    this.#fetcher = options.fetcher ?? fetch;
+    this.#fetcher =
+      options.fetcher ??
+      ((input, init) => globalThis.fetch(input, init));
     this.#repository = options.repository ?? DEFAULT_REPOSITORY;
     this.#branch = options.branch ?? DEFAULT_BRANCH;
     this.#token = options.token;

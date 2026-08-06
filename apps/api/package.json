@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@ddl-tracker/catalog-import": "workspace:*",
+    "@ddl-tracker/catalog-sync": "workspace:*",
     "@ddl-tracker/contracts": "workspace:*",
     "@hono/zod-openapi": "1.5.1",
     "drizzle-orm": "0.45.2",

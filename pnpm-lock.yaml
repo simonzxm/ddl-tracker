@@ -62,6 +62,9 @@ importers:
       '@ddl-tracker/catalog-import':
         specifier: workspace:*
         version: link:../../packages/catalog-import
+      '@ddl-tracker/catalog-sync':
+        specifier: workspace:*
+        version: link:../../packages/catalog-sync
       '@ddl-tracker/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts

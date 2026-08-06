@@ -11,11 +11,6 @@ import {
   adminTaskMergeResponseSchema,
   adminUserActionResponseSchema,
   apiErrorSchema,
-  catalogApplyResponseSchema,
-  catalogCancelResponseSchema,
-  catalogImportStatusSchema,
-  catalogPlanBatchResponseSchema,
-  catalogUploadResponseSchema,
   classSectionsResponseSchema,
   commentRevisionPageSchema,
   coursesResponseSchema,
@@ -53,21 +48,6 @@ const session = {
   idle_expires_at: TIMESTAMP,
   absolute_expires_at: TIMESTAMP,
   revoked_at: null,
-};
-
-const emptyDiff = {
-  terms: { added: 0, updated: 0, unchanged: 0, deactivated: 0 },
-  courses: { added: 0, updated: 0, unchanged: 0, deactivated: 1 },
-  class_sections: { added: 0, updated: 0, unchanged: 0, deactivated: 1 },
-  field_changes: {},
-  deactivated_courses: [
-    { id: ID, external_course_code: 'COURSE-1' },
-  ],
-  deactivated_class_sections: [
-    { id: OTHER_ID, external_section_id: 'SECTION-1' },
-  ],
-  deactivated_class_section_ids: [OTHER_ID],
-  checksum_previously_applied: false,
 };
 
 interface ResponseContractCase {
@@ -234,70 +214,6 @@ const responseContracts: ResponseContractCase[] = [
     requiredKey: 'class_section_id',
   },
   {
-    name: 'catalog plan',
-    schema: catalogPlanBatchResponseSchema,
-    value: {
-      import_id: ID,
-      batch_index: 0,
-      accepted: true,
-      received_batches: 1,
-      total_batches: 1,
-      plan_complete: true,
-      diff: emptyDiff,
-    },
-    requiredKey: 'import_id',
-  },
-  {
-    name: 'catalog upload',
-    schema: catalogUploadResponseSchema,
-    value: {
-      import_id: ID,
-      replayed: false,
-      filename: 'catalog.csv.gz',
-      checksum: HASH,
-      manifest_hash: HASH,
-      row_count: 1,
-      course_count: 1,
-      class_section_count: 1,
-      total_batches: 1,
-      warnings: [],
-      diff: emptyDiff,
-    },
-    requiredKey: 'filename',
-  },
-  {
-    name: 'catalog apply',
-    schema: catalogApplyResponseSchema,
-    value: {
-      import_id: ID,
-      replayed: false,
-      applied_batches: 1,
-      total_batches: 1,
-      complete: true,
-    },
-    requiredKey: 'complete',
-  },
-  {
-    name: 'catalog cancellation',
-    schema: catalogCancelResponseSchema,
-    value: { import_id: ID, status: 'cancelled', replayed: false },
-    requiredKey: 'status',
-  },
-  {
-    name: 'catalog import status',
-    schema: catalogImportStatusSchema,
-    value: {
-      import_id: ID,
-      status: 'planned',
-      received_batches: 1,
-      applied_batches: 0,
-      total_batches: 1,
-      diff: null,
-      failure_message: null,
-    },
-    requiredKey: 'status',
-  },
-  {
     name: 'admin bootstrap',
     schema: adminBootstrapResponseSchema,
     value: { maintainer: true },
@@ -409,7 +325,6 @@ interface ResponseMutation {
 const openMapKeys = new Set([
   'details',
   'device_metadata',
-  'field_changes',
   'result',
 ]);
 
@@ -475,11 +390,6 @@ describe('public HTTP response contracts', () => {
         contractName: 'session list',
         path: ['sessions', 0, 'device_metadata'],
         value: { build: 42 },
-      },
-      {
-        contractName: 'catalog upload',
-        path: ['diff', 'field_changes'],
-        value: 3,
       },
       {
         contractName: 'admin audit page',

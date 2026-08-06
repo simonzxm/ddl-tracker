@@ -5,10 +5,11 @@ export const apiContractVersionSchema = z.enum([
   '1.1.0',
   '2.0.0',
   '3.0.0',
+  '4.0.0',
 ]);
 export type ApiContractVersion = z.infer<typeof apiContractVersionSchema>;
 
-export const API_CONTRACT_VERSION: ApiContractVersion = '3.0.0';
+export const API_CONTRACT_VERSION: ApiContractVersion = '4.0.0';
 
 const apiCapabilitySchema = z.enum([
   'catalog_plan_batches',
@@ -23,6 +24,7 @@ const apiCapabilitySchema = z.enum([
   'typed_sync_events',
   'typed_snapshot_records',
   'oidc_authorization_code_pkce',
+  'automatic_github_catalog_sync',
 ]);
 
 const catalogImportStatusValueSchema = z.enum([
@@ -41,9 +43,7 @@ const compatibilityRequirementSchema = z.enum([
 const contractReleaseSchema = z
   .object({
     capabilities: z.array(apiCapabilitySchema).min(1),
-    catalog_import_status_values: z
-      .array(catalogImportStatusValueSchema)
-      .min(1),
+    catalog_import_status_values: z.array(catalogImportStatusValueSchema),
   })
   .strict();
 
@@ -66,9 +66,10 @@ export const apiCompatibilityMatrixSchema = z
         '1.1.0': contractReleaseSchema,
         '2.0.0': contractReleaseSchema,
         '3.0.0': contractReleaseSchema,
+        '4.0.0': contractReleaseSchema,
       })
       .strict(),
-    matrix: z.array(compatibilityPairSchema).length(16),
+    matrix: z.array(compatibilityPairSchema).length(25),
   })
   .strict();
 

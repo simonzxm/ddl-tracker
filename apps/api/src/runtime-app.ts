@@ -15,12 +15,8 @@ import {
 import { PostgresAccountLifecycleRepository } from './auth/postgres-account-lifecycle-repository.js';
 import { PostgresAccountRepository } from './auth/postgres-account-repository.js';
 import { PostgresOidcLoginRepository } from './auth/postgres-oidc-login-repository.js';
-import { CatalogImportApplyService } from './catalog/import-apply-service.js';
-import { CatalogImportService } from './catalog/import-service.js';
 import { CatalogService } from './catalog/catalog-service.js';
 import { PostgresCatalogRepository } from './catalog/postgres-catalog-repository.js';
-import { PostgresCatalogImportApplyRepository } from './catalog/postgres-import-apply-repository.js';
-import { PostgresCatalogImportRepository } from './catalog/postgres-import-plan-repository.js';
 import { PostgresCommentHistoryRepository } from './comments/postgres-comment-history-repository.js';
 import { latestMigrationHash } from './db/latest-migration.js';
 import { PostgresReadinessRepository } from './db/postgres-readiness-repository.js';
@@ -107,22 +103,6 @@ export function createRuntimeApp(
 
   const catalogService = new CatalogService({
     repository: new PostgresCatalogRepository(client),
-    now,
-  });
-  const catalogImportService = new CatalogImportService({
-    repository: new PostgresCatalogImportRepository(
-      client,
-      env.APP_ENVIRONMENT,
-    ),
-    createId,
-    now,
-  });
-  const catalogApplyService = new CatalogImportApplyService({
-    repository: new PostgresCatalogImportApplyRepository(
-      client,
-      env.APP_ENVIRONMENT,
-    ),
-    createId,
     now,
   });
 
@@ -214,27 +194,6 @@ export function createRuntimeApp(
       listCourses: (termId) => catalogService.listCourses(termId),
       listClassSections: (courseId) =>
         catalogService.listClassSections(courseId),
-    },
-    adminCatalog: {
-      environment: env.APP_ENVIRONMENT,
-      authenticate,
-      rateLimitRead: (userId) => requestRateLimits.consumeRead(userId),
-      rateLimitMutation: (userId) =>
-        requestRateLimits.consumeAdminMutation(userId),
-      planBatch: (actorId, request) =>
-        catalogImportService.planBatch(actorId, request),
-      upload: (actorId, requestId, input) =>
-        catalogImportService.upload(actorId, requestId, input),
-      applyAll: (actorId, importId, requestId, request) =>
-        catalogApplyService.applyAll(
-          actorId,
-          importId,
-          requestId,
-          request,
-        ),
-      cancel: (actorId, importId, requestId, request) =>
-        catalogImportService.cancel(actorId, importId, requestId, request),
-      getStatus: (importId) => catalogImportService.getStatus(importId),
     },
     comments: {
       authenticate,

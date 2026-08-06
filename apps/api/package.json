@@ -12,7 +12,6 @@
     "types:worker": "wrangler types --env-interface Env --strict-vars false"
   },
   "dependencies": {
-    "@ddl-tracker/catalog-import": "workspace:*",
     "@ddl-tracker/catalog-sync": "workspace:*",
     "@ddl-tracker/contracts": "workspace:*",
     "@hono/zod-openapi": "1.5.1",

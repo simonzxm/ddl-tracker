@@ -18,14 +18,6 @@ import {
   adminUserActionRequestSchema,
   adminUserActionResponseSchema,
   apiErrorSchema,
-  catalogApplyAllRequestSchema,
-  catalogApplyResponseSchema,
-  catalogCancelRequestSchema,
-  catalogCancelResponseSchema,
-  catalogImportStatusSchema,
-  catalogPlanBatchRequestSchema,
-  catalogPlanBatchResponseSchema,
-  catalogUploadResponseSchema,
   classSectionSnapshotResponseSchema,
   classSectionsResponseSchema,
   commentRevisionPageSchema,
@@ -148,18 +140,6 @@ const response = (description: string, schemaRef?: string) => ({
   ...(schemaRef === undefined ? {} : { content: jsonContent(schemaRef) }),
 });
 
-const importExampleId = '018f0000-0000-7000-8000-000000000001';
-const emptyImportDiffExample = {
-  terms: { added: 0, updated: 0, unchanged: 1, deactivated: 0 },
-  courses: { added: 0, updated: 0, unchanged: 1, deactivated: 0 },
-  class_sections: { added: 0, updated: 0, unchanged: 1, deactivated: 0 },
-  field_changes: {},
-  deactivated_courses: [],
-  deactivated_class_sections: [],
-  deactivated_class_section_ids: [],
-  checksum_previously_applied: false,
-};
-
 const bearer = [{ bearerAuth: [] }];
 const protectedErrorResponses = {
   '400': response('Invalid request.', 'ApiError'),
@@ -232,7 +212,7 @@ export const openApiDocument = addRateLimitResponses({
     title: 'DDL Tracker API',
     version: API_CONTRACT_VERSION,
     description:
-      'OIDC-authenticated course deadline tracking, offline synchronization, catalog administration, and moderation API.',
+      'OIDC-authenticated course deadline tracking, offline synchronization, and moderation API.',
   },
   servers: [{ url: '/api' }],
   tags: [
@@ -439,140 +419,6 @@ export const openApiDocument = addRateLimitResponses({
         },
       },
     },
-    '/v1/admin/catalog/imports/plan': {
-      post: {
-        tags: ['admin'],
-        summary: 'Upload and plan a catalog import batch',
-        security: bearer,
-        requestBody: requestBody('CatalogPlanBatchRequest'),
-        responses: {
-          '200': response('Catalog import plan progress.', 'CatalogPlanBatchResponse'),
-        },
-      },
-    },
-    '/v1/admin/catalog/imports/upload': {
-      post: {
-        tags: ['admin'],
-        summary: 'Upload one gzip catalog and create a complete import plan',
-        security: bearer,
-        requestBody: {
-          required: true,
-          content: {
-            'multipart/form-data': {
-              schema: {
-                type: 'object',
-                required: ['catalog', 'manifest'],
-                properties: {
-                  catalog: {
-                    type: 'string',
-                    format: 'binary',
-                    description: 'A gzip-compressed UTF-8 CSV named *.csv.gz.',
-                  },
-                  manifest: {
-                    type: 'string',
-                    format: 'binary',
-                    description: 'The matching UTF-8 JSON manifest.',
-                  },
-                },
-                additionalProperties: false,
-              },
-              example: {
-                catalog: 'courses.csv.gz (binary)',
-                manifest: 'manifest.json (binary)',
-              },
-            },
-          },
-        },
-        responses: {
-          '200': {
-            description: 'Complete catalog import plan.',
-            content: {
-              'application/json': {
-                schema: {
-                  $ref: '#/components/schemas/CatalogUploadResponse',
-                },
-                example: {
-                  import_id: importExampleId,
-                  replayed: false,
-                  filename: 'courses.csv.gz',
-                  checksum: 'a'.repeat(64),
-                  manifest_hash: 'b'.repeat(64),
-                  row_count: 3025,
-                  course_count: 1890,
-                  class_section_count: 3025,
-                  total_batches: 31,
-                  warnings: [],
-                  diff: emptyImportDiffExample,
-                },
-              },
-            },
-          },
-          '413': response('Compressed or expanded payload too large.', 'ApiError'),
-          '415': response('Multipart content type required.', 'ApiError'),
-        },
-      },
-    },
-    '/v1/admin/catalog/imports/{import_id}/apply-all': {
-      post: {
-        tags: ['admin'],
-        summary: 'Atomically apply a complete catalog import',
-        security: bearer,
-        parameters: [uuidParameter('import_id', 'Catalog import UUIDv7.')],
-        requestBody: requestBody('CatalogApplyAllRequest'),
-        responses: {
-          '200': response('Catalog import applied.', 'CatalogApplyResponse'),
-          '409': response('Baseline or confirmation conflict.', 'ApiError'),
-        },
-      },
-    },
-    '/v1/admin/catalog/imports/{import_id}/cancel': {
-      post: {
-        tags: ['admin'],
-        summary: 'Cancel a planned catalog import',
-        security: bearer,
-        parameters: [uuidParameter('import_id', 'Catalog import UUIDv7.')],
-        requestBody: {
-          required: true,
-          content: {
-            'application/json': {
-              schema: {
-                $ref: '#/components/schemas/CatalogCancelRequest',
-              },
-              example: { reason: 'Superseded by a corrected source file.' },
-            },
-          },
-        },
-        responses: {
-          '200': {
-            description: 'Catalog import cancelled.',
-            content: {
-              'application/json': {
-                schema: {
-                  $ref: '#/components/schemas/CatalogCancelResponse',
-                },
-                example: {
-                  import_id: importExampleId,
-                  status: 'cancelled',
-                  replayed: false,
-                },
-              },
-            },
-          },
-          '409': response('Catalog import is already terminal.', 'ApiError'),
-        },
-      },
-    },
-    '/v1/admin/catalog/imports/{import_id}': {
-      get: {
-        tags: ['admin'],
-        summary: 'Read catalog import status',
-        security: bearer,
-        parameters: [uuidParameter('import_id', 'Catalog import UUIDv7.')],
-        responses: {
-          '200': response('Catalog import status.', 'CatalogImportStatus'),
-        },
-      },
-    },
     '/v1/admin/reports': {
       get: {
         tags: ['admin'],
@@ -709,14 +555,6 @@ export const openApiDocument = addRateLimitResponses({
           },
         },
       },
-      CatalogPlanBatchRequest: component(catalogPlanBatchRequestSchema),
-      CatalogPlanBatchResponse: component(catalogPlanBatchResponseSchema),
-      CatalogUploadResponse: component(catalogUploadResponseSchema),
-      CatalogApplyAllRequest: component(catalogApplyAllRequestSchema),
-      CatalogApplyResponse: component(catalogApplyResponseSchema),
-      CatalogCancelRequest: component(catalogCancelRequestSchema),
-      CatalogCancelResponse: component(catalogCancelResponseSchema),
-      CatalogImportStatus: component(catalogImportStatusSchema),
       AdminBootstrapRequest: component(adminBootstrapRequestSchema),
       AdminReportResolutionRequest: component(
         adminReportResolutionRequestSchema,

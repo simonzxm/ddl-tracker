@@ -7,7 +7,6 @@ const SESSION_DIAGNOSTIC_DAYS = 30;
 const RETENTION_LOCK = 4_819_252;
 
 export interface RetentionBatchResult {
-  catalog_imports: number;
   oidc_login_transactions: number;
   sessions: number;
   operation_receipts: number;
@@ -52,11 +51,6 @@ export class PostgresRetentionService {
         temporaryCutoff,
         input.limit,
       );
-      const catalogImports = await this.#expireCatalogImports(
-        temporaryCutoff,
-        input.now,
-        input.limit,
-      );
       const sessions = await this.#deleteById(
         'sessions',
         `(
@@ -76,7 +70,6 @@ export class PostgresRetentionService {
       );
       const syncEvents = await this.#deleteEvents(eventCutoff, input.limit);
       const result: RetentionBatchResult = {
-        catalog_imports: catalogImports.count,
         oidc_login_transactions: oidcLoginTransactions,
         sessions,
         operation_receipts: operationReceipts,
@@ -92,10 +85,7 @@ export class PostgresRetentionService {
                    $3, $4)`,
         [
           this.#createId(),
-          JSON.stringify({
-            ...result,
-            expired_catalog_import_ids: catalogImports.importIds,
-          }),
+          JSON.stringify(result),
           this.#createId(),
           input.now,
         ],
@@ -106,46 +96,6 @@ export class PostgresRetentionService {
       await this.#client.query('rollback');
       throw error;
     }
-  }
-
-  async #expireCatalogImports(
-    cutoff: Date,
-    now: Date,
-    limit: number,
-  ): Promise<{ count: number; importIds: string[] }> {
-    const result = await this.#client.query<{
-      count: string;
-      import_ids: string[];
-    }>(
-      `with selected as (
-         select id
-         from catalog_imports
-         where status = 'planned' and updated_at < $1
-         order by updated_at, id
-         for update skip locked
-         limit $2
-       ), expired as (
-         update catalog_imports target
-         set status = 'expired', updated_at = $3
-         from selected
-         where target.id = selected.id
-         returning target.id
-       ), deleted as (
-         delete from catalog_import_batches target
-         using expired
-         where target.import_id = expired.id
-         returning target.import_id
-       )
-       select count(*)::text as count,
-              coalesce(json_agg(id order by id), '[]'::json)::jsonb
-                as import_ids
-       from expired`,
-      [cutoff, limit, now],
-    );
-    return {
-      count: Number(result.rows[0]?.count ?? '0'),
-      importIds: result.rows[0]?.import_ids ?? [],
-    };
   }
 
   async #deleteById(

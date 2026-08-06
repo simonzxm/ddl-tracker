@@ -1,9 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  catalogImportStatusSchema,
-  catalogPlanBatchRequestSchema,
-  catalogUploadResponseSchema,
   classSectionRecordSchema,
   classSectionSchema,
   courseSchema,
@@ -28,45 +25,6 @@ const THIRD_ID = '018f0000-0000-7000-8000-000000000003';
 const NOW = '2026-08-05T07:00:00.000Z';
 const LONG = 'X'.repeat(10_001);
 const HASH = 'a'.repeat(64);
-
-function emptyDiff() {
-  return {
-    terms: { added: 0, updated: 0, unchanged: 0, deactivated: 0 },
-    courses: { added: 0, updated: 0, unchanged: 0, deactivated: 0 },
-    class_sections: { added: 0, updated: 0, unchanged: 0, deactivated: 0 },
-    field_changes: {},
-    deactivated_courses: [],
-    deactivated_class_sections: [],
-    deactivated_class_section_ids: [],
-    checksum_previously_applied: false,
-  };
-}
-
-function planRequest(overrides: Record<string, unknown> = {}) {
-  return {
-    import_id: null,
-    filename: 'catalog.csv',
-    checksum: HASH,
-    header_hash: HASH,
-    manifest_hash: HASH,
-    environment: 'test',
-    manifest: {},
-    term: {
-      external_code: '2026-2027-1',
-      display_name: 'Term',
-      starts_on: '2026-08-01',
-      ends_on: '2027-01-31',
-      time_zone: 'Asia/Shanghai',
-    },
-    row_count: 0,
-    batch_index: 0,
-    total_batches: 1,
-    finalize: true,
-    courses: [],
-    class_sections: [],
-    ...overrides,
-  };
-}
 
 describe('storage-backed response text', () => {
   it('preserves unconstrained user, session, and catalog columns', () => {
@@ -238,43 +196,7 @@ describe('storage-backed response text', () => {
     ).toMatchObject({ private_title: LONG, private_note: '' });
   });
 
-  it('preserves storage-backed catalog import and operation receipt text', () => {
-    expect(
-      catalogUploadResponseSchema.parse({
-        import_id: ID,
-        replayed: true,
-        filename: 'catalog.csv.gz',
-        checksum: HASH,
-        manifest_hash: HASH,
-        row_count: 0,
-        course_count: 0,
-        class_section_count: 0,
-        total_batches: 1,
-        warnings: [],
-        diff: {
-          ...emptyDiff(),
-          deactivated_courses: [
-            { id: OTHER_ID, external_course_code: LONG },
-          ],
-          deactivated_class_sections: [
-            { id: THIRD_ID, external_section_id: '' },
-          ],
-        },
-      }),
-    ).toMatchObject({ filename: 'catalog.csv.gz' });
-
-    expect(
-      catalogImportStatusSchema.parse({
-        import_id: ID,
-        status: 'failed',
-        received_batches: 1,
-        applied_batches: 0,
-        total_batches: 1,
-        diff: null,
-        failure_message: LONG,
-      }).failure_message,
-    ).toBe(LONG);
-
+  it('preserves storage-backed operation receipt text', () => {
     expect(
       operationResultSchema.parse({
         operation_id: ID,
@@ -299,13 +221,6 @@ describe('storage-backed response text', () => {
         bio: null,
         expected_revision: 1,
       }),
-    ).toThrow();
-
-    expect(() =>
-      catalogPlanBatchRequestSchema.parse(planRequest({ filename: '' })),
-    ).toThrow();
-    expect(() =>
-      catalogPlanBatchRequestSchema.parse(planRequest({ filename: LONG })),
     ).toThrow();
 
     expect(() =>

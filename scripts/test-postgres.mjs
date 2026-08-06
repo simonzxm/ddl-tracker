@@ -36,24 +36,6 @@ run('pnpm', [
 run(
   'pnpm',
   [
-    '--filter',
-    '@ddl-tracker/api',
-    'exec',
-    'node',
-    'scripts/test-catalog-import-status-migration.mjs',
-  ],
-  { TEST_DATABASE_URL: connectionString },
-);
-run('pnpm', [
-  '--filter',
-  '@ddl-tracker/api',
-  'exec',
-  'node',
-  'scripts/reset-test-database.mjs',
-]);
-run(
-  'pnpm',
-  [
     'vitest',
     'run',
     'apps/migration-worker/test/postgres-migrate.test.ts',

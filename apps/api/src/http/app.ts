@@ -8,10 +8,6 @@ import { cors } from 'hono/cors';
 import { routePath } from 'hono/route';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
 
-import {
-  registerAdminCatalogRoutes,
-  type AdminCatalogRouteDependencies,
-} from './admin-catalog-routes.js';
 import { registerAdminRoutes, type AdminRouteDependencies } from './admin-routes.js';
 import { registerAuthRoutes, type AuthRouteDependencies } from './auth-routes.js';
 import {
@@ -45,7 +41,6 @@ export interface AppDependencies {
   checkReady: () => Promise<boolean>;
   auth?: AuthRouteDependencies;
   catalog?: CatalogRouteDependencies;
-  adminCatalog?: AdminCatalogRouteDependencies;
   admin?: AdminRouteDependencies;
   comments?: CommentHistoryRouteDependencies;
   sync?: SyncRouteDependencies;
@@ -137,9 +132,6 @@ export function createApp(dependencies: AppDependencies): Hono<{
   }
   if (dependencies.catalog !== undefined) {
     registerCatalogRoutes(app, dependencies.catalog);
-  }
-  if (dependencies.adminCatalog !== undefined) {
-    registerAdminCatalogRoutes(app, dependencies.adminCatalog);
   }
   if (dependencies.admin !== undefined) {
     registerAdminRoutes(app, dependencies.admin);

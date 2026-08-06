@@ -9,7 +9,6 @@
   "include": ["src/**/*.ts", "worker-configuration.d.ts"],
   "references": [
     { "path": "../../packages/contracts" },
-    { "path": "../../packages/catalog-import" },
     { "path": "../../packages/catalog-sync" }
   ]
 }

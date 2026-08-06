@@ -1,5 +1,3 @@
-import { gzipSync } from 'node:zlib';
-
 import {
   adminAuditPageSchema,
   adminBootstrapResponseSchema,
@@ -10,11 +8,6 @@ import {
   adminTaskMergeResponseSchema,
   adminUserActionResponseSchema,
   apiErrorSchema,
-  catalogApplyResponseSchema,
-  catalogCancelResponseSchema,
-  catalogImportStatusSchema,
-  catalogPlanBatchResponseSchema,
-  catalogUploadResponseSchema,
   classSectionsResponseSchema,
   commentRevisionPageSchema,
   coursesResponseSchema,
@@ -46,12 +39,10 @@ const TERM_ID = '018f0000-0000-7000-8000-000000009004';
 const COURSE_ID = '018f0000-0000-7000-8000-000000009005';
 const SECTION_ID = '018f0000-0000-7000-8000-000000009006';
 const COMMENT_ID = '018f0000-0000-7000-8000-000000009007';
-const IMPORT_ID = '018f0000-0000-7000-8000-000000009008';
 const REPORT_ID = '018f0000-0000-7000-8000-000000009009';
 const TARGET_ID = '018f0000-0000-7000-8000-000000009010';
 const AUDIT_ID = '018f0000-0000-7000-8000-000000009011';
 const TIMESTAMP = '2026-08-05T07:00:00.000Z';
-const HASH = 'a'.repeat(64);
 const AUTHORIZATION = { authorization: 'Bearer session-token' };
 const JSON_HEADERS = {
   ...AUTHORIZATION,
@@ -85,17 +76,6 @@ const principal: AuthenticatedPrincipal = {
   user,
   session,
   roles: ['maintainer'],
-};
-
-const emptyDiff = {
-  terms: { added: 0, updated: 0, unchanged: 1, deactivated: 0 },
-  courses: { added: 0, updated: 0, unchanged: 1, deactivated: 0 },
-  class_sections: { added: 0, updated: 0, unchanged: 1, deactivated: 0 },
-  field_changes: {},
-  deactivated_courses: [],
-  deactivated_class_sections: [],
-  deactivated_class_section_ids: [],
-  checksum_previously_applied: false,
 };
 
 function syncResponse(mode: string): SyncResponse {
@@ -231,55 +211,6 @@ function dependencies(): AppDependencies {
       rateLimit: vi.fn(async () => undefined),
       handle: vi.fn(async ({ request }) => syncResponse(request.mode)),
     },
-    adminCatalog: {
-      environment: 'production',
-      authenticate: vi.fn(async () => principal),
-      rateLimitRead: vi.fn(async () => undefined),
-      rateLimitMutation: vi.fn(async () => undefined),
-      planBatch: vi.fn(async () => ({
-        import_id: IMPORT_ID,
-        batch_index: 0,
-        accepted: true,
-        received_batches: 1,
-        total_batches: 1,
-        plan_complete: true,
-        diff: emptyDiff,
-      })),
-      upload: vi.fn(async () => ({
-        import_id: IMPORT_ID,
-        replayed: false,
-        filename: 'catalog.csv.gz',
-        checksum: HASH,
-        manifest_hash: HASH,
-        row_count: 1,
-        course_count: 1,
-        class_section_count: 1,
-        total_batches: 1,
-        warnings: [],
-        diff: emptyDiff,
-      })),
-      applyAll: vi.fn(async () => ({
-        import_id: IMPORT_ID,
-        replayed: false,
-        applied_batches: 1,
-        total_batches: 1,
-        complete: true,
-      })),
-      cancel: vi.fn(async () => ({
-        import_id: IMPORT_ID,
-        status: 'cancelled' as const,
-        replayed: false,
-      })),
-      getStatus: vi.fn(async () => ({
-        import_id: IMPORT_ID,
-        status: 'planned' as const,
-        received_batches: 1,
-        applied_batches: 0,
-        total_batches: 1,
-        diff: null,
-        failure_message: null,
-      })),
-    },
     admin: {
       authenticate: vi.fn(async () => principal),
       rateLimitRead: vi.fn(async () => undefined),
@@ -342,38 +273,6 @@ function dependencies(): AppDependencies {
       })),
     },
   };
-}
-
-function planBody() {
-  return {
-    import_id: null,
-    filename: 'fixture.csv',
-    checksum: HASH,
-    header_hash: HASH,
-    manifest_hash: HASH,
-    environment: 'production',
-    manifest: { schema_version: 1 },
-    term: {
-      external_code: '2026-2027-1',
-      display_name: 'Term',
-      starts_on: '2026-08-31',
-      ends_on: '2027-01-17',
-      time_zone: 'Asia/Shanghai',
-    },
-    row_count: 0,
-    batch_index: 0,
-    total_batches: 1,
-    finalize: true,
-    courses: [],
-    class_sections: [],
-  };
-}
-
-function uploadBody(): FormData {
-  const form = new FormData();
-  form.set('catalog', new Blob([gzipSync('header\nvalue\n')]), 'catalog.csv.gz');
-  form.set('manifest', '{"schema_version":1}');
-  return form;
 }
 
 interface JsonCase {
@@ -487,35 +386,6 @@ const jsonCases: JsonCase[] = [
       }),
     },
   },
-  {
-    name: 'catalog import plan',
-    method: 'POST',
-    path: '/api/v1/admin/catalog/imports/plan',
-    schema: catalogPlanBatchResponseSchema,
-    init: { method: 'POST', headers: JSON_HEADERS, body: JSON.stringify(planBody()) },
-  },
-  {
-    name: 'catalog upload',
-    method: 'POST',
-    path: '/api/v1/admin/catalog/imports/upload',
-    schema: catalogUploadResponseSchema,
-    init: { method: 'POST', headers: AUTHORIZATION, body: uploadBody() },
-  },
-  {
-    name: 'catalog apply',
-    method: 'POST',
-    path: `/api/v1/admin/catalog/imports/${IMPORT_ID}/apply-all`,
-    schema: catalogApplyResponseSchema,
-    init: { method: 'POST', headers: JSON_HEADERS, body: JSON.stringify({ confirm_deactivations: true }) },
-  },
-  {
-    name: 'catalog cancel',
-    method: 'POST',
-    path: `/api/v1/admin/catalog/imports/${IMPORT_ID}/cancel`,
-    schema: catalogCancelResponseSchema,
-    init: { method: 'POST', headers: JSON_HEADERS, body: JSON.stringify({ reason: 'Superseded.' }) },
-  },
-  { name: 'catalog status', method: 'GET', path: `/api/v1/admin/catalog/imports/${IMPORT_ID}`, schema: catalogImportStatusSchema, init: { headers: AUTHORIZATION } },
   {
     name: 'admin bootstrap',
     method: 'POST',

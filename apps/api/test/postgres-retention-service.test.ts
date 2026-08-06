@@ -9,9 +9,6 @@ const USER_ID = '018f0000-0000-7000-8000-000000004001';
 const SECTION_ID = '018f0000-0000-7000-8000-000000004002';
 const TERM_ID = '018f0000-0000-7000-8000-000000004003';
 const COURSE_ID = '018f0000-0000-7000-8000-000000004004';
-const OLD_IMPORT_ID = '018f0000-0000-7000-8000-000000004005';
-const NEW_IMPORT_ID = '018f0000-0000-7000-8000-000000004006';
-const APPLIED_IMPORT_ID = '018f0000-0000-7000-8000-000000004007';
 const NOW = new Date('2026-07-19T12:00:00.000Z');
 
 function ids(): () => string {
@@ -106,27 +103,7 @@ async function seed(client: Client): Promise<void> {
         '2026-07-01T00:00:00Z')`,
     [SECTION_ID],
   );
-  await client.query(
-    `insert into catalog_imports (
-       id, checksum, filename, row_count, actor_id, status, updated_at
-     ) values
-       ($1, 'old-planned', 'old.csv', 1, $4, 'planned',
-        '2026-07-17T00:00:00Z'),
-       ($2, 'new-planned', 'new.csv', 1, $4, 'planned',
-        '2026-07-19T00:00:00Z'),
-       ($3, 'old-applied', 'applied.csv', 1, $4, 'applied',
-        '2026-07-17T00:00:00Z')`,
-    [OLD_IMPORT_ID, NEW_IMPORT_ID, APPLIED_IMPORT_ID, USER_ID],
-  );
-  await client.query(
-    `insert into catalog_import_batches (
-       import_id, batch_index, batch_checksum, payload
-     ) values
-       ($1, 0, 'old', '{}'),
-       ($2, 0, 'new', '{}'),
-       ($3, 0, 'applied', '{}')`,
-    [OLD_IMPORT_ID, NEW_IMPORT_ID, APPLIED_IMPORT_ID],
-  );
+
 }
 
 describePostgres('PostgresRetentionService', () => {
@@ -143,7 +120,6 @@ describePostgres('PostgresRetentionService', () => {
     await client.query(`
       truncate table audit_log, operation_receipts, rate_limit_counters,
         sync_event_retention, sync_events, sessions, oidc_login_transactions,
-        catalog_import_batches, catalog_imports,
         class_sections, courses, academic_terms, users restart identity cascade
     `);
     await seed(client);
@@ -161,7 +137,6 @@ describePostgres('PostgresRetentionService', () => {
     const result = await service.runBatch({ now: NOW, limit: 100 });
 
     expect(result).toEqual({
-      catalog_imports: 1,
       oidc_login_transactions: 1,
       sessions: 1,
       operation_receipts: 1,
@@ -175,12 +150,7 @@ describePostgres('PostgresRetentionService', () => {
       rate_limits: string;
       events: string;
       audits: string;
-      expired_imports: string;
-      import_batches: string;
-      audit_result: {
-        catalog_imports: number;
-        expired_catalog_import_ids: string[];
-      };
+      audit_result: Record<string, number>;
     }>(
       `select
          (select count(*) from oidc_login_transactions)::text as oidc_transactions,
@@ -188,9 +158,6 @@ describePostgres('PostgresRetentionService', () => {
          (select count(*) from operation_receipts)::text as receipts,
          (select count(*) from rate_limit_counters)::text as rate_limits,
          (select count(*) from sync_events)::text as events,
-         (select count(*) from catalog_imports
-          where status = 'expired')::text as expired_imports,
-         (select count(*) from catalog_import_batches)::text as import_batches,
          (select result from audit_log
           where action = 'retention_cleanup') as audit_result,
          (select count(*) from audit_log
@@ -203,11 +170,8 @@ describePostgres('PostgresRetentionService', () => {
       rate_limits: '1',
       events: '1',
       audits: '1',
-      expired_imports: '1',
-      import_batches: '2',
       audit_result: expect.objectContaining({
-        catalog_imports: 1,
-        expired_catalog_import_ids: [OLD_IMPORT_ID],
+        oidc_login_transactions: 1,
       }),
     });
     const retention = await client.query<{ minimum_sequence: string }>(

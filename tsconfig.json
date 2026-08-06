@@ -2,10 +2,8 @@
   "files": [],
   "references": [
     { "path": "./packages/contracts" },
-    { "path": "./packages/catalog-import" },
     { "path": "./packages/catalog-sync" },
     { "path": "./apps/api" },
-    { "path": "./apps/migration-worker" },
-    { "path": "./apps/admin-cli" }
+    { "path": "./apps/migration-worker" }
   ]
 }

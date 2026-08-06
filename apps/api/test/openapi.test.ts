@@ -84,7 +84,7 @@ function assertClosedFixedObjects(
 describe('OpenAPI document', () => {
   it('documents every implemented path with contract components', () => {
     expect(openApiDocument.openapi).toBe('3.1.0');
-    expect(openApiDocument.info.version).toBe('3.0.0');
+    expect(openApiDocument.info.version).toBe('4.0.0');
     expect(openApiDocument.servers).toEqual([{ url: '/api' }]);
     expect(Object.keys(openApiDocument.paths).length).toBeGreaterThan(0);
     expect(openApiDocument.components.securitySchemes).toHaveProperty(
@@ -98,14 +98,8 @@ describe('OpenAPI document', () => {
     expect(openApiDocument.components.schemas).toHaveProperty('SyncEvent');
     expect(openApiDocument.components.schemas).toHaveProperty('SnapshotRecord');
     expect(openApiDocument.components.schemas).toHaveProperty('ApiError');
-    expect(openApiDocument.components.schemas).toHaveProperty(
-      'CatalogApplyAllRequest',
-    );
-    expect(openApiDocument.components.schemas).toHaveProperty(
-      'CatalogUploadResponse',
-    );
-    expect(openApiDocument.components.schemas).toHaveProperty(
-      'CatalogCancelRequest',
+    expect(JSON.stringify(openApiDocument.paths)).not.toContain(
+      '/v1/admin/catalog/imports',
     );
   });
 
@@ -184,30 +178,6 @@ describe('OpenAPI document', () => {
         }
       }
     }
-  });
-
-  it('includes fixed upload and cancellation examples', () => {
-    expect(
-      openApiDocument.paths['/v1/admin/catalog/imports/upload'].post.responses[
-        '200'
-      ],
-    ).toMatchObject({
-      content: {
-        'application/json': {
-          example: { filename: 'courses.csv.gz', replayed: false },
-        },
-      },
-    });
-    expect(
-      openApiDocument.paths['/v1/admin/catalog/imports/{import_id}/cancel'].post
-        .requestBody,
-    ).toMatchObject({
-      content: {
-        'application/json': {
-          example: { reason: 'Superseded by a corrected source file.' },
-        },
-      },
-    });
   });
 
   it('preserves UUIDv7 and RFC 3339 formats for generated clients', () => {

@@ -1,4 +1,3 @@
-export * from './admin-catalog.js';
 export * from './admin.js';
 export * from './api-compatibility.js';
 export * from './auth.js';

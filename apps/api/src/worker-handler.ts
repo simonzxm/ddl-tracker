@@ -94,11 +94,30 @@ export function createWorkerHandler(
         const retention =
           options.createRetentionRunner?.(client) ??
           new PostgresRetentionService(client, { createId: createUuidV7 });
-        await catalogSync.sync();
-        await retention.runBatch({
-          now: new Date(controller.scheduledTime),
-          limit: 1000,
-        });
+        let catalogSyncFailed = false;
+        let catalogSyncError: unknown;
+        try {
+          await catalogSync.sync();
+        } catch (error) {
+          catalogSyncFailed = true;
+          catalogSyncError = error;
+        }
+        try {
+          await retention.runBatch({
+            now: new Date(controller.scheduledTime),
+            limit: 1000,
+          });
+        } catch (retentionError) {
+          if (catalogSyncFailed) {
+            throw new AggregateError(
+              [catalogSyncError, retentionError],
+              'Scheduled catalog synchronization and retention both failed.',
+              { cause: retentionError },
+            );
+          }
+          throw retentionError;
+        }
+        if (catalogSyncFailed) throw catalogSyncError;
       } finally {
         if (connected) await client.end();
       }

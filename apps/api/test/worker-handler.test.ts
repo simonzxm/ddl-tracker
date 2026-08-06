@@ -132,6 +132,37 @@ describe('createWorkerHandler', () => {
     expect(client.end).toHaveBeenCalledOnce();
   });
 
+  it('still runs retention when catalog synchronization fails', async () => {
+    const client = fakeClient();
+    const failure = new Error('GitHub unavailable');
+    const retention = { runBatch: vi.fn(async () => undefined) };
+    const catalogSync = {
+      sync: vi.fn(async () => {
+        throw failure;
+      }),
+    };
+    const handler = createWorkerHandler({
+      createClient: () => client as unknown as Client,
+      createRetentionRunner: () => retention,
+      createCatalogSyncRunner: () => catalogSync,
+      oidcProvider,
+    });
+    const controller = {
+      cron: '17 3 * * *',
+      scheduledTime: Date.parse('2026-07-20T03:17:00.000Z'),
+      noRetry: vi.fn(),
+    } as unknown as ScheduledController;
+
+    await expect(
+      handler.scheduled(controller, environment(), context),
+    ).rejects.toBe(failure);
+    expect(retention.runBatch).toHaveBeenCalledWith({
+      now: new Date('2026-07-20T03:17:00.000Z'),
+      limit: 1000,
+    });
+    expect(client.end).toHaveBeenCalledOnce();
+  });
+
   it('closes the client after an application failure response', async () => {
     const client = fakeClient({ queryError: new Error('database failed') });
     const handler = createWorkerHandler({

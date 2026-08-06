@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest';
 import {
   buildCatalogDiff,
   hasCatalogChanges,
-  hashCatalogBaseline,
   type CatalogBaseline,
   type DesiredCatalog,
 } from '../src/catalog/catalog-diff.js';
@@ -11,10 +10,7 @@ import {
 const baseline: CatalogBaseline = {
   term: {
     id: '018f0000-0000-7000-8000-000000000401',
-    externalCode: '2026-2027-1',
     name: 'Old Term',
-    startsOn: null,
-    endsOn: null,
   },
   courses: [
     {
@@ -147,7 +143,7 @@ describe('catalog sync diff', () => {
     expect(hasCatalogChanges(diff)).toBe(true);
   });
 
-  it('recognizes an unchanged catalog and hashes baselines deterministically', () => {
+  it('recognizes an unchanged catalog', () => {
     const unchanged = buildCatalogDiff(
       {
         term: {
@@ -186,12 +182,5 @@ describe('catalog sync diff', () => {
     );
 
     expect(hasCatalogChanges(unchanged)).toBe(false);
-    expect(hashCatalogBaseline(baseline)).toBe(
-      hashCatalogBaseline({
-        ...baseline,
-        courses: [...baseline.courses].reverse(),
-        classSections: [...baseline.classSections].reverse(),
-      }),
-    );
   });
 });

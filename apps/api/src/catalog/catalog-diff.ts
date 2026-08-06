@@ -1,5 +1,3 @@
-import { createHash } from 'node:crypto';
-
 import type {
   NormalizedCatalogClassSection,
   NormalizedCatalogCourse,
@@ -8,10 +6,7 @@ import type {
 
 export interface BaselineTerm {
   id: string;
-  externalCode: string;
   name: string;
-  startsOn: string | null;
-  endsOn: string | null;
 }
 
 export interface BaselineCourse {
@@ -135,30 +130,12 @@ export function buildCatalogDiff(
   if (baseline.term === null) {
     termCounts.added = 1;
   } else {
-    const changed = [
-      compareField(
-        fieldChanges,
-        'terms.name',
-        baseline.term.name,
-        desired.term.display_name,
-      ),
-      desired.term.starts_on === null
-        ? false
-        : compareField(
-            fieldChanges,
-            'terms.starts_on',
-            baseline.term.startsOn,
-            desired.term.starts_on,
-          ),
-      desired.term.ends_on === null
-        ? false
-        : compareField(
-            fieldChanges,
-            'terms.ends_on',
-            baseline.term.endsOn,
-            desired.term.ends_on,
-          ),
-    ].some(Boolean);
+    const changed = compareField(
+      fieldChanges,
+      'terms.name',
+      baseline.term.name,
+      desired.term.display_name,
+    );
     termCounts[changed ? 'updated' : 'unchanged'] += 1;
   }
 
@@ -315,15 +292,3 @@ export function hasCatalogChanges(diff: CatalogDiff): boolean {
   );
 }
 
-export function hashCatalogBaseline(baseline: CatalogBaseline): string {
-  const canonical = JSON.stringify({
-    term: baseline.term,
-    courses: [...baseline.courses].sort((left, right) =>
-      left.externalCourseCode.localeCompare(right.externalCourseCode),
-    ),
-    classSections: [...baseline.classSections].sort((left, right) =>
-      left.externalSectionId.localeCompare(right.externalSectionId),
-    ),
-  });
-  return createHash('sha256').update(canonical, 'utf8').digest('hex');
-}

@@ -95,8 +95,9 @@ export class GithubCatalogSource implements CatalogSource {
         termCode === undefined ||
         typeof entry.sha !== 'string' ||
         !SHA_PATTERN.test(entry.sha) ||
+        typeof entry.size !== 'number' ||
         !Number.isSafeInteger(entry.size) ||
-        (entry.size ?? -1) < 1
+        entry.size < 1
       ) {
         throw new Error(`GitHub returned invalid metadata for ${entry.path}.`);
       }
@@ -104,11 +105,14 @@ export class GithubCatalogSource implements CatalogSource {
         termCode,
         path: entry.path,
         blobSha: entry.sha,
-        compressedBytes: entry.size as number,
+        compressedBytes: entry.size,
       });
     }
 
     catalogs.sort((left, right) => left.termCode.localeCompare(right.termCode));
+    if (catalogs.length === 0) {
+      throw new Error('GitHub repository tree contains no catalog datasets.');
+    }
     return {
       repository: this.#repository,
       commitSha: commit.sha,
@@ -187,7 +191,7 @@ export class GithubCatalogSource implements CatalogSource {
       );
     }
     try {
-      return (await response.json()) as Output;
+      return await response.json();
     } catch (error) {
       throw new Error('GitHub catalog response was not valid JSON.', {
         cause: error,
@@ -219,7 +223,7 @@ async function readBoundedStream(
   const chunks: Uint8Array[] = [];
   let total = 0;
   try {
-    while (true) {
+    for (;;) {
       const result = await reader.read();
       if (result.done) break;
       total += result.value.byteLength;

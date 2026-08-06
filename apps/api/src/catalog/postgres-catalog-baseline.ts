@@ -9,10 +9,7 @@ import type {
 
 interface TermRow {
   id: string;
-  external_term_code: string;
   name: string;
-  starts_on: string | null;
-  ends_on: string | null;
 }
 
 interface CourseRow {
@@ -44,7 +41,7 @@ export async function loadCatalogBaseline(
   externalTermCode: string,
 ): Promise<CatalogBaseline> {
   const termResult = await client.query<TermRow>(
-    `select id, external_term_code, name, starts_on::text, ends_on::text
+    `select id, name
      from academic_terms
      where external_term_code = $1
      limit 1`,
@@ -56,10 +53,7 @@ export async function loadCatalogBaseline(
       ? null
       : {
           id: termRow.id,
-          externalCode: termRow.external_term_code,
           name: termRow.name,
-          startsOn: termRow.starts_on,
-          endsOn: termRow.ends_on,
         };
   if (term === null) {
     return { term: null, courses: [], classSections: [] };

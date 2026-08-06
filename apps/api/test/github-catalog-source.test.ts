@@ -133,4 +133,26 @@ describe('GithubCatalogSource', () => {
       ),
     ).rejects.toThrow('compressed size limit');
   });
+
+  it('rejects a repository snapshot with no catalog datasets', async () => {
+    const source = new GithubCatalogSource({
+      fetcher: vi.fn(async (input: RequestInfo | URL) =>
+        String(input).endsWith('/commits/main')
+          ? json({ sha: COMMIT })
+          : json({
+              truncated: false,
+              tree: [
+                {
+                  path: 'README.md',
+                  type: 'blob',
+                  sha: 'a'.repeat(40),
+                  size: 1,
+                },
+              ],
+            }),
+      ),
+    });
+
+    await expect(source.list()).rejects.toThrow('no catalog datasets');
+  });
 });

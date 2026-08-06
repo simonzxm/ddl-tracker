@@ -26,7 +26,6 @@ import {
 const ID = '018f0000-0000-7000-8000-000000000001';
 const OTHER_ID = '018f0000-0000-7000-8000-000000000002';
 const TIMESTAMP = '2026-08-05T07:00:00.000Z';
-const HASH = 'a'.repeat(64);
 
 const currentUser = {
   id: ID,

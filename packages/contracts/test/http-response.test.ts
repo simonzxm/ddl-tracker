@@ -404,6 +404,8 @@ interface ResponseMutation {
   value: Record<string, unknown>;
 }
 
+// These are contract-declared dictionaries: their keys are domain data, not
+// fixed response object fields. Their containing objects remain strict.
 const openMapKeys = new Set([
   'details',
   'device_metadata',
@@ -463,6 +465,51 @@ function strictObjectMutations(
 }
 
 describe('public HTTP response contracts', () => {
+  it('keeps only explicitly declared domain dictionaries open', () => {
+    const cases: {
+      contractName: string;
+      path: JsonPath;
+      value: unknown;
+    }[] = [
+      {
+        contractName: 'session list',
+        path: ['sessions', 0, 'device_metadata'],
+        value: { build: 42 },
+      },
+      {
+        contractName: 'catalog upload',
+        path: ['diff', 'field_changes'],
+        value: 3,
+      },
+      {
+        contractName: 'admin audit page',
+        path: ['entries', 0, 'result'],
+        value: { imported: true },
+      },
+      {
+        contractName: 'API error',
+        path: ['details'],
+        value: { field: 'username' },
+      },
+    ];
+
+    for (const testCase of cases) {
+      const contract = responseContracts.find(
+        ({ name }) => name === testCase.contractName,
+      );
+      expect(contract, testCase.contractName).toBeDefined();
+      if (contract === undefined) continue;
+      const withDomainKey = mutateAtPath(
+        contract.value,
+        testCase.path,
+        (target) => {
+          target['domain_key'] = testCase.value;
+        },
+      );
+      expect(contract.schema.parse(withDomainKey)).toEqual(withDomainKey);
+    }
+  });
+
   for (const contract of responseContracts) {
     it(`${contract.name} rejects added and missing top-level fields`, () => {
       expect(contract.schema.safeParse(contract.value).success).toBe(true);

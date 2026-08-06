@@ -562,40 +562,97 @@ const jsonCases: JsonCase[] = [
   { name: 'admin audit', method: 'GET', path: '/api/v1/admin/audit', schema: adminAuditPageSchema, init: { headers: AUTHORIZATION } },
 ];
 
-const expectedRoutes = [
-  'GET /api/health/live',
-  'GET /api/openapi.json',
-  'GET /api/health/ready',
-  'POST /api/v1/auth/oidc/start',
-  'GET /api/v1/auth/oidc/callback',
-  'POST /api/v1/auth/oidc/exchange',
-  'GET /api/v1/me',
-  'PATCH /api/v1/me/profile',
-  'DELETE /api/v1/me',
-  'GET /api/v1/sessions',
-  'DELETE /api/v1/sessions/:session_id',
-  'DELETE /api/v1/sessions',
-  'GET /api/v1/terms',
-  'GET /api/v1/terms/:term_id/courses',
-  'GET /api/v1/courses/:course_id/class-sections',
-  'GET /api/v1/comments/:comment_id/revisions',
-  'POST /api/v1/sync',
-  'POST /api/v1/admin/catalog/imports/plan',
-  'POST /api/v1/admin/catalog/imports/upload',
-  'POST /api/v1/admin/catalog/imports/:import_id/apply-all',
-  'POST /api/v1/admin/catalog/imports/:import_id/cancel',
-  'GET /api/v1/admin/catalog/imports/:import_id',
-  'POST /api/v1/admin/bootstrap',
-  'GET /api/v1/admin/reports',
-  'POST /api/v1/admin/reports/:report_id/resolve',
-  'POST /api/v1/admin/content/:content_id/hide',
-  'POST /api/v1/admin/content/:content_id/restore',
-  'POST /api/v1/admin/users/:user_id/suspend',
-  'POST /api/v1/admin/users/:user_id/restore',
-  'POST /api/v1/admin/users/:user_id/roles',
-  'POST /api/v1/admin/tasks/:source_task_id/merge',
-  'GET /api/v1/admin/audit',
-].sort();
+interface BodylessCase {
+  name: string;
+  method: string;
+  path: string;
+  status: number;
+  init?: RequestInit;
+}
+
+const bodylessCases: BodylessCase[] = [
+  {
+    name: 'OIDC callback redirect',
+    method: 'GET',
+    path: '/api/v1/auth/oidc/callback?state=state&code=provider-code',
+    status: 302,
+    init: { redirect: 'manual' },
+  },
+  {
+    name: 'account deletion',
+    method: 'DELETE',
+    path: '/api/v1/me',
+    status: 204,
+    init: { method: 'DELETE', headers: AUTHORIZATION },
+  },
+  {
+    name: 'single session revocation',
+    method: 'DELETE',
+    path: `/api/v1/sessions/${SESSION_ID}`,
+    status: 204,
+    init: { method: 'DELETE', headers: AUTHORIZATION },
+  },
+  {
+    name: 'all session revocation',
+    method: 'DELETE',
+    path: '/api/v1/sessions',
+    status: 204,
+    init: { method: 'DELETE', headers: AUTHORIZATION },
+  },
+];
+
+const openApiCase = {
+  method: 'GET',
+  path: '/api/openapi.json',
+} as const;
+
+interface RegisteredRoute {
+  method: string;
+  path: string;
+}
+
+const HTTP_METHODS = new Set([
+  'delete',
+  'get',
+  'head',
+  'options',
+  'patch',
+  'post',
+  'put',
+]);
+
+function documentedRoutes(): string[] {
+  const routes: string[] = [];
+  for (const [path, pathItem] of Object.entries(openApiDocument.paths)) {
+    for (const method of Object.keys(pathItem)) {
+      if (!HTTP_METHODS.has(method)) continue;
+      routes.push(
+        `${method.toUpperCase()} /api${path.replace(/\{([^}]+)\}/gu, ':$1')}`,
+      );
+    }
+  }
+  return routes.sort();
+}
+
+function pathname(path: string): string {
+  return new URL(path, 'https://api.example').pathname;
+}
+
+function routeMatchesRequest(
+  route: RegisteredRoute,
+  request: { method: string; path: string },
+): boolean {
+  if (route.method !== request.method) return false;
+  const pattern = route.path
+    .split('/')
+    .map((segment) =>
+      segment.startsWith(':')
+        ? '[^/]+'
+        : segment.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&'),
+    )
+    .join('/');
+  return new RegExp(`^${pattern}$`, 'u').test(pathname(request.path));
+}
 
 describe('HTTP response contract coverage', () => {
   for (const testCase of jsonCases) {
@@ -612,37 +669,50 @@ describe('HTTP response contract coverage', () => {
   }
 
   it('serves the exact generated OpenAPI document', async () => {
-    const response = await createApp(dependencies()).request('/api/openapi.json');
+    const response = await createApp(dependencies()).request(openApiCase.path);
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual(openApiDocument);
   });
 
   it('keeps redirects and empty success responses bodyless', async () => {
     const app = createApp(dependencies());
-    const redirect = await app.request(
-      '/api/v1/auth/oidc/callback?state=state&code=provider-code',
-      { redirect: 'manual' },
-    );
-    expect(redirect.status).toBe(302);
-    expect(await redirect.text()).toBe('');
-
-    for (const request of [
-      ['/api/v1/me', { method: 'DELETE', headers: AUTHORIZATION }],
-      [`/api/v1/sessions/${SESSION_ID}`, { method: 'DELETE', headers: AUTHORIZATION }],
-      ['/api/v1/sessions', { method: 'DELETE', headers: AUTHORIZATION }],
-    ] as const) {
-      const response = await app.request(request[0], request[1]);
-      expect(response.status).toBe(204);
-      expect(await response.text()).toBe('');
+    for (const testCase of bodylessCases) {
+      const response = await app.request(testCase.path, testCase.init);
+      expect(response.status, testCase.name).toBe(testCase.status);
+      expect(await response.text(), testCase.name).toBe('');
     }
   });
 
-  it('has a contract test classification for every registered public route', () => {
-    const actualRoutes = createApp(dependencies()).routes
-      .filter((route) => route.method !== 'ALL')
+  it('executes a contract classification for every registered public route', () => {
+    const actualRoutes = createApp(dependencies()).routes.filter(
+      (route) => route.method !== 'ALL',
+    );
+    const classifiedRequests = [
+      ...jsonCases,
+      ...bodylessCases,
+      openApiCase,
+    ];
+
+    for (const route of actualRoutes) {
+      expect(
+        classifiedRequests.some((request) =>
+          routeMatchesRequest(route, request),
+        ),
+        `${route.method} ${route.path}`,
+      ).toBe(true);
+    }
+    for (const request of classifiedRequests) {
+      expect(
+        actualRoutes.filter((route) => routeMatchesRequest(route, request)),
+        `${request.method} ${pathname(request.path)}`,
+      ).toHaveLength(1);
+    }
+
+    const implementedDocumentedRoutes = actualRoutes
+      .filter((route) => route.path !== openApiCase.path)
       .map((route) => `${route.method} ${route.path}`)
       .sort();
-    expect(actualRoutes).toEqual(expectedRoutes);
+    expect(documentedRoutes()).toEqual(implementedDocumentedRoutes);
   });
 
   it('uses the strict API error envelope across error classes', async () => {

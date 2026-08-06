@@ -22,7 +22,7 @@
 
 - 举报人身份、举报正文和处理备注。
 - 账户处置、角色与完整审计记录。
-- 课程同步 raw source、source commit/blob metadata 与差异详情。
+- 课程同步 raw source、source commit/version metadata 与差异详情。
 
 ### Secrets
 
@@ -172,7 +172,7 @@ Worker 开启 Workers Logs 与 traces，使用结构化 JSON。每个请求生�
 - authenticated user 的不可逆内部 diagnostic ID，不记录 OIDC subject 或 email。
 - sync batch 的 operation 数、applied/rejected/replayed 数和 event 数。
 - operation ID、catalog sync run ID、audit ID 与数据库错误类别。
-- catalog source repository、term code、commit/blob SHA、是否 changed 和失败类别；不记录完整 CSV 或 raw source 行。
+- catalog source repository、term code、commit/source version、是否 changed 和失败类别；不记录完整 CSV 或 raw source 行。
 - OIDC discovery/token exchange 的脱敏结果类别和 latency，不记录 code、token、subject 或完整 email。
 
 严禁记录 bearer token、OIDC state/authorization code/exchange code/ID Token、私人正文、评论正文、举报正文或 raw CSV 行。

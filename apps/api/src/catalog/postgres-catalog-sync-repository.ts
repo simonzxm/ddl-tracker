@@ -41,7 +41,7 @@ export class PostgresCatalogSyncRepository implements CatalogSyncRepository {
     this.#createId = options.createId;
   }
 
-  async currentBlobShas(repository: string): Promise<Map<string, string>> {
+  async currentSourceVersions(repository: string): Promise<Map<string, string>> {
     const result = await this.#client.query<{
       term_code: string;
       blob_sha: string;
@@ -115,7 +115,7 @@ export class PostgresCatalogSyncRepository implements CatalogSyncRepository {
         input.commitSha,
         input.source.termCode,
         input.source.path,
-        input.source.blobSha,
+        input.source.sourceVersion,
         input.errorMessage,
         input.startedAt,
         input.completedAt,
@@ -446,7 +446,7 @@ export class PostgresCatalogSyncRepository implements CatalogSyncRepository {
         input.commitSha,
         input.source.termCode,
         input.source.path,
-        input.source.blobSha,
+        input.source.sourceVersion,
         input.catalog.metadata.checksum,
         input.catalog.metadata.row_count,
         input.catalog.courses.length,
@@ -475,7 +475,7 @@ export class PostgresCatalogSyncRepository implements CatalogSyncRepository {
         input.repository,
         input.source.termCode,
         input.commitSha,
-        input.source.blobSha,
+        input.source.sourceVersion,
         input.catalog.metadata.checksum,
         input.completedAt,
         input.runId,
@@ -492,7 +492,7 @@ function sourceMetadata(
     source_system: 'github',
     repository: input.repository,
     commit_sha: input.commitSha,
-    blob_sha: input.source.blobSha,
+    source_version: input.source.sourceVersion,
     source_path: input.source.path,
     sync_run_id: input.runId,
     source_checksum: input.catalog.metadata.checksum,

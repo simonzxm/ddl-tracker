@@ -208,7 +208,7 @@ pnpm exec wrangler versions deploy VERSION_ID@100% \
 - sync rejection spike。
 - Tunnel health。
 - scheduled invocation 最近一次结果。
-- `catalog_sync_runs` 中最近各学期的成功/失败状态、commit/blob SHA 与错误摘要。
+- `catalog_sync_runs` 中最近各学期的成功/失败状态、commit/source version 与错误摘要。
 - `catalog_sync_state.synced_at` 是否持续前进；最近学期长期停滞表示 GitHub、解析或数据库同步故障。
 
 ### OIDC 切换后的旧 secret 清理

@@ -190,8 +190,9 @@ fixture 必须包含：
 - 重复 JXBID。
 - 同 `(term, KCH)` 不同 KCM。
 - 缺列、额外列和上游目录名/CSV 学期不一致。
-- GitHub tree 截断、非法 commit/blob metadata、gzip 损坏和压缩/解压大小超限。
-- 相同 blob SHA 跳过；新 blob 但规范化内容不变时只推进 source state。
+- GitHub 目录页缺失/重复 `currentOid`、非法学期目录、非法 raw ETag/长度、gzip 损坏和压缩/解压大小超限。
+- `2025-2026-1` 以前的学期不会进入 metadata probe 或下载。
+- 相同 source version 跳过；新 source version 但规范化内容不变时只推进 source state。
 - 首次 bootstrap 按最近学期优先且每次最多 4 个。
 - 缺失 active course/section 时标记 inactive，并生成正确同步事件。
 - JXBID 跨课程移动时整个学期事务回滚。

@@ -16,7 +16,7 @@ const RUN_ID = '018f0000-0000-7000-8000-000000000906';
 const NOW = new Date('2026-08-06T08:00:00.000Z');
 const REPOSITORY = 'at-nju/courses';
 const COMMIT = 'c0c3db8d883385e9f9868ac04cc72ef64482f52d';
-const BLOB = 'a'.repeat(40);
+const SOURCE_VERSION = 'a'.repeat(40);
 
 const catalog: ParsedCatalogCsv = {
   metadata: {
@@ -143,7 +143,7 @@ function applyInput(runId = RUN_ID) {
     source: {
       termCode: '2026-2027-1',
       path: 'data/2026-2027-1/courses.csv.gz',
-      blobSha: BLOB,
+      sourceVersion: SOURCE_VERSION,
       compressedBytes: 100,
     },
     catalog,
@@ -272,7 +272,7 @@ describePostgres('PostgresCatalogSyncRepository', () => {
       {
         term_code: '2026-2027-1',
         commit_sha: COMMIT,
-        blob_sha: BLOB,
+        blob_sha: SOURCE_VERSION,
         run_id: RUN_ID,
       },
     ]);
@@ -304,13 +304,13 @@ describePostgres('PostgresCatalogSyncRepository', () => {
     ]);
   });
 
-  it('does not advance the catalog revision for a new source blob with identical normalized data', async () => {
+  it('does not advance the catalog revision for a new source version with identical normalized data', async () => {
     const repository = new PostgresCatalogSyncRepository(client, {
       createId: idFactory(),
     });
     await repository.apply(applyInput());
     const second = applyInput('018f0000-0000-7000-8000-000000000907');
-    second.source = { ...second.source, blobSha: 'd'.repeat(40) };
+    second.source = { ...second.source, sourceVersion: 'd'.repeat(40) };
 
     await expect(repository.apply(second)).resolves.toEqual({ changed: false });
 
@@ -322,7 +322,7 @@ describePostgres('PostgresCatalogSyncRepository', () => {
       'select count(*)::text as count from sync_events',
     );
     expect(events.rows[0]?.count).toBe('1');
-    await expect(repository.currentBlobShas(REPOSITORY)).resolves.toEqual(
+    await expect(repository.currentSourceVersions(REPOSITORY)).resolves.toEqual(
       new Map([['2026-2027-1', 'd'.repeat(40)]]),
     );
   });

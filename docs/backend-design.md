@@ -155,8 +155,8 @@ Bearer API 不使用 cookie。为第三方客户端支持 CORS 时不得启用 c
 | `moderation_actions` | hide/restore/suspend/restore 等动作及理由 |
 | `operation_receipts` | `(user_id, operation_id)` 唯一；请求摘要与首次稳定结果；保留 180 天 |
 | `sync_events` | 全局单调 sequence、event UUID、scope、type、schema version、严格校验后的 payload；保留至少 180 天 |
-| `catalog_sync_runs` | repository、commit/blob SHA、学期、checksum、计数、diff、成功/失败和时间；append-only 运行记录 |
-| `catalog_sync_state` | `(repository, term_code)` 唯一；最近成功 commit/blob SHA、checksum、run ID 与同步时间 |
+| `catalog_sync_runs` | repository、commit/source version、学期、checksum、计数、diff、成功/失败和时间；append-only 运行记录 |
+| `catalog_sync_state` | `(repository, term_code)` 唯一；最近成功 commit/source version、checksum、run ID 与同步时间 |
 | `audit_log` | append-only 管理动作、actor、target、reason、result、request ID |
 
 ### 不变式
@@ -201,7 +201,7 @@ Bearer API 不使用 cookie。为第三方客户端支持 CORS 时不得启用 c
 - migration SQL 必须生成、提交、审查，并在临时真实 PostgreSQL 验证从空库和上一版本升级。
 - migration bundle 由 Drizzle journal 和 SQL 自动生成；executor 要求数据库 journal 是 bundle 的精确前缀，验证 database/role，并在 advisory transaction lock 下原子应用全部 pending migration。
 
-课程目录同步不经过 HTTP。Cron 先从 GitHub API 取得 `main` commit 与该 commit 的 recursive tree，再通过固定 commit raw URL 下载匹配的 gzip。每个学期在一个 `REPEATABLE READ` 事务中获取 advisory lock、读取基线、计算 diff、upsert、停用、追加同步事件并更新 `catalog_sync_runs`/`catalog_sync_state`。外部网络 I/O 必须在数据库事务外完成。
+课程目录同步不经过业务 HTTP 接口。Cron 从公开 GitHub `data` 目录页解析唯一的 `main` commit SHA 与学期目录，只接受 `2025-2026-1` 及以后；对最近学期和待回填学期使用固定 commit raw URL 的 HEAD 读取 ETag/长度，再下载有变化的 gzip。该流程不依赖匿名 GitHub API 配额。每个学期在一个 `REPEATABLE READ` 事务中获取 advisory lock、读取基线、计算 diff、upsert、停用、追加同步事件并更新 `catalog_sync_runs`/`catalog_sync_state`。外部网络 I/O 必须在数据库事务外完成。
 
 ## Workers 运行规范
 

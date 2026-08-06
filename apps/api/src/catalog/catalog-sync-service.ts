@@ -26,7 +26,7 @@ export interface CatalogSyncFailureInput {
 }
 
 export interface CatalogSyncRepository {
-  currentBlobShas(repository: string): Promise<Map<string, string>>;
+  currentSourceVersions(repository: string): Promise<Map<string, string>>;
   apply(input: CatalogSyncApplyInput): Promise<{ changed: boolean }>;
   recordFailure(input: CatalogSyncFailureInput): Promise<void>;
 }
@@ -68,10 +68,12 @@ export class CatalogSyncService {
   }
 
   async sync(): Promise<CatalogSyncResult> {
-    const snapshot = await this.#source.list();
-    const current = await this.#repository.currentBlobShas(snapshot.repository);
+    const current = await this.#repository.currentSourceVersions(
+      this.#source.repository,
+    );
+    const snapshot = await this.#source.list(current);
     const allChanged = snapshot.catalogs.filter(
-      (catalog) => current.get(catalog.termCode) !== catalog.blobSha,
+      (catalog) => current.get(catalog.termCode) !== catalog.sourceVersion,
     );
     const changed = [...allChanged]
       .sort((left, right) => right.termCode.localeCompare(left.termCode))

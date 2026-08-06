@@ -13,13 +13,13 @@
 
 课程目录由 Worker Cron 直接从 `at-nju/courses` 同步：
 
-- 先解析 `main` 的当前 commit SHA，再读取该 SHA 的 repository tree。
-- 只发现 `data/<term>/courses.csv.gz`。
-- raw 文件始终使用固定 commit 下载，避免一次运行混入多个上游版本。
+- 从公开 GitHub `data` 目录页解析唯一的 `main` commit SHA 和学期目录，不依赖匿名 GitHub API 配额。
+- 只同步 `2025-2026-1` 及以后、路径为 `data/<term>/courses.csv.gz` 的数据。
+- 对最近学期和待回填学期使用固定 commit raw URL 的 HEAD 读取 ETag/长度；raw 文件始终使用同一固定 commit 下载，避免一次运行混入多个上游版本。
 - 不再使用 manifest；学期身份和显示名来自 CSV，显式校历日期若数据库已有则保留。
 - 每个学期在一个 `REPEATABLE READ` 事务内完成 diff、upsert、停用、同步事件、run 记录和 state 更新。
 - 以 `(repository, term_code)` advisory lock 串行化同一学期同步。
-- blob SHA 没变化则跳过；首次 bootstrap 每次最多处理 4 个最近学期。
+- raw ETag source version 没变化则跳过；首次 bootstrap 每次最多处理 4 个学期。
 - 删除全部课程上传、plan、apply、status、cancel HTTP 接口，删除 admin CLI、批次表、manifest parser 和 plan retention。
 
 ## 后果
@@ -36,7 +36,7 @@
 
 - DDL Tracker 接受该公开镜像作为课程目录上游依赖；上游不可用会延迟更新。
 - 上游不提供正式校历日期，新学期只能先使用 term code 推导展示状态，直到数据库有显式日期或 override。
-- 首次全历史 bootstrap 可能跨多个 Cron 周期完成。
+- 首次从 `2025-2026-1` 开始的 bootstrap 可能跨多个 Cron 周期完成。
 - 删除旧接口是 API 4.0.0 breaking change；旧维护者客户端不能继续使用。
 
 ## 被拒绝的方案
@@ -47,7 +47,7 @@
 
 ### Worker 每次下载默认分支 raw URL
 
-拒绝。先读 tree 再下载时默认分支可能移动，导致同一运行混合不同 commit。固定 commit URL 是完整快照语义的一部分。
+拒绝。先读目录页再下载时默认分支可能移动，导致同一运行混合不同 commit。固定 commit URL 是完整快照语义的一部分。
 
 ### 把 GitHub 数据复制到仓库或 R2 后再导入
 

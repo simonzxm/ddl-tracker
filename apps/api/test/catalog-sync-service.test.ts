@@ -13,13 +13,13 @@ const COMMIT = 'c0c3db8d883385e9f9868ac04cc72ef64482f52d';
 const CURRENT: CatalogSourceDescriptor = {
   termCode: '2025-2026-3',
   path: 'data/2025-2026-3/courses.csv.gz',
-  blobSha: 'a'.repeat(40),
+  sourceVersion: 'a'.repeat(40),
   compressedBytes: 100,
 };
 const CHANGED: CatalogSourceDescriptor = {
   termCode: '2026-2027-1',
   path: 'data/2026-2027-1/courses.csv.gz',
-  blobSha: 'b'.repeat(40),
+  sourceVersion: 'b'.repeat(40),
   compressedBytes: 200,
 };
 
@@ -74,12 +74,12 @@ function csv(termCode = CHANGED.termCode): Uint8Array {
 }
 
 function repository(): CatalogSyncRepository & {
-  currentBlobShas: ReturnType<typeof vi.fn>;
+  currentSourceVersions: ReturnType<typeof vi.fn>;
   apply: ReturnType<typeof vi.fn>;
   recordFailure: ReturnType<typeof vi.fn>;
 } {
   return {
-    currentBlobShas: vi.fn(async () => new Map([[CURRENT.termCode, CURRENT.blobSha]])),
+    currentSourceVersions: vi.fn(async () => new Map([[CURRENT.termCode, CURRENT.sourceVersion]])),
     apply: vi.fn(async () => ({ changed: true })),
     recordFailure: vi.fn(async () => undefined),
   };
@@ -88,6 +88,7 @@ function repository(): CatalogSyncRepository & {
 describe('CatalogSyncService', () => {
   it('downloads and atomically applies only changed term blobs', async () => {
     const source: CatalogSource = {
+      repository: 'at-nju/courses',
       list: vi.fn(async () => ({
         repository: 'at-nju/courses',
         commitSha: COMMIT,
@@ -115,6 +116,9 @@ describe('CatalogSyncService', () => {
       terms: ['2026-2027-1'],
     });
     expect(source.download).toHaveBeenCalledTimes(1);
+    expect(source.list).toHaveBeenCalledWith(
+      new Map([[CURRENT.termCode, CURRENT.sourceVersion]]),
+    );
     expect(repo.apply).toHaveBeenCalledWith(
       expect.objectContaining({
         runId: '018f0000-0000-7000-8000-000000000001',
@@ -132,6 +136,7 @@ describe('CatalogSyncService', () => {
 
   it('records a failed source version without applying partial catalog data', async () => {
     const source: CatalogSource = {
+      repository: 'at-nju/courses',
       list: vi.fn(async () => ({
         repository: 'at-nju/courses',
         commitSha: COMMIT,
@@ -140,7 +145,7 @@ describe('CatalogSyncService', () => {
       download: vi.fn(async () => csv('wrong-term')),
     };
     const repo = repository();
-    repo.currentBlobShas.mockResolvedValue(new Map());
+    repo.currentSourceVersions.mockResolvedValue(new Map());
     const service = new CatalogSyncService({
       source,
       repository: repo,
@@ -166,6 +171,7 @@ describe('CatalogSyncService', () => {
       { ...CURRENT, termCode: '2025-2026-2', path: 'data/2025-2026-2/courses.csv.gz' },
     ];
     const source: CatalogSource = {
+      repository: 'at-nju/courses',
       list: vi.fn(async () => ({
         repository: 'at-nju/courses',
         commitSha: COMMIT,
@@ -174,7 +180,7 @@ describe('CatalogSyncService', () => {
       download: vi.fn(async (catalog) => csv(catalog.termCode)),
     };
     const repo = repository();
-    repo.currentBlobShas.mockResolvedValue(new Map());
+    repo.currentSourceVersions.mockResolvedValue(new Map());
     const service = new CatalogSyncService({
       source,
       repository: repo,

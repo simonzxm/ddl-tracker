@@ -33,6 +33,7 @@ const REQUIRED_HEADERS = [
 ] as const;
 
 const optionalSourceTextSchema = z.string().max(10_000).nullable();
+const scheduleComponentTextSchema = nullableNormalizedTextSchema(2000);
 
 export const normalizedCatalogCourseSchema = z
   .object({
@@ -55,10 +56,10 @@ export const normalizedCatalogClassSectionSchema = z
     campus_name: nullableNormalizedTextSchema(300),
     capacity: z.number().int().nonnegative().max(2_147_483_647).nullable(),
     schedule_text: nullableNormalizedTextSchema(2000),
-    weeks_text: nullableNormalizedTextSchema(500),
-    weekday_text: nullableNormalizedTextSchema(100),
-    periods_text: nullableNormalizedTextSchema(100),
-    room_text: nullableNormalizedTextSchema(300),
+    weeks_text: scheduleComponentTextSchema,
+    weekday_text: scheduleComponentTextSchema,
+    periods_text: scheduleComponentTextSchema,
+    room_text: scheduleComponentTextSchema,
     building_code: z.string().trim().min(1).max(100).nullable(),
     building_name: nullableNormalizedTextSchema(300),
     source_payload: z.record(z.string().max(200), optionalSourceTextSchema),

@@ -133,6 +133,28 @@ describe('parseCatalogCsv', () => {
     expect(() => parseCatalogCsv(csv(row({ XKZRS: '-1' })))).toThrow('XKZRS');
   });
 
+  it('accepts long schedule components produced by the upstream exporter', () => {
+    const weekdayText = '周一,'.repeat(80).slice(0, -1);
+    const periodsText = '第1节-第2节,'.repeat(70).slice(0, -1);
+    const roomText = '仙林校区教学楼A101,'.repeat(30).slice(0, -1);
+
+    const result = parseCatalogCsv(
+      csv(
+        row({
+          SKXQ: weekdayText,
+          SKJC: periodsText,
+          SKJAS: roomText,
+        }),
+      ),
+    );
+
+    expect(result.class_sections[0]).toMatchObject({
+      weekday_text: weekdayText,
+      periods_text: periodsText,
+      room_text: roomText,
+    });
+  });
+
   it('rejects empty data and missing required headers', () => {
     expect(() =>
       parseCatalogCsv(new TextEncoder().encode(`${headers.join(',')}\n`)),

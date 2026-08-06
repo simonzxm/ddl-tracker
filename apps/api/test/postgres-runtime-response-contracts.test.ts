@@ -38,7 +38,10 @@ const TASK_ID = '018f0000-0000-7000-8000-000000009105';
 const COMMENT_ID = '018f0000-0000-7000-8000-000000009106';
 const REPORT_ID = '018f0000-0000-7000-8000-000000009107';
 const HISTORICAL_REPORT_ID = '018f0000-0000-7000-8000-000000009108';
-const AUDIT_ID = '018f0000-0000-7000-8000-000000009109';
+const EMPTY_RESOLUTION_REPORT_ID = '018f0000-0000-7000-8000-000000009109';
+const AUDIT_ID = '018f0000-0000-7000-8000-000000009110';
+const LONG_RESOLUTION_EVENT_ID = '018f0000-0000-7000-8000-000000009111';
+const EMPTY_RESOLUTION_EVENT_ID = '018f0000-0000-7000-8000-000000009112';
 const LEGACY_REQUEST_ID = '550e8400-e29b-41d4-a716-446655440000';
 const LEGACY_TARGET_ID = '550e8400-e29b-41d4-a716-446655440001';
 
@@ -207,6 +210,13 @@ async function seedVisibleContent(
     ],
   );
   await client.query(
+    `insert into content_reports (
+       id, reporter_id, target_type, target_id, reason, details, status,
+       resolution, resolved_by, resolved_at
+     ) values ($1, $2, 'comment', $3, 'other', null, 'dismissed', '', $2, $4)`,
+    [EMPTY_RESOLUTION_REPORT_ID, userId, COMMENT_ID, NOW],
+  );
+  await client.query(
     `insert into audit_log (
        id, actor_id, action, target_type, target_id, reason, result,
        request_id, created_at
@@ -221,6 +231,54 @@ async function seedVisibleContent(
       NOW,
     ],
   );
+}
+
+async function seedHistoricalMaintainerEvents(
+  client: Client,
+  userId: string,
+): Promise<void> {
+  const events = [
+    {
+      eventId: LONG_RESOLUTION_EVENT_ID,
+      reportId: HISTORICAL_REPORT_ID,
+      status: 'resolved',
+      resolution: 'R'.repeat(1_001),
+    },
+    {
+      eventId: EMPTY_RESOLUTION_EVENT_ID,
+      reportId: EMPTY_RESOLUTION_REPORT_ID,
+      status: 'dismissed',
+      resolution: '',
+    },
+  ] as const;
+
+  for (const event of events) {
+    await client.query(
+      `insert into sync_events (
+         event_id, scope, type, schema_version, payload, occurred_at
+       ) values ($1, 'maintainer_private',
+         'maintainer_content_report_updated', 2, $2::jsonb, $3)`,
+      [
+        event.eventId,
+        JSON.stringify({
+          report_id: event.reportId,
+          reporter_id: userId,
+          target_type: 'comment',
+          target_id: COMMENT_ID,
+          reason: 'other',
+          details:
+            event.eventId === LONG_RESOLUTION_EVENT_ID
+              ? 'D'.repeat(1_001)
+              : null,
+          status: event.status,
+          resolution: event.resolution,
+          created_at: NOW.toISOString(),
+          resolved_at: NOW.toISOString(),
+        }),
+        NOW,
+      ],
+    );
+  }
 }
 
 describePostgres('runtime HTTP response contracts with PostgreSQL', () => {
@@ -342,6 +400,20 @@ describePostgres('runtime HTTP response contracts with PostgreSQL', () => {
         }),
       }),
     );
+    const emptyResolutionReport = snapshotBody.records.find(
+      (record) =>
+        record.record_type === 'reporter_content_report' &&
+        record.payload.report_id === EMPTY_RESOLUTION_REPORT_ID,
+    );
+    expect(emptyResolutionReport).toEqual(
+      expect.objectContaining({
+        record_type: 'reporter_content_report',
+        payload: expect.objectContaining({
+          resolution: '',
+          status: 'dismissed',
+        }),
+      }),
+    );
 
     const bootstrap = await app.request('/api/v1/admin/bootstrap', {
       method: 'POST',
@@ -358,6 +430,45 @@ describePostgres('runtime HTTP response contracts with PostgreSQL', () => {
     expect(currentUserSchema.parse(await elevated.json()).roles).toEqual([
       'maintainer',
     ]);
+
+    await seedHistoricalMaintainerEvents(client, signedIn.userId);
+    const incremental = await app.request('/api/v1/sync', {
+      method: 'POST',
+      headers: { ...authorization, 'content-type': 'application/json' },
+      body: JSON.stringify({
+        protocol_version: 2,
+        mode: 'incremental',
+        cursor: snapshotBody.next_cursor,
+        event_limit: 100,
+        operations: [],
+      }),
+    });
+    expect(incremental.status).toBe(200);
+    const incrementalBody = syncResponseSchema.parse(await incremental.json());
+    if (incrementalBody.mode !== 'incremental') {
+      throw new Error('Expected an incremental sync response.');
+    }
+    expect(incrementalBody.events).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          event_id: LONG_RESOLUTION_EVENT_ID,
+          type: 'maintainer_content_report_updated',
+          payload: expect.objectContaining({
+            details: 'D'.repeat(1_001),
+            resolution: 'R'.repeat(1_001),
+            status: 'resolved',
+          }),
+        }),
+        expect.objectContaining({
+          event_id: EMPTY_RESOLUTION_EVENT_ID,
+          type: 'maintainer_content_report_updated',
+          payload: expect.objectContaining({
+            resolution: '',
+            status: 'dismissed',
+          }),
+        }),
+      ]),
+    );
 
     const reports = await app.request('/api/v1/admin/reports', {
       headers: authorization,

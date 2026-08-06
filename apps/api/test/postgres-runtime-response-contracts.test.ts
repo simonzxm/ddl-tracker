@@ -48,9 +48,16 @@ const EMPTY_RESOLUTION_REPORT_ID = '018f0000-0000-7000-8000-000000009109';
 const AUDIT_ID = '018f0000-0000-7000-8000-000000009110';
 const LONG_RESOLUTION_EVENT_ID = '018f0000-0000-7000-8000-000000009111';
 const EMPTY_RESOLUTION_EVENT_ID = '018f0000-0000-7000-8000-000000009112';
+const PROPOSAL_ID = '018f0000-0000-7000-8000-000000009113';
+const MERGED_TASK_ID = '018f0000-0000-7000-8000-000000009114';
+const PERSONAL_TODO_ID = '018f0000-0000-7000-8000-000000009115';
+const REPLAY_OPERATION_ID = '018f0000-0000-7000-8000-000000009116';
+const REPLAY_COMMENT_ID = '018f0000-0000-7000-8000-000000009117';
+const MISSING_TASK_ID = '018f0000-0000-7000-8000-000000009118';
 const LEGACY_REQUEST_ID = '550e8400-e29b-41d4-a716-446655440000';
 const LEGACY_TARGET_ID = '550e8400-e29b-41d4-a716-446655440001';
 const HASH = 'a'.repeat(64);
+const LONG_TEXT = 'X'.repeat(10_001);
 const CATALOG_HEADERS = [
   'XNXQDM',
   'XNXQDM_DISPLAY',
@@ -251,6 +258,16 @@ async function seedVisibleContent(
   userId: string,
 ): Promise<void> {
   await client.query(
+    `update users
+     set username = '', display_name = $1, avatar_url = $2, bio = $1
+     where id = $3`,
+    [LONG_TEXT, 'historical-not-a-url', userId],
+  );
+  await client.query(
+    `update sessions set device_name = $1 where user_id = $2`,
+    [LONG_TEXT, userId],
+  );
+  await client.query(
     `insert into users (
        id, username, username_key, display_name, status, profile_revision
      ) values ($1, 'target_user', 'target_user', 'Target User', 'active', 1)`,
@@ -259,25 +276,71 @@ async function seedVisibleContent(
   await client.query(
     `insert into academic_terms (
        id, external_term_code, name, starts_on, ends_on
-     ) values ($1, '2026-2027-1', 'Current term', '2026-08-01', '2027-01-31')`,
-    [TERM_ID],
+     ) values ($1, '2026-2027-1', $2, '2026-08-01', '2027-01-31')`,
+    [TERM_ID, LONG_TEXT],
   );
   await client.query(
     `insert into courses (id, term_id, external_course_code, name, credits)
-     values ($1, $2, 'COURSE-1', 'Contract Course', 3.00)`,
-    [COURSE_ID, TERM_ID],
+     values ($1, $2, 'COURSE-1', $3, 3.00)`,
+    [COURSE_ID, TERM_ID, LONG_TEXT],
+  );
+  const instructors = Array.from({ length: 101 }, (_, index) =>
+    index === 0 ? LONG_TEXT : `Teacher ${String(index)}`,
   );
   await client.query(
     `insert into class_sections (
-       id, course_id, external_section_id, section_number, instructors,
+       id, course_id, external_section_id, section_number, department_code,
+       department_name, instructors, campus, capacity, schedule_text,
        active, revision
-     ) values ($1, $2, 'SECTION-1', '01', '["Teacher"]'::jsonb, true, 1)`,
-    [SECTION_ID, COURSE_ID],
+     ) values ($1, $2, 'SECTION-1', $3, $4, '', $5::jsonb, $6, 100, $7,
+       true, 1)`,
+    [
+      SECTION_ID,
+      COURSE_ID,
+      LONG_TEXT,
+      LONG_TEXT,
+      JSON.stringify(instructors),
+      LONG_TEXT,
+      LONG_TEXT,
+    ],
   );
   await client.query(
     `insert into course_tasks (id, class_section_id, created_by)
      values ($1, $2, $3)`,
     [TASK_ID, SECTION_ID, userId],
+  );
+  await client.query(
+    `insert into course_tasks (
+       id, class_section_id, created_by, state, revision
+     ) values ($1, $2, $3, 'merged', 2)`,
+    [MERGED_TASK_ID, SECTION_ID, userId],
+  );
+  await client.query(
+    `insert into task_merges (
+       source_task_id, target_task_id, maintainer_id, reason, created_at
+     ) values ($1, $2, $3, $4, $5)`,
+    [MERGED_TASK_ID, TASK_ID, userId, LONG_TEXT, NOW],
+  );
+  await client.query(
+    `insert into task_proposals (
+       id, task_id, author_id, title, deadline, description, evidence_note,
+       evidence_url, content_fingerprint, state, revision, created_at
+     ) values ($1, $2, $3, '', $4, $5, $5, $6, $7, 'visible', 1, $4)`,
+    [
+      PROPOSAL_ID,
+      TASK_ID,
+      userId,
+      NOW,
+      LONG_TEXT,
+      'historical-not-a-url',
+      HASH,
+    ],
+  );
+  await client.query(
+    `insert into proposal_vote_totals (
+       proposal_id, up, down, revision, updated_at
+     ) values ($1, 1, 0, 1, $2)`,
+    [PROPOSAL_ID, NOW],
   );
   await client.query(
     `insert into task_comments (id, task_id, author_id, current_revision)
@@ -289,6 +352,25 @@ async function seedVisibleContent(
        comment_id, revision, body, author_id, created_at
      ) values ($1, 1, $2, $3, $4)`,
     [COMMENT_ID, 'C'.repeat(4_001), userId, NOW],
+  );
+  await client.query(
+    `insert into followed_class_sections (user_id, class_section_id, created_at)
+     values ($1, $2, $3)`,
+    [userId, SECTION_ID, NOW],
+  );
+  await client.query(
+    `insert into personal_todos (
+       id, user_id, class_section_id, title, note, state, revision,
+       created_at, updated_at
+     ) values ($1, $2, $3, '', $4, 'pending', 1, $5, $5)`,
+    [PERSONAL_TODO_ID, userId, SECTION_ID, LONG_TEXT, NOW],
+  );
+  await client.query(
+    `insert into personal_task_details (
+       user_id, task_id, private_title, private_note, revision,
+       created_at, updated_at
+     ) values ($1, $2, $3, '', 1, $4, $4)`,
+    [userId, TASK_ID, LONG_TEXT, NOW],
   );
   await client.query(
     `insert into content_reports (
@@ -403,8 +485,17 @@ describePostgres('runtime HTTP response contracts with PostgreSQL', () => {
         audit_log,
         moderation_actions,
         content_reports,
+        accuracy_votes,
+        proposal_vote_totals,
+        proposal_redirects,
+        task_proposals,
+        task_merges,
         comment_revisions,
         task_comments,
+        personal_task_states,
+        personal_task_details,
+        personal_todos,
+        followed_class_sections,
         course_tasks,
         class_sections,
         courses,
@@ -415,6 +506,12 @@ describePostgres('runtime HTTP response contracts with PostgreSQL', () => {
         users
       restart identity cascade
     `);
+    await client.query(
+      `update catalog_revision
+       set revision = 1, updated_at = $1
+       where singleton_id = 1`,
+      [NOW],
+    );
   });
 
   afterAll(async () => {
@@ -434,32 +531,52 @@ describePostgres('runtime HTTP response contracts with PostgreSQL', () => {
 
     const me = await app.request('/api/v1/me', { headers: authorization });
     expect(me.status).toBe(200);
-    expect(currentUserSchema.parse(await me.json()).roles).toEqual([]);
+    const meBody = currentUserSchema.parse(await me.json());
+    expect(meBody).toMatchObject({
+      username: '',
+      display_name: LONG_TEXT,
+      avatar_url: 'historical-not-a-url',
+      bio: LONG_TEXT,
+      roles: [],
+    });
 
     const sessions = await app.request('/api/v1/sessions', {
       headers: authorization,
     });
     expect(sessions.status).toBe(200);
-    expect(sessionListResponseSchema.parse(await sessions.json()).sessions).toHaveLength(1);
+    const sessionsBody = sessionListResponseSchema.parse(await sessions.json());
+    expect(sessionsBody.sessions).toHaveLength(1);
+    expect(sessionsBody.sessions[0]?.device_name).toBe(LONG_TEXT);
 
     const terms = await app.request('/api/v1/terms', { headers: authorization });
     expect(terms.status).toBe(200);
-    expect(termsResponseSchema.parse(await terms.json()).terms).toHaveLength(1);
+    const termsBody = termsResponseSchema.parse(await terms.json());
+    expect(termsBody.terms).toHaveLength(1);
+    expect(termsBody.terms[0]?.name).toBe(LONG_TEXT);
 
     const courses = await app.request(`/api/v1/terms/${TERM_ID}/courses`, {
       headers: authorization,
     });
     expect(courses.status).toBe(200);
-    expect(coursesResponseSchema.parse(await courses.json()).courses).toHaveLength(1);
+    const coursesBody = coursesResponseSchema.parse(await courses.json());
+    expect(coursesBody.courses).toHaveLength(1);
+    expect(coursesBody.courses[0]?.name).toBe(LONG_TEXT);
 
     const sections = await app.request(
       `/api/v1/courses/${COURSE_ID}/class-sections`,
       { headers: authorization },
     );
     expect(sections.status).toBe(200);
-    expect(
-      classSectionsResponseSchema.parse(await sections.json()).class_sections,
-    ).toHaveLength(1);
+    const sectionsBody = classSectionsResponseSchema.parse(await sections.json());
+    expect(sectionsBody.class_sections).toHaveLength(1);
+    expect(sectionsBody.class_sections[0]).toMatchObject({
+      section_number: LONG_TEXT,
+      department_code: LONG_TEXT,
+      department_name: '',
+      campus: LONG_TEXT,
+      schedule_text: LONG_TEXT,
+    });
+    expect(sectionsBody.class_sections[0]?.instructors).toHaveLength(101);
 
     const history = await app.request(
       `/api/v1/comments/${COMMENT_ID}/revisions`,
@@ -488,6 +605,68 @@ describePostgres('runtime HTTP response contracts with PostgreSQL', () => {
     if (snapshotBody.mode !== 'account_snapshot') {
       throw new Error('Expected an account snapshot response.');
     }
+    expect(snapshotBody.records).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          record_type: 'public_user_profile',
+          payload: expect.objectContaining({
+            id: signedIn.userId,
+            username: '',
+            display_name: LONG_TEXT,
+            avatar_url: 'historical-not-a-url',
+            bio: LONG_TEXT,
+          }),
+        }),
+        expect.objectContaining({
+          record_type: 'class_section',
+          payload: expect.objectContaining({
+            id: SECTION_ID,
+            section_number: LONG_TEXT,
+            schedule_text: LONG_TEXT,
+          }),
+        }),
+        expect.objectContaining({
+          record_type: 'personal_todo',
+          payload: expect.objectContaining({
+            id: PERSONAL_TODO_ID,
+            title: '',
+            note: LONG_TEXT,
+          }),
+        }),
+        expect.objectContaining({
+          record_type: 'personal_task_details',
+          payload: expect.objectContaining({
+            course_task_id: TASK_ID,
+            private_title: LONG_TEXT,
+            private_note: '',
+          }),
+        }),
+        expect.objectContaining({
+          record_type: 'task_proposal',
+          payload: expect.objectContaining({
+            id: PROPOSAL_ID,
+            title: '',
+            description: LONG_TEXT,
+            evidence_note: LONG_TEXT,
+            evidence_url: 'historical-not-a-url',
+          }),
+        }),
+        expect.objectContaining({
+          record_type: 'task_comment',
+          payload: expect.objectContaining({
+            id: COMMENT_ID,
+            body: 'C'.repeat(4_001),
+          }),
+        }),
+        expect.objectContaining({
+          record_type: 'task_merge',
+          payload: expect.objectContaining({
+            source_task_id: MERGED_TASK_ID,
+            reason: LONG_TEXT,
+          }),
+        }),
+      ]),
+    );
     const historicalReport = snapshotBody.records.find(
       (record) =>
         record.record_type === 'reporter_content_report' &&
@@ -518,6 +697,135 @@ describePostgres('runtime HTTP response contracts with PostgreSQL', () => {
       }),
     );
 
+    const sectionSnapshot = await app.request('/api/v1/sync', {
+      method: 'POST',
+      headers: { ...authorization, 'content-type': 'application/json' },
+      body: JSON.stringify({
+        protocol_version: 2,
+        mode: 'class_section_snapshot',
+        cursor: snapshotBody.next_cursor,
+        class_section_id: SECTION_ID,
+        snapshot_token: null,
+        page_token: null,
+        snapshot_limit: 100,
+        operations: [],
+      }),
+    });
+    expect(sectionSnapshot.status).toBe(200);
+    const sectionSnapshotBody = syncResponseSchema.parse(
+      await sectionSnapshot.json(),
+    );
+    if (sectionSnapshotBody.mode !== 'class_section_snapshot') {
+      throw new Error('Expected a class section snapshot response.');
+    }
+    expect(sectionSnapshotBody.records).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          record_type: 'class_section',
+          payload: expect.objectContaining({
+            id: SECTION_ID,
+            instructors: expect.arrayContaining([LONG_TEXT]),
+            schedule_text: LONG_TEXT,
+          }),
+        }),
+        expect.objectContaining({
+          record_type: 'task_proposal',
+          payload: expect.objectContaining({
+            id: PROPOSAL_ID,
+            title: '',
+            description: LONG_TEXT,
+            evidence_url: 'historical-not-a-url',
+          }),
+        }),
+        expect.objectContaining({
+          record_type: 'task_comment',
+          payload: expect.objectContaining({
+            id: COMMENT_ID,
+            body: 'C'.repeat(4_001),
+          }),
+        }),
+        expect.objectContaining({
+          record_type: 'personal_task_details',
+          payload: expect.objectContaining({
+            private_title: LONG_TEXT,
+            private_note: '',
+          }),
+        }),
+      ]),
+    );
+    if (sectionSnapshotBody.resume_cursor === null) {
+      throw new Error('Expected a completed class section snapshot.');
+    }
+
+    const rejectedOperation = {
+      operation_id: REPLAY_OPERATION_ID,
+      schema_version: 1,
+      depends_on: [],
+      type: 'create_task_comment',
+      payload: {
+        comment_id: REPLAY_COMMENT_ID,
+        course_task_id: MISSING_TASK_ID,
+        body: 'Current valid comment',
+      },
+    } as const;
+    const rejectedSync = await app.request('/api/v1/sync', {
+      method: 'POST',
+      headers: { ...authorization, 'content-type': 'application/json' },
+      body: JSON.stringify({
+        protocol_version: 2,
+        mode: 'incremental',
+        cursor: sectionSnapshotBody.resume_cursor,
+        event_limit: 100,
+        operations: [rejectedOperation],
+      }),
+    });
+    expect(rejectedSync.status).toBe(200);
+    const rejectedSyncBody = syncResponseSchema.parse(await rejectedSync.json());
+    if (rejectedSyncBody.mode !== 'incremental') {
+      throw new Error('Expected an incremental sync response.');
+    }
+    expect(rejectedSyncBody.operation_results[0]).toMatchObject({
+      operation_id: REPLAY_OPERATION_ID,
+      status: 'rejected',
+      error: { code: 'not_found' },
+    });
+
+    const updatedReceipt = await client.query(
+      `update operation_receipts
+       set stable_result = jsonb_set(
+         stable_result,
+         '{error,message}',
+         to_jsonb($3::text),
+         false
+       )
+       where user_id = $1 and operation_id = $2`,
+      [signedIn.userId, REPLAY_OPERATION_ID, LONG_TEXT],
+    );
+    expect(updatedReceipt.rowCount).toBe(1);
+
+    const replayedSync = await app.request('/api/v1/sync', {
+      method: 'POST',
+      headers: { ...authorization, 'content-type': 'application/json' },
+      body: JSON.stringify({
+        protocol_version: 2,
+        mode: 'incremental',
+        cursor: rejectedSyncBody.next_cursor,
+        event_limit: 100,
+        operations: [rejectedOperation],
+      }),
+    });
+    expect(replayedSync.status).toBe(200);
+    const replayedSyncBody = syncResponseSchema.parse(await replayedSync.json());
+    if (replayedSyncBody.mode !== 'incremental') {
+      throw new Error('Expected an incremental sync response.');
+    }
+    expect(replayedSyncBody.operation_results[0]).toMatchObject({
+      operation_id: REPLAY_OPERATION_ID,
+      status: 'rejected',
+      error: { code: 'not_found', message: LONG_TEXT },
+    });
+    const syncCursor = replayedSyncBody.next_cursor;
+
     const bootstrap = await app.request('/api/v1/admin/bootstrap', {
       method: 'POST',
       headers: { ...authorization, 'content-type': 'application/json' },
@@ -543,14 +851,24 @@ describePostgres('runtime HTTP response contracts with PostgreSQL', () => {
     const planBody = catalogPlanBatchResponseSchema.parse(await plan.json());
     expect(planBody.plan_complete).toBe(true);
 
+    await client.query(
+      `update catalog_imports
+       set status = 'failed', failure_message = $2
+       where id = $1`,
+      [planBody.import_id, LONG_TEXT],
+    );
     const planStatus = await app.request(
       `/api/v1/admin/catalog/imports/${planBody.import_id}`,
       { headers: authorization },
     );
     expect(planStatus.status).toBe(200);
-    expect(
-      catalogImportStatusSchema.parse(await planStatus.json()).status,
-    ).toBe('planned');
+    const planStatusBody = catalogImportStatusSchema.parse(
+      await planStatus.json(),
+    );
+    expect(planStatusBody).toMatchObject({
+      status: 'failed',
+      failure_message: LONG_TEXT,
+    });
 
     const upload = await app.request('/api/v1/admin/catalog/imports/upload', {
       method: 'POST',
@@ -589,7 +907,7 @@ describePostgres('runtime HTTP response contracts with PostgreSQL', () => {
       body: JSON.stringify({
         protocol_version: 2,
         mode: 'incremental',
-        cursor: snapshotBody.next_cursor,
+        cursor: syncCursor,
         event_limit: 100,
         operations: [],
       }),

@@ -32,6 +32,29 @@ describe('maintainer sync events v2', () => {
     ).toMatchObject({ type: 'maintainer_content_report_updated' });
   });
 
+  it('replays empty historical resolutions stored before current request rules', () => {
+    const event = maintainerSyncEventV2Schema.parse({
+      event_id: EVENT_ID,
+      schema_version: 2,
+      type: 'maintainer_content_report_updated',
+      occurred_at: NOW,
+      payload: {
+        report_id: REPORT_ID,
+        reporter_id: USER_ID,
+        target_type: 'course_task',
+        target_id: TARGET_ID,
+        reason: 'inaccurate',
+        details: null,
+        status: 'dismissed',
+        resolution: '',
+        created_at: NOW,
+        resolved_at: NOW,
+      },
+    });
+
+    expect(event.payload.resolution).toBe('');
+  });
+
   it('rejects incomplete maintainer report payloads', () => {
     expect(() =>
       maintainerSyncEventV2Schema.parse({

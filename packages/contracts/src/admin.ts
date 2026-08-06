@@ -136,6 +136,8 @@ export const adminAuditEntrySchema = z
     actor_id: uuidV7Schema.nullable(),
     action: z.string(),
     target_type: z.string(),
+    // audit_log.target_id is a generic UUID column; historical/imported
+    // targets are not guaranteed to use UUIDv7.
     target_id: z.uuid().nullable(),
     reason: z.string().nullable(),
     result: z.record(z.string(), z.unknown()),

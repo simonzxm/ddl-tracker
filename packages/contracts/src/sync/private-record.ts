@@ -82,6 +82,10 @@ export const personalTaskStateTombstoneSchema = z
   })
   .strict();
 
+// Snapshot records replay stored moderation rows. Historical values may be
+// empty or exceed current request limits, so output validation follows storage.
+const storedModerationTextSchema = z.string();
+
 const reporterContentReportIdentity = {
   report_id: uuidV7Schema,
   target_type: reportTargetTypeSchema,
@@ -104,7 +108,7 @@ export const reporterContentReportRecordSchema = z.discriminatedUnion('status', 
     .object({
       ...reporterContentReportIdentity,
       status: z.literal('resolved'),
-      resolution: z.string(),
+      resolution: storedModerationTextSchema,
       resolved_at: rfc3339TimestampSchema,
     })
     .strict(),
@@ -112,7 +116,7 @@ export const reporterContentReportRecordSchema = z.discriminatedUnion('status', 
     .object({
       ...reporterContentReportIdentity,
       status: z.literal('dismissed'),
-      resolution: z.string(),
+      resolution: storedModerationTextSchema,
       resolved_at: rfc3339TimestampSchema,
     })
     .strict(),

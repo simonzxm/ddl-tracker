@@ -67,6 +67,29 @@ describe('snapshot record v2', () => {
     expect(record.record_type).toBe('reporter_content_report');
   });
 
+  it('restores empty historical report resolutions', () => {
+    const record = snapshotRecordV2Schema.parse({
+      record_type: 'reporter_content_report',
+      schema_version: 1,
+      payload: {
+        report_id: ID,
+        target_type: 'course_task',
+        target_id: SECTION_ID,
+        reason: 'other',
+        details: null,
+        status: 'dismissed',
+        resolution: '',
+        created_at: NOW,
+        resolved_at: NOW,
+      },
+    });
+
+    expect(record.record_type).toBe('reporter_content_report');
+    if (record.record_type === 'reporter_content_report') {
+      expect(record.payload.resolution).toBe('');
+    }
+  });
+
   it('rejects duplicated envelope fields', () => {
     expect(() =>
       snapshotRecordV2Schema.parse({
